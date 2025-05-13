@@ -7,7 +7,7 @@ import (
 	"github.com/antlr4-go/antlr/v4"
 )
 
-// ProtocolParser 解析协议文件并返回协议定义的 AST
+// ParseFile 解析协议文件并返回协议定义的 AST
 func ParseFile(filename string) (interface{}, error) {
 	// 读取协议文件内容
 	data, err := os.ReadFile(filename)
@@ -34,11 +34,12 @@ func ParseFile(filename string) (interface{}, error) {
 	return astData, nil
 }
 
-// Visitor 自定义访问器，解析具体的协议数据
+// CustomVisitor 自定义访问器，解析具体的协议数据
 type CustomVisitor struct {
 	*BaseBinaryPacketVisitor
 }
 
+// NewCustomVisitor 创建一个新的自定义访问器
 func NewCustomVisitor() *CustomVisitor {
 	return &CustomVisitor{
 		BaseBinaryPacketVisitor: &BaseBinaryPacketVisitor{}, // Initialize it here if needed
