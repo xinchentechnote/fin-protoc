@@ -2,29 +2,17 @@ package parser
 
 import (
 	"fmt"
-	"os"
 
-	"github.com/antlr4-go/antlr/v4"
 	gen "github.com/xinchentechnote/fin-protoc/internal/grammar"
 )
 
 // ParseFile 解析协议文件并返回协议定义的 AST
 func ParseFile(filename string) (interface{}, error) {
 	// 读取协议文件内容
-	data, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, fmt.Errorf("could not read file: %v", err)
+	parser, err := NewPacketDslParserByFile(filename)
+	if nil != err {
+		return nil, err
 	}
-
-	// 创建一个新的输入流
-	input := antlr.NewInputStream(string(data))
-
-	// 创建一个新的词法分析器
-	lexer := gen.NewPacketDslLexer(input)
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-
-	// 创建一个新的语法分析器
-	parser := gen.NewPacketDslParser(stream)
 
 	// 设置语法规则，开始解析
 	tree := parser.Packet()
@@ -93,12 +81,6 @@ func (v *PacketDslVisitorImpl) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclara
 // VisitType for visiting type definitions.
 func (v *PacketDslVisitorImpl) VisitType(ctx *gen.TypeContext) interface{} {
 	fmt.Println("Visiting Type")
-	return nil
-}
-
-// VisitDescription for visiting description nodes.
-func (v *PacketDslVisitorImpl) VisitDescription(ctx *gen.DescriptionContext) interface{} {
-	fmt.Println("Visiting Description")
 	return nil
 }
 

@@ -18,7 +18,7 @@ metaDataDefinition:
 
 // Metadata declaration with type and description
 metaDataDeclaration:
-	type IDENTIFIER ':' '`' description '`';
+    type IDENTIFIER ':' STRING_LITERAL;
 
 // Types for fields
 type:
@@ -31,8 +31,6 @@ type:
 	| 'char'
 	| 'char[' DIGIT* ']';
 
-// Descriptions are anything that doesn't contain backticks
-description: ~('`')+;
 
 // Root and Packet keywords
 ROOT: 'ROOT';
@@ -43,6 +41,8 @@ IDENTIFIER: [a-zA-Z_][a-zA-Z_0-9]*;
 
 // Digits for handling arrays and other numeric types
 DIGIT: [0-9];
+
+STRING_LITERAL: '`' (~'`')* '`';
 
 // Match field rule for defining match criteria
 matchField:

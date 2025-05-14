@@ -32,60 +32,56 @@ var PacketDslParserStaticData struct {
 func packetdslParserInit() {
 	staticData := &PacketDslParserStaticData
 	staticData.LiteralNames = []string{
-		"", "'{'", "'}'", "'MetaData'", "':'", "'`'", "'Int64'", "'uInt16'",
-		"'uInt32'", "'string'", "'Int32'", "'uInt8'", "'char'", "'char['", "']'",
-		"'match'", "'\"'", "': '", "'ROOT'", "'packet'",
+		"", "'{'", "'}'", "'MetaData'", "':'", "'Int64'", "'uInt16'", "'uInt32'",
+		"'string'", "'Int32'", "'uInt8'", "'char'", "'char['", "']'", "'match'",
+		"'\"'", "': '", "'ROOT'", "'packet'",
 	}
 	staticData.SymbolicNames = []string{
 		"", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
-		"", "ROOT", "PACKET", "IDENTIFIER", "DIGIT", "WS",
+		"ROOT", "PACKET", "IDENTIFIER", "DIGIT", "STRING_LITERAL", "WS",
 	}
 	staticData.RuleNames = []string{
 		"packet", "packetDefinition", "fieldDefinition", "metaDataDefinition",
-		"metaDataDeclaration", "type", "description", "matchField",
+		"metaDataDeclaration", "type", "matchField",
 	}
 	staticData.PredictionContextCache = antlr.NewPredictionContextCache()
 	staticData.serializedATN = []int32{
-		4, 1, 22, 96, 2, 0, 7, 0, 2, 1, 7, 1, 2, 2, 7, 2, 2, 3, 7, 3, 2, 4, 7,
-		4, 2, 5, 7, 5, 2, 6, 7, 6, 2, 7, 7, 7, 1, 0, 1, 0, 5, 0, 19, 8, 0, 10,
-		0, 12, 0, 22, 9, 0, 1, 1, 3, 1, 25, 8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 1,
-		31, 8, 1, 10, 1, 12, 1, 34, 9, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 2, 3, 2, 41,
-		8, 2, 1, 3, 1, 3, 1, 3, 1, 3, 4, 3, 47, 8, 3, 11, 3, 12, 3, 48, 1, 3, 1,
-		3, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 5, 1, 5, 1, 5, 1, 5, 1,
-		5, 1, 5, 1, 5, 1, 5, 1, 5, 5, 5, 69, 8, 5, 10, 5, 12, 5, 72, 9, 5, 1, 5,
-		3, 5, 75, 8, 5, 1, 6, 4, 6, 78, 8, 6, 11, 6, 12, 6, 79, 1, 7, 1, 7, 1,
-		7, 1, 7, 1, 7, 1, 7, 4, 7, 88, 8, 7, 11, 7, 12, 7, 89, 1, 7, 1, 7, 1, 7,
-		1, 7, 1, 7, 0, 0, 8, 0, 2, 4, 6, 8, 10, 12, 14, 0, 1, 1, 0, 5, 5, 104,
-		0, 20, 1, 0, 0, 0, 2, 24, 1, 0, 0, 0, 4, 40, 1, 0, 0, 0, 6, 42, 1, 0, 0,
-		0, 8, 52, 1, 0, 0, 0, 10, 74, 1, 0, 0, 0, 12, 77, 1, 0, 0, 0, 14, 81, 1,
-		0, 0, 0, 16, 19, 3, 2, 1, 0, 17, 19, 3, 6, 3, 0, 18, 16, 1, 0, 0, 0, 18,
-		17, 1, 0, 0, 0, 19, 22, 1, 0, 0, 0, 20, 18, 1, 0, 0, 0, 20, 21, 1, 0, 0,
-		0, 21, 1, 1, 0, 0, 0, 22, 20, 1, 0, 0, 0, 23, 25, 5, 18, 0, 0, 24, 23,
-		1, 0, 0, 0, 24, 25, 1, 0, 0, 0, 25, 26, 1, 0, 0, 0, 26, 27, 5, 19, 0, 0,
-		27, 28, 5, 20, 0, 0, 28, 32, 5, 1, 0, 0, 29, 31, 3, 4, 2, 0, 30, 29, 1,
-		0, 0, 0, 31, 34, 1, 0, 0, 0, 32, 30, 1, 0, 0, 0, 32, 33, 1, 0, 0, 0, 33,
-		35, 1, 0, 0, 0, 34, 32, 1, 0, 0, 0, 35, 36, 5, 2, 0, 0, 36, 3, 1, 0, 0,
-		0, 37, 41, 5, 20, 0, 0, 38, 41, 3, 8, 4, 0, 39, 41, 3, 14, 7, 0, 40, 37,
-		1, 0, 0, 0, 40, 38, 1, 0, 0, 0, 40, 39, 1, 0, 0, 0, 41, 5, 1, 0, 0, 0,
-		42, 43, 5, 3, 0, 0, 43, 44, 5, 20, 0, 0, 44, 46, 5, 1, 0, 0, 45, 47, 3,
-		8, 4, 0, 46, 45, 1, 0, 0, 0, 47, 48, 1, 0, 0, 0, 48, 46, 1, 0, 0, 0, 48,
-		49, 1, 0, 0, 0, 49, 50, 1, 0, 0, 0, 50, 51, 5, 2, 0, 0, 51, 7, 1, 0, 0,
-		0, 52, 53, 3, 10, 5, 0, 53, 54, 5, 20, 0, 0, 54, 55, 5, 4, 0, 0, 55, 56,
-		5, 5, 0, 0, 56, 57, 3, 12, 6, 0, 57, 58, 5, 5, 0, 0, 58, 9, 1, 0, 0, 0,
-		59, 75, 5, 6, 0, 0, 60, 75, 5, 7, 0, 0, 61, 75, 5, 8, 0, 0, 62, 75, 5,
-		9, 0, 0, 63, 75, 5, 10, 0, 0, 64, 75, 5, 11, 0, 0, 65, 75, 5, 12, 0, 0,
-		66, 70, 5, 13, 0, 0, 67, 69, 5, 21, 0, 0, 68, 67, 1, 0, 0, 0, 69, 72, 1,
-		0, 0, 0, 70, 68, 1, 0, 0, 0, 70, 71, 1, 0, 0, 0, 71, 73, 1, 0, 0, 0, 72,
-		70, 1, 0, 0, 0, 73, 75, 5, 14, 0, 0, 74, 59, 1, 0, 0, 0, 74, 60, 1, 0,
-		0, 0, 74, 61, 1, 0, 0, 0, 74, 62, 1, 0, 0, 0, 74, 63, 1, 0, 0, 0, 74, 64,
-		1, 0, 0, 0, 74, 65, 1, 0, 0, 0, 74, 66, 1, 0, 0, 0, 75, 11, 1, 0, 0, 0,
-		76, 78, 8, 0, 0, 0, 77, 76, 1, 0, 0, 0, 78, 79, 1, 0, 0, 0, 79, 77, 1,
-		0, 0, 0, 79, 80, 1, 0, 0, 0, 80, 13, 1, 0, 0, 0, 81, 82, 5, 15, 0, 0, 82,
-		83, 5, 20, 0, 0, 83, 87, 5, 1, 0, 0, 84, 85, 5, 16, 0, 0, 85, 86, 5, 20,
-		0, 0, 86, 88, 5, 16, 0, 0, 87, 84, 1, 0, 0, 0, 88, 89, 1, 0, 0, 0, 89,
-		87, 1, 0, 0, 0, 89, 90, 1, 0, 0, 0, 90, 91, 1, 0, 0, 0, 91, 92, 5, 17,
-		0, 0, 92, 93, 5, 20, 0, 0, 93, 94, 5, 2, 0, 0, 94, 15, 1, 0, 0, 0, 10,
-		18, 20, 24, 32, 40, 48, 70, 74, 79, 89,
+		4, 1, 22, 87, 2, 0, 7, 0, 2, 1, 7, 1, 2, 2, 7, 2, 2, 3, 7, 3, 2, 4, 7,
+		4, 2, 5, 7, 5, 2, 6, 7, 6, 1, 0, 1, 0, 5, 0, 17, 8, 0, 10, 0, 12, 0, 20,
+		9, 0, 1, 1, 3, 1, 23, 8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 1, 29, 8, 1, 10,
+		1, 12, 1, 32, 9, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 2, 3, 2, 39, 8, 2, 1, 3,
+		1, 3, 1, 3, 1, 3, 4, 3, 45, 8, 3, 11, 3, 12, 3, 46, 1, 3, 1, 3, 1, 4, 1,
+		4, 1, 4, 1, 4, 1, 4, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1,
+		5, 5, 5, 65, 8, 5, 10, 5, 12, 5, 68, 9, 5, 1, 5, 3, 5, 71, 8, 5, 1, 6,
+		1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 4, 6, 79, 8, 6, 11, 6, 12, 6, 80, 1, 6, 1,
+		6, 1, 6, 1, 6, 1, 6, 0, 0, 7, 0, 2, 4, 6, 8, 10, 12, 0, 0, 95, 0, 18, 1,
+		0, 0, 0, 2, 22, 1, 0, 0, 0, 4, 38, 1, 0, 0, 0, 6, 40, 1, 0, 0, 0, 8, 50,
+		1, 0, 0, 0, 10, 70, 1, 0, 0, 0, 12, 72, 1, 0, 0, 0, 14, 17, 3, 2, 1, 0,
+		15, 17, 3, 6, 3, 0, 16, 14, 1, 0, 0, 0, 16, 15, 1, 0, 0, 0, 17, 20, 1,
+		0, 0, 0, 18, 16, 1, 0, 0, 0, 18, 19, 1, 0, 0, 0, 19, 1, 1, 0, 0, 0, 20,
+		18, 1, 0, 0, 0, 21, 23, 5, 17, 0, 0, 22, 21, 1, 0, 0, 0, 22, 23, 1, 0,
+		0, 0, 23, 24, 1, 0, 0, 0, 24, 25, 5, 18, 0, 0, 25, 26, 5, 19, 0, 0, 26,
+		30, 5, 1, 0, 0, 27, 29, 3, 4, 2, 0, 28, 27, 1, 0, 0, 0, 29, 32, 1, 0, 0,
+		0, 30, 28, 1, 0, 0, 0, 30, 31, 1, 0, 0, 0, 31, 33, 1, 0, 0, 0, 32, 30,
+		1, 0, 0, 0, 33, 34, 5, 2, 0, 0, 34, 3, 1, 0, 0, 0, 35, 39, 5, 19, 0, 0,
+		36, 39, 3, 8, 4, 0, 37, 39, 3, 12, 6, 0, 38, 35, 1, 0, 0, 0, 38, 36, 1,
+		0, 0, 0, 38, 37, 1, 0, 0, 0, 39, 5, 1, 0, 0, 0, 40, 41, 5, 3, 0, 0, 41,
+		42, 5, 19, 0, 0, 42, 44, 5, 1, 0, 0, 43, 45, 3, 8, 4, 0, 44, 43, 1, 0,
+		0, 0, 45, 46, 1, 0, 0, 0, 46, 44, 1, 0, 0, 0, 46, 47, 1, 0, 0, 0, 47, 48,
+		1, 0, 0, 0, 48, 49, 5, 2, 0, 0, 49, 7, 1, 0, 0, 0, 50, 51, 3, 10, 5, 0,
+		51, 52, 5, 19, 0, 0, 52, 53, 5, 4, 0, 0, 53, 54, 5, 21, 0, 0, 54, 9, 1,
+		0, 0, 0, 55, 71, 5, 5, 0, 0, 56, 71, 5, 6, 0, 0, 57, 71, 5, 7, 0, 0, 58,
+		71, 5, 8, 0, 0, 59, 71, 5, 9, 0, 0, 60, 71, 5, 10, 0, 0, 61, 71, 5, 11,
+		0, 0, 62, 66, 5, 12, 0, 0, 63, 65, 5, 20, 0, 0, 64, 63, 1, 0, 0, 0, 65,
+		68, 1, 0, 0, 0, 66, 64, 1, 0, 0, 0, 66, 67, 1, 0, 0, 0, 67, 69, 1, 0, 0,
+		0, 68, 66, 1, 0, 0, 0, 69, 71, 5, 13, 0, 0, 70, 55, 1, 0, 0, 0, 70, 56,
+		1, 0, 0, 0, 70, 57, 1, 0, 0, 0, 70, 58, 1, 0, 0, 0, 70, 59, 1, 0, 0, 0,
+		70, 60, 1, 0, 0, 0, 70, 61, 1, 0, 0, 0, 70, 62, 1, 0, 0, 0, 71, 11, 1,
+		0, 0, 0, 72, 73, 5, 14, 0, 0, 73, 74, 5, 19, 0, 0, 74, 78, 5, 1, 0, 0,
+		75, 76, 5, 15, 0, 0, 76, 77, 5, 19, 0, 0, 77, 79, 5, 15, 0, 0, 78, 75,
+		1, 0, 0, 0, 79, 80, 1, 0, 0, 0, 80, 78, 1, 0, 0, 0, 80, 81, 1, 0, 0, 0,
+		81, 82, 1, 0, 0, 0, 82, 83, 5, 16, 0, 0, 83, 84, 5, 19, 0, 0, 84, 85, 5,
+		2, 0, 0, 85, 13, 1, 0, 0, 0, 9, 16, 18, 22, 30, 38, 46, 66, 70, 80,
 	}
 	deserializer := antlr.NewATNDeserializer(nil)
 	staticData.atn = deserializer.Deserialize(staticData.serializedATN)
@@ -123,29 +119,29 @@ func NewPacketDslParser(input antlr.TokenStream) *PacketDslParser {
 
 // PacketDslParser tokens.
 const (
-	PacketDslParserEOF        = antlr.TokenEOF
-	PacketDslParserT__0       = 1
-	PacketDslParserT__1       = 2
-	PacketDslParserT__2       = 3
-	PacketDslParserT__3       = 4
-	PacketDslParserT__4       = 5
-	PacketDslParserT__5       = 6
-	PacketDslParserT__6       = 7
-	PacketDslParserT__7       = 8
-	PacketDslParserT__8       = 9
-	PacketDslParserT__9       = 10
-	PacketDslParserT__10      = 11
-	PacketDslParserT__11      = 12
-	PacketDslParserT__12      = 13
-	PacketDslParserT__13      = 14
-	PacketDslParserT__14      = 15
-	PacketDslParserT__15      = 16
-	PacketDslParserT__16      = 17
-	PacketDslParserROOT       = 18
-	PacketDslParserPACKET     = 19
-	PacketDslParserIDENTIFIER = 20
-	PacketDslParserDIGIT      = 21
-	PacketDslParserWS         = 22
+	PacketDslParserEOF            = antlr.TokenEOF
+	PacketDslParserT__0           = 1
+	PacketDslParserT__1           = 2
+	PacketDslParserT__2           = 3
+	PacketDslParserT__3           = 4
+	PacketDslParserT__4           = 5
+	PacketDslParserT__5           = 6
+	PacketDslParserT__6           = 7
+	PacketDslParserT__7           = 8
+	PacketDslParserT__8           = 9
+	PacketDslParserT__9           = 10
+	PacketDslParserT__10          = 11
+	PacketDslParserT__11          = 12
+	PacketDslParserT__12          = 13
+	PacketDslParserT__13          = 14
+	PacketDslParserT__14          = 15
+	PacketDslParserT__15          = 16
+	PacketDslParserROOT           = 17
+	PacketDslParserPACKET         = 18
+	PacketDslParserIDENTIFIER     = 19
+	PacketDslParserDIGIT          = 20
+	PacketDslParserSTRING_LITERAL = 21
+	PacketDslParserWS             = 22
 )
 
 // PacketDslParser rules.
@@ -156,8 +152,7 @@ const (
 	PacketDslParserRULE_metaDataDefinition  = 3
 	PacketDslParserRULE_metaDataDeclaration = 4
 	PacketDslParserRULE_type                = 5
-	PacketDslParserRULE_description         = 6
-	PacketDslParserRULE_matchField          = 7
+	PacketDslParserRULE_matchField          = 6
 )
 
 // IPacketContext is an interface to support dynamic dispatch.
@@ -315,15 +310,15 @@ func (p *PacketDslParser) Packet() (localctx IPacketContext) {
 	var _la int
 
 	p.EnterOuterAlt(localctx, 1)
-	p.SetState(20)
+	p.SetState(18)
 	p.GetErrorHandler().Sync(p)
 	if p.HasError() {
 		goto errorExit
 	}
 	_la = p.GetTokenStream().LA(1)
 
-	for (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&786440) != 0 {
-		p.SetState(18)
+	for (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&393224) != 0 {
+		p.SetState(16)
 		p.GetErrorHandler().Sync(p)
 		if p.HasError() {
 			goto errorExit
@@ -332,13 +327,13 @@ func (p *PacketDslParser) Packet() (localctx IPacketContext) {
 		switch p.GetTokenStream().LA(1) {
 		case PacketDslParserROOT, PacketDslParserPACKET:
 			{
-				p.SetState(16)
+				p.SetState(14)
 				p.PacketDefinition()
 			}
 
 		case PacketDslParserT__2:
 			{
-				p.SetState(17)
+				p.SetState(15)
 				p.MetaDataDefinition()
 			}
 
@@ -347,7 +342,7 @@ func (p *PacketDslParser) Packet() (localctx IPacketContext) {
 			goto errorExit
 		}
 
-		p.SetState(22)
+		p.SetState(20)
 		p.GetErrorHandler().Sync(p)
 		if p.HasError() {
 			goto errorExit
@@ -495,7 +490,7 @@ func (p *PacketDslParser) PacketDefinition() (localctx IPacketDefinitionContext)
 	var _la int
 
 	p.EnterOuterAlt(localctx, 1)
-	p.SetState(24)
+	p.SetState(22)
 	p.GetErrorHandler().Sync(p)
 	if p.HasError() {
 		goto errorExit
@@ -504,7 +499,7 @@ func (p *PacketDslParser) PacketDefinition() (localctx IPacketDefinitionContext)
 
 	if _la == PacketDslParserROOT {
 		{
-			p.SetState(23)
+			p.SetState(21)
 			p.Match(PacketDslParserROOT)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -514,7 +509,7 @@ func (p *PacketDslParser) PacketDefinition() (localctx IPacketDefinitionContext)
 
 	}
 	{
-		p.SetState(26)
+		p.SetState(24)
 		p.Match(PacketDslParserPACKET)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -522,7 +517,7 @@ func (p *PacketDslParser) PacketDefinition() (localctx IPacketDefinitionContext)
 		}
 	}
 	{
-		p.SetState(27)
+		p.SetState(25)
 		p.Match(PacketDslParserIDENTIFIER)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -530,27 +525,27 @@ func (p *PacketDslParser) PacketDefinition() (localctx IPacketDefinitionContext)
 		}
 	}
 	{
-		p.SetState(28)
+		p.SetState(26)
 		p.Match(PacketDslParserT__0)
 		if p.HasError() {
 			// Recognition error - abort rule
 			goto errorExit
 		}
 	}
-	p.SetState(32)
+	p.SetState(30)
 	p.GetErrorHandler().Sync(p)
 	if p.HasError() {
 		goto errorExit
 	}
 	_la = p.GetTokenStream().LA(1)
 
-	for (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&1097664) != 0 {
+	for (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&548832) != 0 {
 		{
-			p.SetState(29)
+			p.SetState(27)
 			p.FieldDefinition()
 		}
 
-		p.SetState(34)
+		p.SetState(32)
 		p.GetErrorHandler().Sync(p)
 		if p.HasError() {
 			goto errorExit
@@ -558,7 +553,7 @@ func (p *PacketDslParser) PacketDefinition() (localctx IPacketDefinitionContext)
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
-		p.SetState(35)
+		p.SetState(33)
 		p.Match(PacketDslParserT__1)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -684,7 +679,7 @@ func (s *FieldDefinitionContext) Accept(visitor antlr.ParseTreeVisitor) interfac
 func (p *PacketDslParser) FieldDefinition() (localctx IFieldDefinitionContext) {
 	localctx = NewFieldDefinitionContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 4, PacketDslParserRULE_fieldDefinition)
-	p.SetState(40)
+	p.SetState(38)
 	p.GetErrorHandler().Sync(p)
 	if p.HasError() {
 		goto errorExit
@@ -694,7 +689,7 @@ func (p *PacketDslParser) FieldDefinition() (localctx IFieldDefinitionContext) {
 	case PacketDslParserIDENTIFIER:
 		p.EnterOuterAlt(localctx, 1)
 		{
-			p.SetState(37)
+			p.SetState(35)
 			p.Match(PacketDslParserIDENTIFIER)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -702,17 +697,17 @@ func (p *PacketDslParser) FieldDefinition() (localctx IFieldDefinitionContext) {
 			}
 		}
 
-	case PacketDslParserT__5, PacketDslParserT__6, PacketDslParserT__7, PacketDslParserT__8, PacketDslParserT__9, PacketDslParserT__10, PacketDslParserT__11, PacketDslParserT__12:
+	case PacketDslParserT__4, PacketDslParserT__5, PacketDslParserT__6, PacketDslParserT__7, PacketDslParserT__8, PacketDslParserT__9, PacketDslParserT__10, PacketDslParserT__11:
 		p.EnterOuterAlt(localctx, 2)
 		{
-			p.SetState(38)
+			p.SetState(36)
 			p.MetaDataDeclaration()
 		}
 
-	case PacketDslParserT__14:
+	case PacketDslParserT__13:
 		p.EnterOuterAlt(localctx, 3)
 		{
-			p.SetState(39)
+			p.SetState(37)
 			p.MatchField()
 		}
 
@@ -852,7 +847,7 @@ func (p *PacketDslParser) MetaDataDefinition() (localctx IMetaDataDefinitionCont
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(42)
+		p.SetState(40)
 		p.Match(PacketDslParserT__2)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -860,7 +855,7 @@ func (p *PacketDslParser) MetaDataDefinition() (localctx IMetaDataDefinitionCont
 		}
 	}
 	{
-		p.SetState(43)
+		p.SetState(41)
 		p.Match(PacketDslParserIDENTIFIER)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -868,27 +863,27 @@ func (p *PacketDslParser) MetaDataDefinition() (localctx IMetaDataDefinitionCont
 		}
 	}
 	{
-		p.SetState(44)
+		p.SetState(42)
 		p.Match(PacketDslParserT__0)
 		if p.HasError() {
 			// Recognition error - abort rule
 			goto errorExit
 		}
 	}
-	p.SetState(46)
+	p.SetState(44)
 	p.GetErrorHandler().Sync(p)
 	if p.HasError() {
 		goto errorExit
 	}
 	_la = p.GetTokenStream().LA(1)
 
-	for ok := true; ok; ok = ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&16320) != 0) {
+	for ok := true; ok; ok = ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8160) != 0) {
 		{
-			p.SetState(45)
+			p.SetState(43)
 			p.MetaDataDeclaration()
 		}
 
-		p.SetState(48)
+		p.SetState(46)
 		p.GetErrorHandler().Sync(p)
 		if p.HasError() {
 			goto errorExit
@@ -896,7 +891,7 @@ func (p *PacketDslParser) MetaDataDefinition() (localctx IMetaDataDefinitionCont
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
-		p.SetState(50)
+		p.SetState(48)
 		p.Match(PacketDslParserT__1)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -927,7 +922,7 @@ type IMetaDataDeclarationContext interface {
 	// Getter signatures
 	Type_() ITypeContext
 	IDENTIFIER() antlr.TerminalNode
-	Description() IDescriptionContext
+	STRING_LITERAL() antlr.TerminalNode
 
 	// IsMetaDataDeclarationContext differentiates from other interfaces.
 	IsMetaDataDeclarationContext()
@@ -985,20 +980,8 @@ func (s *MetaDataDeclarationContext) IDENTIFIER() antlr.TerminalNode {
 	return s.GetToken(PacketDslParserIDENTIFIER, 0)
 }
 
-func (s *MetaDataDeclarationContext) Description() IDescriptionContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IDescriptionContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IDescriptionContext)
+func (s *MetaDataDeclarationContext) STRING_LITERAL() antlr.TerminalNode {
+	return s.GetToken(PacketDslParserSTRING_LITERAL, 0)
 }
 
 func (s *MetaDataDeclarationContext) GetRuleContext() antlr.RuleContext {
@@ -1024,11 +1007,11 @@ func (p *PacketDslParser) MetaDataDeclaration() (localctx IMetaDataDeclarationCo
 	p.EnterRule(localctx, 8, PacketDslParserRULE_metaDataDeclaration)
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(52)
+		p.SetState(50)
 		p.Type_()
 	}
 	{
-		p.SetState(53)
+		p.SetState(51)
 		p.Match(PacketDslParserIDENTIFIER)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -1036,7 +1019,7 @@ func (p *PacketDslParser) MetaDataDeclaration() (localctx IMetaDataDeclarationCo
 		}
 	}
 	{
-		p.SetState(54)
+		p.SetState(52)
 		p.Match(PacketDslParserT__3)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -1044,20 +1027,8 @@ func (p *PacketDslParser) MetaDataDeclaration() (localctx IMetaDataDeclarationCo
 		}
 	}
 	{
-		p.SetState(55)
-		p.Match(PacketDslParserT__4)
-		if p.HasError() {
-			// Recognition error - abort rule
-			goto errorExit
-		}
-	}
-	{
-		p.SetState(56)
-		p.Description()
-	}
-	{
-		p.SetState(57)
-		p.Match(PacketDslParserT__4)
+		p.SetState(53)
+		p.Match(PacketDslParserSTRING_LITERAL)
 		if p.HasError() {
 			// Recognition error - abort rule
 			goto errorExit
@@ -1155,17 +1126,28 @@ func (p *PacketDslParser) Type_() (localctx ITypeContext) {
 	p.EnterRule(localctx, 10, PacketDslParserRULE_type)
 	var _la int
 
-	p.SetState(74)
+	p.SetState(70)
 	p.GetErrorHandler().Sync(p)
 	if p.HasError() {
 		goto errorExit
 	}
 
 	switch p.GetTokenStream().LA(1) {
-	case PacketDslParserT__5:
+	case PacketDslParserT__4:
 		p.EnterOuterAlt(localctx, 1)
 		{
-			p.SetState(59)
+			p.SetState(55)
+			p.Match(PacketDslParserT__4)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
+		}
+
+	case PacketDslParserT__5:
+		p.EnterOuterAlt(localctx, 2)
+		{
+			p.SetState(56)
 			p.Match(PacketDslParserT__5)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -1174,9 +1156,9 @@ func (p *PacketDslParser) Type_() (localctx ITypeContext) {
 		}
 
 	case PacketDslParserT__6:
-		p.EnterOuterAlt(localctx, 2)
+		p.EnterOuterAlt(localctx, 3)
 		{
-			p.SetState(60)
+			p.SetState(57)
 			p.Match(PacketDslParserT__6)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -1185,9 +1167,9 @@ func (p *PacketDslParser) Type_() (localctx ITypeContext) {
 		}
 
 	case PacketDslParserT__7:
-		p.EnterOuterAlt(localctx, 3)
+		p.EnterOuterAlt(localctx, 4)
 		{
-			p.SetState(61)
+			p.SetState(58)
 			p.Match(PacketDslParserT__7)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -1196,9 +1178,9 @@ func (p *PacketDslParser) Type_() (localctx ITypeContext) {
 		}
 
 	case PacketDslParserT__8:
-		p.EnterOuterAlt(localctx, 4)
+		p.EnterOuterAlt(localctx, 5)
 		{
-			p.SetState(62)
+			p.SetState(59)
 			p.Match(PacketDslParserT__8)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -1207,9 +1189,9 @@ func (p *PacketDslParser) Type_() (localctx ITypeContext) {
 		}
 
 	case PacketDslParserT__9:
-		p.EnterOuterAlt(localctx, 5)
+		p.EnterOuterAlt(localctx, 6)
 		{
-			p.SetState(63)
+			p.SetState(60)
 			p.Match(PacketDslParserT__9)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -1218,9 +1200,9 @@ func (p *PacketDslParser) Type_() (localctx ITypeContext) {
 		}
 
 	case PacketDslParserT__10:
-		p.EnterOuterAlt(localctx, 6)
+		p.EnterOuterAlt(localctx, 7)
 		{
-			p.SetState(64)
+			p.SetState(61)
 			p.Match(PacketDslParserT__10)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -1229,27 +1211,16 @@ func (p *PacketDslParser) Type_() (localctx ITypeContext) {
 		}
 
 	case PacketDslParserT__11:
-		p.EnterOuterAlt(localctx, 7)
+		p.EnterOuterAlt(localctx, 8)
 		{
-			p.SetState(65)
+			p.SetState(62)
 			p.Match(PacketDslParserT__11)
 			if p.HasError() {
 				// Recognition error - abort rule
 				goto errorExit
 			}
 		}
-
-	case PacketDslParserT__12:
-		p.EnterOuterAlt(localctx, 8)
-		{
-			p.SetState(66)
-			p.Match(PacketDslParserT__12)
-			if p.HasError() {
-				// Recognition error - abort rule
-				goto errorExit
-			}
-		}
-		p.SetState(70)
+		p.SetState(66)
 		p.GetErrorHandler().Sync(p)
 		if p.HasError() {
 			goto errorExit
@@ -1258,7 +1229,7 @@ func (p *PacketDslParser) Type_() (localctx ITypeContext) {
 
 		for _la == PacketDslParserDIGIT {
 			{
-				p.SetState(67)
+				p.SetState(63)
 				p.Match(PacketDslParserDIGIT)
 				if p.HasError() {
 					// Recognition error - abort rule
@@ -1266,7 +1237,7 @@ func (p *PacketDslParser) Type_() (localctx ITypeContext) {
 				}
 			}
 
-			p.SetState(72)
+			p.SetState(68)
 			p.GetErrorHandler().Sync(p)
 			if p.HasError() {
 				goto errorExit
@@ -1274,8 +1245,8 @@ func (p *PacketDslParser) Type_() (localctx ITypeContext) {
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
-			p.SetState(73)
-			p.Match(PacketDslParserT__13)
+			p.SetState(69)
+			p.Match(PacketDslParserT__12)
 			if p.HasError() {
 				// Recognition error - abort rule
 				goto errorExit
@@ -1285,112 +1256,6 @@ func (p *PacketDslParser) Type_() (localctx ITypeContext) {
 	default:
 		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
 		goto errorExit
-	}
-
-errorExit:
-	if p.HasError() {
-		v := p.GetError()
-		localctx.SetException(v)
-		p.GetErrorHandler().ReportError(p, v)
-		p.GetErrorHandler().Recover(p, v)
-		p.SetError(nil)
-	}
-	p.ExitRule()
-	return localctx
-	goto errorExit // Trick to prevent compiler error if the label is not used
-}
-
-// IDescriptionContext is an interface to support dynamic dispatch.
-type IDescriptionContext interface {
-	antlr.ParserRuleContext
-
-	// GetParser returns the parser.
-	GetParser() antlr.Parser
-	// IsDescriptionContext differentiates from other interfaces.
-	IsDescriptionContext()
-}
-
-type DescriptionContext struct {
-	antlr.BaseParserRuleContext
-	parser antlr.Parser
-}
-
-func NewEmptyDescriptionContext() *DescriptionContext {
-	var p = new(DescriptionContext)
-	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
-	p.RuleIndex = PacketDslParserRULE_description
-	return p
-}
-
-func InitEmptyDescriptionContext(p *DescriptionContext) {
-	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
-	p.RuleIndex = PacketDslParserRULE_description
-}
-
-func (*DescriptionContext) IsDescriptionContext() {}
-
-func NewDescriptionContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *DescriptionContext {
-	var p = new(DescriptionContext)
-
-	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
-
-	p.parser = parser
-	p.RuleIndex = PacketDslParserRULE_description
-
-	return p
-}
-
-func (s *DescriptionContext) GetParser() antlr.Parser { return s.parser }
-func (s *DescriptionContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *DescriptionContext) ToStringTree(ruleNames []string, recog antlr.Recognizer) string {
-	return antlr.TreesStringTree(s, ruleNames, recog)
-}
-
-func (s *DescriptionContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case PacketDslVisitor:
-		return t.VisitDescription(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-func (p *PacketDslParser) Description() (localctx IDescriptionContext) {
-	localctx = NewDescriptionContext(p, p.GetParserRuleContext(), p.GetState())
-	p.EnterRule(localctx, 12, PacketDslParserRULE_description)
-	var _la int
-
-	p.EnterOuterAlt(localctx, 1)
-	p.SetState(77)
-	p.GetErrorHandler().Sync(p)
-	if p.HasError() {
-		goto errorExit
-	}
-	_la = p.GetTokenStream().LA(1)
-
-	for ok := true; ok; ok = ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388574) != 0) {
-		{
-			p.SetState(76)
-			_la = p.GetTokenStream().LA(1)
-
-			if _la <= 0 || _la == PacketDslParserT__4 {
-				p.GetErrorHandler().RecoverInline(p)
-			} else {
-				p.GetErrorHandler().ReportMatch(p)
-				p.Consume()
-			}
-		}
-
-		p.SetState(79)
-		p.GetErrorHandler().Sync(p)
-		if p.HasError() {
-			goto errorExit
-		}
-		_la = p.GetTokenStream().LA(1)
 	}
 
 errorExit:
@@ -1481,20 +1346,20 @@ func (s *MatchFieldContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 
 func (p *PacketDslParser) MatchField() (localctx IMatchFieldContext) {
 	localctx = NewMatchFieldContext(p, p.GetParserRuleContext(), p.GetState())
-	p.EnterRule(localctx, 14, PacketDslParserRULE_matchField)
+	p.EnterRule(localctx, 12, PacketDslParserRULE_matchField)
 	var _la int
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(81)
-		p.Match(PacketDslParserT__14)
+		p.SetState(72)
+		p.Match(PacketDslParserT__13)
 		if p.HasError() {
 			// Recognition error - abort rule
 			goto errorExit
 		}
 	}
 	{
-		p.SetState(82)
+		p.SetState(73)
 		p.Match(PacketDslParserIDENTIFIER)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -1502,31 +1367,31 @@ func (p *PacketDslParser) MatchField() (localctx IMatchFieldContext) {
 		}
 	}
 	{
-		p.SetState(83)
+		p.SetState(74)
 		p.Match(PacketDslParserT__0)
 		if p.HasError() {
 			// Recognition error - abort rule
 			goto errorExit
 		}
 	}
-	p.SetState(87)
+	p.SetState(78)
 	p.GetErrorHandler().Sync(p)
 	if p.HasError() {
 		goto errorExit
 	}
 	_la = p.GetTokenStream().LA(1)
 
-	for ok := true; ok; ok = _la == PacketDslParserT__15 {
+	for ok := true; ok; ok = _la == PacketDslParserT__14 {
 		{
-			p.SetState(84)
-			p.Match(PacketDslParserT__15)
+			p.SetState(75)
+			p.Match(PacketDslParserT__14)
 			if p.HasError() {
 				// Recognition error - abort rule
 				goto errorExit
 			}
 		}
 		{
-			p.SetState(85)
+			p.SetState(76)
 			p.Match(PacketDslParserIDENTIFIER)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -1534,15 +1399,15 @@ func (p *PacketDslParser) MatchField() (localctx IMatchFieldContext) {
 			}
 		}
 		{
-			p.SetState(86)
-			p.Match(PacketDslParserT__15)
+			p.SetState(77)
+			p.Match(PacketDslParserT__14)
 			if p.HasError() {
 				// Recognition error - abort rule
 				goto errorExit
 			}
 		}
 
-		p.SetState(89)
+		p.SetState(80)
 		p.GetErrorHandler().Sync(p)
 		if p.HasError() {
 			goto errorExit
@@ -1550,15 +1415,15 @@ func (p *PacketDslParser) MatchField() (localctx IMatchFieldContext) {
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
-		p.SetState(91)
-		p.Match(PacketDslParserT__16)
+		p.SetState(82)
+		p.Match(PacketDslParserT__15)
 		if p.HasError() {
 			// Recognition error - abort rule
 			goto errorExit
 		}
 	}
 	{
-		p.SetState(92)
+		p.SetState(83)
 		p.Match(PacketDslParserIDENTIFIER)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -1566,7 +1431,7 @@ func (p *PacketDslParser) MatchField() (localctx IMatchFieldContext) {
 		}
 	}
 	{
-		p.SetState(93)
+		p.SetState(84)
 		p.Match(PacketDslParserT__1)
 		if p.HasError() {
 			// Recognition error - abort rule
