@@ -46,7 +46,7 @@ func NewPacketDslVisitor() *PacketDslVisitorImpl {
 	}
 }
 
-// VisitProto overrides the default implementation for protocol definitions.
+// VisitPacket overrides the default implementation for protocol definitions.
 func (v *PacketDslVisitorImpl) VisitPacket(ctx *gen.PacketContext) interface{} {
 	packetDefinitions := ctx.AllPacketDefinition()
 	if len(packetDefinitions) != 0 {
