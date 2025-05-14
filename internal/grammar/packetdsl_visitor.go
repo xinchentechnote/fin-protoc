@@ -25,9 +25,6 @@ type PacketDslVisitor interface {
 	// Visit a parse tree produced by PacketDslParser#type.
 	VisitType(ctx *TypeContext) interface{}
 
-	// Visit a parse tree produced by PacketDslParser#description.
-	VisitDescription(ctx *DescriptionContext) interface{}
-
 	// Visit a parse tree produced by PacketDslParser#matchField.
 	VisitMatchField(ctx *MatchFieldContext) interface{}
 }

@@ -8,6 +8,10 @@ import (
 )
 
 func TestFormatPacketDsl(t *testing.T) {
-	formattedDsl := parser.FormatPacketDsl("packet SzseBinary {field1}")
-	assert.Equal(t, "packet SzseBinary {field1}", formattedDsl)
+	dsl, _ := parser.ReadFileToString("testdata/need_format.dsl")
+	expectedDsl, _ := parser.ReadFileToString("testdata/formatted.dsl")
+	formattedDsl, err := parser.FormatPacketDsl(dsl)
+	assert.NoError(t, err)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedDsl, formattedDsl)
 }
