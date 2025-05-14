@@ -1,23 +1,13 @@
-package parser
+package parser_test
 
 import (
 	"fmt"
 	"os"
 	"testing"
+
 	// Update this to the correct import path
+	"github.com/xinchentechnote/fin-protoc/internal/parser"
 )
-
-// MockVisitor is a custom visitor to track when VisitPacketDefinition is called.
-type MockVisitor struct {
-	*BaseBinaryPacketVisitor
-	VisitedPacketDefinition bool
-}
-
-// VisitPacketDefinition overrides the visit method for the PacketDefinition rule.
-func (v *MockVisitor) VisitPacketDefinition(ctx *PacketDefinitionContext) interface{} {
-	v.VisitedPacketDefinition = true
-	return nil
-}
 
 // TestVisitPacketDefinition tests the VisitPacketDefinition method of the visitor.
 func TestVisitPacketDefinition(t *testing.T) {
@@ -34,7 +24,7 @@ func TestVisitPacketDefinition(t *testing.T) {
 	}
 
 	// Call ParseFile to parse the file content and get the AST
-	astData, err := ParseFile(fileName)
+	astData, err := parser.ParseFile(fileName)
 	if err != nil {
 		t.Fatalf("Failed to parse file: %v", err)
 	}
