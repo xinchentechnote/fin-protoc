@@ -1,6 +1,7 @@
 package parser_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,5 +14,5 @@ func TestFormatPacketDsl(t *testing.T) {
 	formattedDsl, err := parser.FormatPacketDsl(dsl)
 	assert.NoError(t, err)
 	assert.NoError(t, err)
-	assert.Equal(t, expectedDsl, formattedDsl)
+	assert.Equal(t, strings.ReplaceAll(expectedDsl, "\r\n", "\n"), formattedDsl)
 }
