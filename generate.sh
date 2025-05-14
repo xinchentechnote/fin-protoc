@@ -1,0 +1,1 @@
+java -jar ~/software/antlr-4.13.2-complete.jar -Dlanguage=Go -no-listener -visitor -package gen -o internal grammar/PacketDsl.g4

@@ -1,4 +1,6 @@
-grammar BinaryPacket;
+grammar PacketDsl;
+
+packet: (packetDefinition | metaDataDefinition)*;
 
 // Root rule for packet definition
 packetDefinition:

@@ -1,13 +1,12 @@
-// Code generated from BinaryPacket.g4 by ANTLR 4.13.2. DO NOT EDIT.
+// Code generated from grammar/PacketDsl.g4 by ANTLR 4.13.2. DO NOT EDIT.
 
-package parser
+package gen
 
 import (
 	"fmt"
+	"github.com/antlr4-go/antlr/v4"
 	"sync"
 	"unicode"
-
-	"github.com/antlr4-go/antlr/v4"
 )
 
 // Suppress unused import error
@@ -15,14 +14,14 @@ var _ = fmt.Printf
 var _ = sync.Once{}
 var _ = unicode.IsLetter
 
-type BinaryPacketLexer struct {
+type PacketDslLexer struct {
 	*antlr.BaseLexer
 	channelNames []string
 	modeNames    []string
 	// TODO: EOF string
 }
 
-var BinaryPacketLexerLexerStaticData struct {
+var PacketDslLexerLexerStaticData struct {
 	once                   sync.Once
 	serializedATN          []int32
 	ChannelNames           []string
@@ -35,8 +34,8 @@ var BinaryPacketLexerLexerStaticData struct {
 	decisionToDFA          []*antlr.DFA
 }
 
-func binarypacketlexerLexerInit() {
-	staticData := &BinaryPacketLexerLexerStaticData
+func packetdsllexerLexerInit() {
+	staticData := &PacketDslLexerLexerStaticData
 	staticData.ChannelNames = []string{
 		"DEFAULT_TOKEN_CHANNEL", "HIDDEN",
 	}
@@ -134,55 +133,55 @@ func binarypacketlexerLexerInit() {
 	}
 }
 
-// BinaryPacketLexerInit initializes any static state used to implement BinaryPacketLexer. By default the
+// PacketDslLexerInit initializes any static state used to implement PacketDslLexer. By default the
 // static state used to implement the lexer is lazily initialized during the first call to
-// NewBinaryPacketLexer(). You can call this function if you wish to initialize the static state ahead
+// NewPacketDslLexer(). You can call this function if you wish to initialize the static state ahead
 // of time.
-func BinaryPacketLexerInit() {
-	staticData := &BinaryPacketLexerLexerStaticData
-	staticData.once.Do(binarypacketlexerLexerInit)
+func PacketDslLexerInit() {
+	staticData := &PacketDslLexerLexerStaticData
+	staticData.once.Do(packetdsllexerLexerInit)
 }
 
-// NewBinaryPacketLexer produces a new lexer instance for the optional input antlr.CharStream.
-func NewBinaryPacketLexer(input antlr.CharStream) *BinaryPacketLexer {
-	BinaryPacketLexerInit()
-	l := new(BinaryPacketLexer)
+// NewPacketDslLexer produces a new lexer instance for the optional input antlr.CharStream.
+func NewPacketDslLexer(input antlr.CharStream) *PacketDslLexer {
+	PacketDslLexerInit()
+	l := new(PacketDslLexer)
 	l.BaseLexer = antlr.NewBaseLexer(input)
-	staticData := &BinaryPacketLexerLexerStaticData
+	staticData := &PacketDslLexerLexerStaticData
 	l.Interpreter = antlr.NewLexerATNSimulator(l, staticData.atn, staticData.decisionToDFA, staticData.PredictionContextCache)
 	l.channelNames = staticData.ChannelNames
 	l.modeNames = staticData.ModeNames
 	l.RuleNames = staticData.RuleNames
 	l.LiteralNames = staticData.LiteralNames
 	l.SymbolicNames = staticData.SymbolicNames
-	l.GrammarFileName = "BinaryPacket.g4"
+	l.GrammarFileName = "PacketDsl.g4"
 	// TODO: l.EOF = antlr.TokenEOF
 
 	return l
 }
 
-// BinaryPacketLexer tokens.
+// PacketDslLexer tokens.
 const (
-	BinaryPacketLexerT__0       = 1
-	BinaryPacketLexerT__1       = 2
-	BinaryPacketLexerT__2       = 3
-	BinaryPacketLexerT__3       = 4
-	BinaryPacketLexerT__4       = 5
-	BinaryPacketLexerT__5       = 6
-	BinaryPacketLexerT__6       = 7
-	BinaryPacketLexerT__7       = 8
-	BinaryPacketLexerT__8       = 9
-	BinaryPacketLexerT__9       = 10
-	BinaryPacketLexerT__10      = 11
-	BinaryPacketLexerT__11      = 12
-	BinaryPacketLexerT__12      = 13
-	BinaryPacketLexerT__13      = 14
-	BinaryPacketLexerT__14      = 15
-	BinaryPacketLexerT__15      = 16
-	BinaryPacketLexerT__16      = 17
-	BinaryPacketLexerROOT       = 18
-	BinaryPacketLexerPACKET     = 19
-	BinaryPacketLexerIDENTIFIER = 20
-	BinaryPacketLexerDIGIT      = 21
-	BinaryPacketLexerWS         = 22
+	PacketDslLexerT__0       = 1
+	PacketDslLexerT__1       = 2
+	PacketDslLexerT__2       = 3
+	PacketDslLexerT__3       = 4
+	PacketDslLexerT__4       = 5
+	PacketDslLexerT__5       = 6
+	PacketDslLexerT__6       = 7
+	PacketDslLexerT__7       = 8
+	PacketDslLexerT__8       = 9
+	PacketDslLexerT__9       = 10
+	PacketDslLexerT__10      = 11
+	PacketDslLexerT__11      = 12
+	PacketDslLexerT__12      = 13
+	PacketDslLexerT__13      = 14
+	PacketDslLexerT__14      = 15
+	PacketDslLexerT__15      = 16
+	PacketDslLexerT__16      = 17
+	PacketDslLexerROOT       = 18
+	PacketDslLexerPACKET     = 19
+	PacketDslLexerIDENTIFIER = 20
+	PacketDslLexerDIGIT      = 21
+	PacketDslLexerWS         = 22
 )
