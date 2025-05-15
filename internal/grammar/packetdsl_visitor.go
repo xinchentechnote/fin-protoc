@@ -27,4 +27,10 @@ type PacketDslVisitor interface {
 
 	// Visit a parse tree produced by PacketDslParser#matchField.
 	VisitMatchField(ctx *MatchFieldContext) interface{}
+
+	// Visit a parse tree produced by PacketDslParser#matchPair.
+	VisitMatchPair(ctx *MatchPairContext) interface{}
+
+	// Visit a parse tree produced by PacketDslParser#list.
+	VisitList(ctx *ListContext) interface{}
 }

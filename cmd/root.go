@@ -12,6 +12,7 @@ var rootCmd = &cobra.Command{
 	Short: "A CLI for compiling/formatting packet DSL",
 }
 
+// Execute runs the root command.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
