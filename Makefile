@@ -1,6 +1,6 @@
 build:
-	go build -o bin/fin-protoc ./cmd/
-# run: build
-# 	./bin/gt-auto --casePath pkg/testcase/testdata/test_case.csv --config pkg/config/testdata/gw-auto.toml
+	go build -o bin/fin-protoc ./
+run: build
+	./bin/fin-protoc format -f internal/parser/testdata/need_format.dsl
 test:
 	go test -v ./...

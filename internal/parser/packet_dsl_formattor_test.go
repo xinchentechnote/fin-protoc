@@ -1,6 +1,7 @@
 package parser_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -15,4 +16,10 @@ func TestFormatPacketDsl(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, err)
 	assert.Equal(t, strings.ReplaceAll(expectedDsl, "\r\n", "\n"), formattedDsl)
+}
+
+func TestFormatPacketDsl1(t *testing.T) {
+	formattedDsl, err := parser.FormatPacketDsl("packet MyPacket {  Int64 name   `description` }")
+	assert.NoError(t, err)
+	fmt.Println(formattedDsl)
 }
