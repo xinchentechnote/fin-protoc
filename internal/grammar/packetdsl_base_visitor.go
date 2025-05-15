@@ -34,3 +34,11 @@ func (v *BasePacketDslVisitor) VisitType(ctx *TypeContext) interface{} {
 func (v *BasePacketDslVisitor) VisitMatchField(ctx *MatchFieldContext) interface{} {
 	return v.VisitChildren(ctx)
 }
+
+func (v *BasePacketDslVisitor) VisitMatchPair(ctx *MatchPairContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BasePacketDslVisitor) VisitList(ctx *ListContext) interface{} {
+	return v.VisitChildren(ctx)
+}

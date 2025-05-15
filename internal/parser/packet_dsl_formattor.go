@@ -57,9 +57,9 @@ func (v *PacketDslFormattor) VisitPacket(ctx *gen.PacketContext) interface{} {
 func (v *PacketDslFormattor) VisitPacketDefinition(ctx *gen.PacketDefinitionContext) interface{} {
 	var formattedDsl strings.Builder
 
-	// 判断是否有 ROOT 修饰符
+	// 判断是否有 root 修饰符
 	if ctx.ROOT() != nil {
-		formattedDsl.WriteString("ROOT ")
+		formattedDsl.WriteString("root ")
 	}
 
 	// packet 关键字 + 包名
@@ -114,12 +114,20 @@ func (v *PacketDslFormattor) VisitMetaDataDefinition(ctx *gen.MetaDataDefinition
 
 // VisitMetaDataDeclaration for visiting metadata declarations.
 func (v *PacketDslFormattor) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclarationContext) interface{} {
-	typeName := ctx.Type_().GetText()
+	typeName := ""
+	if ctx.Type_() != nil {
+		typeName = ctx.Type_().GetText()
+	}
 	fieldName := ctx.IDENTIFIER().GetText()
-	description := ctx.STRING_LITERAL().GetText()
-	description = strings.Trim(description, "`") // 去除反引号
-
-	return fmt.Sprintf("%s %s `%s`", typeName, fieldName, description)
+	description := ""
+	if ctx.STRING_LITERAL() != nil {
+		description = ctx.STRING_LITERAL().GetText()
+	}
+	formattedDsl := fmt.Sprintf("%s %s %s", typeName, fieldName, description)
+	if ctx.COMMA() != nil {
+		formattedDsl = strings.TrimSpace(formattedDsl) + ","
+	}
+	return formattedDsl
 }
 
 // VisitType for visiting type definitions.
@@ -130,6 +138,34 @@ func (v *PacketDslFormattor) VisitType(ctx *gen.TypeContext) interface{} {
 
 // VisitMatchField for visiting match fields.
 func (v *PacketDslFormattor) VisitMatchField(ctx *gen.MatchFieldContext) interface{} {
-	fmt.Println("Visiting MatchField")
-	return nil
+	fieldName := ctx.IDENTIFIER().GetText()
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("match %s {\n", fieldName))
+	for _, pairCtx := range ctx.AllMatchPair() {
+		key := ""
+		// 处理 STRING / number / list
+		switch {
+		case pairCtx.STRING() != nil:
+			key = pairCtx.STRING().GetText()
+		case pairCtx.DIGITS() != nil:
+			key = pairCtx.DIGITS().GetText()
+		case pairCtx.List() != nil:
+			items := []string{}
+			for _, num := range pairCtx.List().AllDIGITS() {
+				items = append(items, num.GetText())
+			}
+			for _, num := range pairCtx.List().AllSTRING() {
+				items = append(items, num.GetText())
+			}
+			key = fmt.Sprintf("[%s]", strings.Join(items, ", "))
+		}
+
+		value := pairCtx.IDENTIFIER().GetText()
+		if pairCtx.COMMA() != nil {
+			value = strings.TrimSpace(value) + ","
+		}
+		sb.WriteString(fmt.Sprintf("\t%s : %s\n", key, value))
+	}
+	sb.WriteString("}")
+	return sb.String()
 }

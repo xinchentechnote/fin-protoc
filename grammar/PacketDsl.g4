@@ -21,18 +21,36 @@ metaDataDeclaration:
     type? IDENTIFIER STRING_LITERAL? COMMA?;
 // Types for fields
 type:
-	'Int64'
+	IDENTIFIER 
+	| 'Int64'
 	| 'uInt16'
 	| 'uInt32'
 	| 'string'
 	| 'Int32'
 	| 'uInt8'
 	| 'char'
-	| 'char[' DIGIT* ']';
+	| 'char[' DIGITS? ']';
 
+// Match field rule for defining match criteria
+matchField
+    : 'match' IDENTIFIER '{' matchPair (COMMA matchPair)* '}'
+    ;
+
+matchPair
+    : (DIGITS | STRING | list) COLON IDENTIFIER COMMA?
+    ;
+
+list
+    : '[' (DIGITS | STRING) (COMMA (DIGITS | STRING))* ']'
+    ;
+
+
+DIGITS: [0-9]+;
+
+STRING: '"' (~["\\\r\n])* '"';
 
 // Root and Packet keywords
-ROOT: 'ROOT';
+ROOT: 'root';
 PACKET: 'packet';
 
 // COLON定义，匹配英文和中文冒号
@@ -44,14 +62,10 @@ COMMA: ',';
 // Identifier matching letters and numbers (for identifiers like field names, types, etc.)
 IDENTIFIER: [a-zA-Z_][a-zA-Z_0-9]*;
 
-// Digits for handling arrays and other numeric types
-DIGIT: [0-9];
 
 STRING_LITERAL: '`' (~'`'|'\r'|'\n')* '`';
 
-// Match field rule for defining match criteria
-matchField:
-	'match' IDENTIFIER '{' ('"' IDENTIFIER '"')+ ': ' IDENTIFIER '}';
 
+LINE_COMMENT: '//' ~[\r\n]* -> skip;
 // Skip whitespace (spaces, tabs, newlines)
 WS: [ \t\r\n]+ -> skip;
