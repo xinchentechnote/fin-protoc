@@ -16,7 +16,6 @@ func FormatPacketDsl(dsl string) (string, error) {
 	}
 	// 设置语法规则，开始解析
 	tree := parser.Packet()
-	fmt.Println("Parsing completed, tree generated:", tree)
 	formattor := NewPacketDslFormattor()
 	formattedDsl := tree.Accept(formattor).(string)
 	return strings.TrimSpace(formattedDsl), nil
@@ -120,7 +119,7 @@ func (v *PacketDslFormattor) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclarati
 	description := ctx.STRING_LITERAL().GetText()
 	description = strings.Trim(description, "`") // 去除反引号
 
-	return fmt.Sprintf("%s %s: `%s`", typeName, fieldName, description)
+	return fmt.Sprintf("%s %s `%s`", typeName, fieldName, description)
 }
 
 // VisitType for visiting type definitions.

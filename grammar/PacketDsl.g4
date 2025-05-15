@@ -14,12 +14,11 @@ fieldDefinition:
 
 // MetaData rule with declarations inside curly braces
 metaDataDefinition:
-	'MetaData' IDENTIFIER '{' metaDataDeclaration+ '}';
+	'MetaData' IDENTIFIER '{' metaDataDeclaration* '}';
 
 // Metadata declaration with type and description
 metaDataDeclaration:
-    type IDENTIFIER ':' STRING_LITERAL;
-
+    type? IDENTIFIER STRING_LITERAL? COMMA?;
 // Types for fields
 type:
 	'Int64'
@@ -36,13 +35,19 @@ type:
 ROOT: 'ROOT';
 PACKET: 'packet';
 
+// COLON定义，匹配英文和中文冒号
+COLON: ':' | '：';
+
+// COMMA匹配逗号
+COMMA: ',';
+
 // Identifier matching letters and numbers (for identifiers like field names, types, etc.)
 IDENTIFIER: [a-zA-Z_][a-zA-Z_0-9]*;
 
 // Digits for handling arrays and other numeric types
 DIGIT: [0-9];
 
-STRING_LITERAL: '`' (~'`')* '`';
+STRING_LITERAL: '`' (~'`'|'\r'|'\n')* '`';
 
 // Match field rule for defining match criteria
 matchField:
