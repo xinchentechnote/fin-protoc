@@ -6,8 +6,8 @@ use tokio::{io::AsyncReadExt, net::TcpListener};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let listener = TcpListener::bind("127.0.0.1:8080").await?;
-    println!("Server listening on 127.0.0.1:8080");
+    let listener = TcpListener::bind("0.0.0.0:8080").await?;
+    println!("Server listening on 0.0.0.0:8080");
 
     loop {
         let (mut socket, addr) = listener.accept().await?;
