@@ -1,4 +1,4 @@
-name: Gateway auto test tool CI
+name: financial proto compiler test tool CI
 
 on:
   push:

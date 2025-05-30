@@ -125,7 +125,7 @@ match category  {
 	got := formatter.VisitMatchField(p.MatchField().(*gen.MatchFieldContext)).(string)
 
 	expected := `match category {
-	"A" : ValA
+	"A" : ValA,
 	10 : Val10
 }`
 
