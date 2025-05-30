@@ -1,6 +1,14 @@
 grammar PacketDsl;
 
-packet: (packetDefinition | metaDataDefinition)*;
+packet: (
+		packetDefinition
+		| metaDataDefinition
+		| optionDefinition
+	)*;
+
+optionDefinition: 'options' '{' optionDeclaration* '}';
+
+optionDeclaration: IDENTIFIER '=' value SEMICOLON?;
 
 // Root rule for packet definition
 packetDefinition:
@@ -15,6 +23,9 @@ metaDataDefinition:
 
 // Metadata declaration with type and description
 metaDataDeclaration: type? IDENTIFIER STRING_LITERAL? COMMA?;
+
+value: type | STRING | DIGITS;
+
 // Types for fields
 type:
 	IDENTIFIER
@@ -33,8 +44,7 @@ type:
 	| 'char[' DIGITS? ']';
 
 // Match field rule for defining match criteria
-matchField:
-	'match' IDENTIFIER '{' matchPair+ '}';
+matchField: 'match' IDENTIFIER '{' matchPair+ '}';
 
 matchPair: (DIGITS | STRING | list) COLON IDENTIFIER COMMA?;
 
@@ -87,6 +97,9 @@ COLON: ':' | '：';
 
 // COMMA匹配逗号
 COMMA: ',';
+
+//分号
+SEMICOLON: ';';
 
 // Identifier matching letters and numbers (for identifiers like field names, types, etc.)
 IDENTIFIER: [a-zA-Z_][a-zA-Z_0-9]*;
