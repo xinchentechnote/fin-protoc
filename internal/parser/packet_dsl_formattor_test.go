@@ -118,9 +118,9 @@ match category  {
 	got := formatter.VisitMatchField(p.MatchField().(*gen.MatchFieldContext)).(string)
 
 	expected := `match category {
-	"A" : ValA,
-	10 : Val10
-}`
+		"A" : ValA,
+		10 : Val10
+	}`
 
 	got = strings.TrimSpace(got)
 	expected = strings.TrimSpace(expected)
