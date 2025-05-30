@@ -71,7 +71,7 @@ func (v *PacketDslFormattor) VisitPacketDefinition(ctx *gen.PacketDefinitionCont
 
 	// 遍历字段定义（通过 fieldDefinition*）
 	for _, fieldCtx := range ctx.AllFieldDefinition() {
-		formatted := v.VisitFieldDefinition(fieldCtx.(*gen.FieldDefinitionContext)).(string)
+		formatted := v.VisitFieldDefinition(fieldCtx).(string)
 		formattedDsl.WriteString("    " + formatted + "\n")
 	}
 	formattedDsl.WriteString("}")
@@ -105,19 +105,49 @@ func (v *PacketDslFormattor) VisitOptionDeclaration(ctx *gen.OptionDeclarationCo
 }
 
 // VisitFieldDefinition overrides the default implementation for field definitions.
-func (v *PacketDslFormattor) VisitFieldDefinition(ctx *gen.FieldDefinitionContext) interface{} {
-	switch {
-	case ctx.IDENTIFIER() != nil:
-		return ctx.IDENTIFIER().GetText()
-
-	case ctx.MetaDataDeclaration() != nil:
-		return v.VisitMetaDataDeclaration(ctx.MetaDataDeclaration().(*gen.MetaDataDeclarationContext)).(string)
-
-	case ctx.MatchField() != nil:
-		return v.VisitMatchField(ctx.MatchField().(*gen.MatchFieldContext)).(string)
+func (v *PacketDslFormattor) VisitFieldDefinition(ctx interface{}) interface{} {
+	switch c := ctx.(type) {
+	case *gen.ObjectFieldContext:
+		repeat := ""
+		if c.REPEAT() != nil {
+			repeat = "repeat "
+		}
+		return repeat + c.IDENTIFIER().GetText()
+	case *gen.InerObjectFieldContext:
+		return v.VisitInerObjectField(c).(string)
+	case *gen.MetaFieldContext:
+		repeat := ""
+		if c.REPEAT() != nil {
+			repeat = "repeat "
+		}
+		return repeat + v.VisitMetaDataDeclaration(c.MetaDataDeclaration().(*gen.MetaDataDeclarationContext)).(string)
+	case *gen.MatchFieldContext:
+		return v.VisitMatchFieldDeclaration(c.MatchFieldDeclaration().(*gen.MatchFieldDeclarationContext)).(string)
 	default:
-		return ""
+		return "error"
 	}
+}
+
+// VisitInerObjectField overrides the default implementation for inner object fields.
+func (v *PacketDslFormattor) VisitInerObjectField(ctx *gen.InerObjectFieldContext) interface{} {
+	var sb strings.Builder
+	inerObjectDeclaration := ctx.InerObjectDeclaration()
+	if ctx.REPEAT() != nil {
+		sb.WriteString("repeat ")
+	}
+	if nil != inerObjectDeclaration.IDENTIFIER() {
+		sb.WriteString(inerObjectDeclaration.IDENTIFIER().GetText() + " ")
+	}
+	sb.WriteString("{\n")
+
+	// 遍历所有字段声明
+	for _, decl := range inerObjectDeclaration.AllFieldDefinition() {
+		result := v.VisitFieldDefinition(decl).(string)
+		sb.WriteString("\t\t" + result + "\n")
+	}
+
+	sb.WriteString("\t}")
+	return sb.String()
 }
 
 // VisitMetaDataDefinition overrides the default implementation for metadata definitions.
@@ -164,8 +194,8 @@ func (v *PacketDslFormattor) VisitType(ctx *gen.TypeContext) interface{} {
 	return nil
 }
 
-// VisitMatchField for visiting match fields.
-func (v *PacketDslFormattor) VisitMatchField(ctx *gen.MatchFieldContext) interface{} {
+// VisitMatchFieldDeclaration for visiting match fields.
+func (v *PacketDslFormattor) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDeclarationContext) interface{} {
 	fieldName := ctx.IDENTIFIER().GetText()
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("match %s {\n", fieldName))

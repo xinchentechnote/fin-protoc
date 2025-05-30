@@ -115,7 +115,7 @@ match category  {
 		t.Fatalf("构造 MatchFieldContext 失败: %v", err)
 	}
 	formatter := parser.NewPacketDslFormattor()
-	got := formatter.VisitMatchField(p.MatchField().(*gen.MatchFieldContext)).(string)
+	got := formatter.VisitMatchFieldDeclaration(p.MatchFieldDeclaration().(*gen.MatchFieldDeclarationContext)).(string)
 
 	expected := `match category {
 		"A" : ValA,

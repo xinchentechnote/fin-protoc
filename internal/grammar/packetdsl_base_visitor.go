@@ -23,7 +23,19 @@ func (v *BasePacketDslVisitor) VisitPacketDefinition(ctx *PacketDefinitionContex
 	return v.VisitChildren(ctx)
 }
 
-func (v *BasePacketDslVisitor) VisitFieldDefinition(ctx *FieldDefinitionContext) interface{} {
+func (v *BasePacketDslVisitor) VisitInerObjectField(ctx *InerObjectFieldContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BasePacketDslVisitor) VisitMetaField(ctx *MetaFieldContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BasePacketDslVisitor) VisitObjectField(ctx *ObjectFieldContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BasePacketDslVisitor) VisitMatchField(ctx *MatchFieldContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -43,11 +55,15 @@ func (v *BasePacketDslVisitor) VisitType(ctx *TypeContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BasePacketDslVisitor) VisitMatchField(ctx *MatchFieldContext) interface{} {
+func (v *BasePacketDslVisitor) VisitMatchFieldDeclaration(ctx *MatchFieldDeclarationContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
 func (v *BasePacketDslVisitor) VisitMatchPair(ctx *MatchPairContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BasePacketDslVisitor) VisitInerObjectDeclaration(ctx *InerObjectDeclarationContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

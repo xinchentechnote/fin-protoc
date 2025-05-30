@@ -19,8 +19,17 @@ type PacketDslVisitor interface {
 	// Visit a parse tree produced by PacketDslParser#packetDefinition.
 	VisitPacketDefinition(ctx *PacketDefinitionContext) interface{}
 
-	// Visit a parse tree produced by PacketDslParser#fieldDefinition.
-	VisitFieldDefinition(ctx *FieldDefinitionContext) interface{}
+	// Visit a parse tree produced by PacketDslParser#InerObjectField.
+	VisitInerObjectField(ctx *InerObjectFieldContext) interface{}
+
+	// Visit a parse tree produced by PacketDslParser#MetaField.
+	VisitMetaField(ctx *MetaFieldContext) interface{}
+
+	// Visit a parse tree produced by PacketDslParser#ObjectField.
+	VisitObjectField(ctx *ObjectFieldContext) interface{}
+
+	// Visit a parse tree produced by PacketDslParser#MatchField.
+	VisitMatchField(ctx *MatchFieldContext) interface{}
 
 	// Visit a parse tree produced by PacketDslParser#metaDataDefinition.
 	VisitMetaDataDefinition(ctx *MetaDataDefinitionContext) interface{}
@@ -34,11 +43,14 @@ type PacketDslVisitor interface {
 	// Visit a parse tree produced by PacketDslParser#type.
 	VisitType(ctx *TypeContext) interface{}
 
-	// Visit a parse tree produced by PacketDslParser#matchField.
-	VisitMatchField(ctx *MatchFieldContext) interface{}
+	// Visit a parse tree produced by PacketDslParser#matchFieldDeclaration.
+	VisitMatchFieldDeclaration(ctx *MatchFieldDeclarationContext) interface{}
 
 	// Visit a parse tree produced by PacketDslParser#matchPair.
 	VisitMatchPair(ctx *MatchPairContext) interface{}
+
+	// Visit a parse tree produced by PacketDslParser#inerObjectDeclaration.
+	VisitInerObjectDeclaration(ctx *InerObjectDeclarationContext) interface{}
 
 	// Visit a parse tree produced by PacketDslParser#list.
 	VisitList(ctx *ListContext) interface{}

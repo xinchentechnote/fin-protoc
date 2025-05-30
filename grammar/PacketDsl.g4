@@ -15,11 +15,15 @@ packetDefinition:
 	ROOT? PACKET IDENTIFIER '{' fieldDefinition* '}';
 
 // Field definitions are either identifiers, metadata declarations, or match fields
-fieldDefinition: IDENTIFIER | metaDataDeclaration | matchField;
+fieldDefinition:
+	REPEAT? inerObjectDeclaration	# InerObjectField
+	| REPEAT? metaDataDeclaration	# MetaField
+	| REPEAT? IDENTIFIER			# ObjectField
+	| matchFieldDeclaration			# MatchField;
 
 // MetaData rule with declarations inside curly braces
 metaDataDefinition:
-	'MetaData' IDENTIFIER '{' metaDataDeclaration* '}';
+	METADATA IDENTIFIER '{' metaDataDeclaration* '}';
 
 // Metadata declaration with type and description
 metaDataDeclaration: type? IDENTIFIER STRING_LITERAL? COMMA?;
@@ -44,9 +48,11 @@ type:
 	| 'char[' DIGITS? ']';
 
 // Match field rule for defining match criteria
-matchField: 'match' IDENTIFIER '{' matchPair+ '}';
+matchFieldDeclaration: MATCH IDENTIFIER '{' matchPair+ '}';
 
 matchPair: (DIGITS | STRING | list) COLON IDENTIFIER COMMA?;
+
+inerObjectDeclaration: IDENTIFIER ('{' fieldDefinition+ '}');
 
 list: '[' (DIGITS | STRING) (COMMA (DIGITS | STRING))* ']';
 
@@ -91,9 +97,12 @@ STRING: '"' (~["\\\r\n])* '"';
 // Root and Packet keywords
 ROOT: 'root';
 PACKET: 'packet';
+REPEAT: 'repeat';
+METADATA: 'MetaData';
+MATCH: 'match';
 
-// COLON定义，匹配英文和中文冒号
-COLON: ':' | '：';
+// COLON定义，匹配英文
+COLON: ':';
 
 // COMMA匹配逗号
 COMMA: ',';
