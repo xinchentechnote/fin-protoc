@@ -7,12 +7,12 @@ packet SampleBinary {
     uint16 MsgType `消息类型`,
     u16 BodyLenght `消息体长度`,
     match MsgType {
-	1 : Logon,
-	2 : Logout,
-	3 : Heartbeat,
-	4 : RiskControlRequest,
-	5 : RiskControlResponse,
-}
+		1 : Logon,
+		2 : Logout,
+		3 : Heartbeat,
+		4 : RiskControlRequest,
+		5 : RiskControlResponse,
+	}
 }
 
 packet Logon {

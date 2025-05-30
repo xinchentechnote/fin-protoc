@@ -192,8 +192,8 @@ func (v *PacketDslFormattor) VisitMatchField(ctx *gen.MatchFieldContext) interfa
 		if pairCtx.COMMA() != nil {
 			value = strings.TrimSpace(value) + ","
 		}
-		sb.WriteString(fmt.Sprintf("\t%s : %s\n", key, value))
+		sb.WriteString(fmt.Sprintf("\t\t%s : %s\n", key, value))
 	}
-	sb.WriteString("}")
+	sb.WriteString("\t}")
 	return sb.String()
 }
