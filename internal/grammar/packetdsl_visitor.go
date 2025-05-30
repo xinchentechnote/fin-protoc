@@ -10,6 +10,12 @@ type PacketDslVisitor interface {
 	// Visit a parse tree produced by PacketDslParser#packet.
 	VisitPacket(ctx *PacketContext) interface{}
 
+	// Visit a parse tree produced by PacketDslParser#optionDefinition.
+	VisitOptionDefinition(ctx *OptionDefinitionContext) interface{}
+
+	// Visit a parse tree produced by PacketDslParser#optionDeclaration.
+	VisitOptionDeclaration(ctx *OptionDeclarationContext) interface{}
+
 	// Visit a parse tree produced by PacketDslParser#packetDefinition.
 	VisitPacketDefinition(ctx *PacketDefinitionContext) interface{}
 
@@ -21,6 +27,9 @@ type PacketDslVisitor interface {
 
 	// Visit a parse tree produced by PacketDslParser#metaDataDeclaration.
 	VisitMetaDataDeclaration(ctx *MetaDataDeclarationContext) interface{}
+
+	// Visit a parse tree produced by PacketDslParser#value.
+	VisitValue(ctx *ValueContext) interface{}
 
 	// Visit a parse tree produced by PacketDslParser#type.
 	VisitType(ctx *TypeContext) interface{}

@@ -11,6 +11,14 @@ func (v *BasePacketDslVisitor) VisitPacket(ctx *PacketContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
+func (v *BasePacketDslVisitor) VisitOptionDefinition(ctx *OptionDefinitionContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BasePacketDslVisitor) VisitOptionDeclaration(ctx *OptionDeclarationContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BasePacketDslVisitor) VisitPacketDefinition(ctx *PacketDefinitionContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -24,6 +32,10 @@ func (v *BasePacketDslVisitor) VisitMetaDataDefinition(ctx *MetaDataDefinitionCo
 }
 
 func (v *BasePacketDslVisitor) VisitMetaDataDeclaration(ctx *MetaDataDeclarationContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BasePacketDslVisitor) VisitValue(ctx *ValueContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

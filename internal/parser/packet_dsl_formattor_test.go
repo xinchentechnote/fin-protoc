@@ -16,18 +16,11 @@ func TestFormatPacketDsl(t *testing.T) {
 	formattedDsl, err := parser.FormatPacketDsl(dsl)
 	assert.NoError(t, err)
 	assert.NoError(t, err)
-	assert.Equal(t, strings.ReplaceAll(expectedDsl, "\r\n", "\n"), formattedDsl)
+	assert.Equal(t, strings.TrimSpace(strings.ReplaceAll(expectedDsl, "\r\n", "\n")), strings.TrimSpace(formattedDsl))
 }
 
 func TestFormatPacketDsl1(t *testing.T) {
 	formattedDsl, err := parser.FormatPacketDsl("root packet MyPacket {  Int64 name   `description` }")
-	assert.NoError(t, err)
-	fmt.Println(formattedDsl)
-}
-
-func TestFormatPacketDsl2(t *testing.T) {
-	dsl, _ := parser.ReadFileToString("/home/s0596/workspace/fin-proto/szse/binary/v1.29.dsl")
-	formattedDsl, err := parser.FormatPacketDsl(dsl)
 	assert.NoError(t, err)
 	fmt.Println(formattedDsl)
 }

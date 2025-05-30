@@ -44,6 +44,8 @@ func (v *PacketDslFormattor) VisitPacket(ctx *gen.PacketContext) interface{} {
 				formattedDsl += v.VisitPacketDefinition(c).(string)
 			case *gen.MetaDataDefinitionContext:
 				formattedDsl += v.VisitMetaDataDefinition(c).(string)
+			case *gen.OptionDefinitionContext:
+				formattedDsl += v.VisitOptionDefinition(c).(string)
 			default:
 				formattedDsl += "error"
 			}
@@ -74,6 +76,32 @@ func (v *PacketDslFormattor) VisitPacketDefinition(ctx *gen.PacketDefinitionCont
 	}
 	formattedDsl.WriteString("}")
 	return formattedDsl.String()
+}
+
+// VisitOptionDefinition overrides the default implementation for option definitions.
+func (v *PacketDslFormattor) VisitOptionDefinition(ctx *gen.OptionDefinitionContext) interface{} {
+	var sb strings.Builder
+	// 处理 option 声明
+	sb.WriteString("options {\n")
+	for _, decl := range ctx.AllOptionDeclaration() {
+		if d, ok := decl.(*gen.OptionDeclarationContext); ok {
+			sb.WriteString("\t" + v.VisitOptionDeclaration(d).(string) + "\n")
+		}
+	}
+	sb.WriteString("}")
+	return sb.String()
+}
+
+// VisitOptionDeclaration overrides the default implementation for option declarations.
+func (v *PacketDslFormattor) VisitOptionDeclaration(ctx *gen.OptionDeclarationContext) interface{} {
+	var sb strings.Builder
+	optionName := ctx.IDENTIFIER().GetText()
+	optionValue := ctx.Value().GetText()
+	sb.WriteString(fmt.Sprintf("%s = %s", optionName, optionValue))
+	if ctx.SEMICOLON() != nil {
+		sb.WriteString(";")
+	}
+	return sb.String()
 }
 
 // VisitFieldDefinition overrides the default implementation for field definitions.
