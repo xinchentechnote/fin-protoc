@@ -39,10 +39,22 @@ packet RiskControlRequest {
     char OrderType `订单类型`,
     u64 Price `价格`,
     u32 Qty `数量`,
+    repeat string ExtraInfo `附加信息`,
+    repeat SubOrder {
+		char[16] ClOrdID `子订单号`,
+		u64 Price `子订单价格`,
+		u32 Qty `子订单数量`,
+	}
 }
 
 packet RiskControlResponse {
     string UniqueOrderId `唯一订单号`,
     i32 Status `状态`,
     string Msg `结果信息`,
+    repeat Detail,
+}
+
+packet Detail {
+    string RuleName `规则名称`,
+    u16 Code `原因代码`,
 }
