@@ -92,7 +92,7 @@ extern "C" {
 //
 //	Formatted DSL as C string, or error message if formatting fails
 //
-extern __declspec(dllexport) char* FormatPacketDslExport(char* dsl);
+extern char* FormatPacketDslExport(char* dsl);
 
 #ifdef __cplusplus
 }
