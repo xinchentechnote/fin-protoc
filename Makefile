@@ -6,6 +6,10 @@ LIB_DIR := lib
 TARGET := fin-protoc
 SHARED_LIB := libpacketdsl
 
+# 检测操作系统
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+
 # 默认目标
 all: build
 
@@ -26,6 +30,19 @@ shared-build:
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 \
 	CC="x86_64-w64-mingw32-gcc" \
 	go build -buildmode=c-shared -o $(LIB_DIR)/$(SHARED_LIB).dll ./cmd/
+
+shared-build:
+ifeq ($(UNAME_S),Linux)
+	@echo "Building Linux shared library..."
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=1 \
+	go build -buildmode=c-shared -o $(LIB_DIR)/$(SHARED_LIB).so ./cmd/
+endif
+ifeq ($(findstring MINGW,$(UNAME_S)),MINGW)
+	@echo "Building Windows shared library..."
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 \
+	CC="x86_64-w64-mingw32-gcc" \
+	go build -buildmode=c-shared -o $(LIB_DIR)/$(SHARED_LIB).dll ./cmd/
+endif
 
 # 创建必要的目录
 dirs:
@@ -48,7 +65,5 @@ clean:
 setup:
 	# 安装MinGW (Windows交叉编译)
 	sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64
-	# 安装macOS交叉编译工具 (可选)
-	sudo apt-get install clang llvm-dev libclang-dev
 
 .PHONY: all build main-build shared-build dirs run test clean setup
