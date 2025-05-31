@@ -14,8 +14,7 @@ UNAME_M := $(shell uname -m)
 all: build
 
 # 构建主程序和共享库
-build: dirs main-build shared-build-osxcross
-
+build: dirs main-build shared-build
 # 仅构建主程序
 main-build:
 	go build -o $(BIN_DIR)/$(TARGET) ./cmd/
