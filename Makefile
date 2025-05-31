@@ -34,6 +34,17 @@ ifeq ($(UNAME_S),Windows_NT)
 	go build -buildmode=c-shared -o $(LIB_DIR)/$(SHARED_LIB).dll ./cmd/
 endif
 
+shared-build-osxcross: print-system
+	# Linux
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=1 \
+	go build -buildmode=c-shared -o $(LIB_DIR)/$(SHARED_LIB).so ./cmd/
+
+	# Windows (需要安装MinGW)
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 \
+	CC="x86_64-w64-mingw32-gcc" \
+	go build -buildmode=c-shared -o $(LIB_DIR)/$(SHARED_LIB).dll ./cmd/
+
+
 # 创建必要的目录
 dirs:
 	mkdir -p $(BIN_DIR) $(LIB_DIR)
@@ -56,4 +67,4 @@ setup:
 	# 安装MinGW (Windows交叉编译)
 	sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64
 
-.PHONY: all build main-build shared-build dirs run test clean setup
+.PHONY: all build main-build shared-build dirs run test clean setup shared-build-osxcross
