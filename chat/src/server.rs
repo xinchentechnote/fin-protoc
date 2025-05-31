@@ -1,4 +1,5 @@
 mod message;
+mod sample_binary;
 
 use bytes::BytesMut;
 use message::SimpleMessage;
