@@ -20,15 +20,6 @@ build: dirs main-build shared-build
 main-build:
 	go build -o $(BIN_DIR)/$(TARGET) ./cmd/
 
-# 跨平台构建共享库
-shared-build:
-	# Linux
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=1 \
-	go build -buildmode=c-shared -o $(LIB_DIR)/$(SHARED_LIB).so ./cmd/
-	
-	# Windows (需要安装MinGW)
-	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 \
-	CC="x86_64-w64-mingw32-gcc" \
 	go build -buildmode=c-shared -o $(LIB_DIR)/$(SHARED_LIB).dll ./cmd/
 
 shared-build:
