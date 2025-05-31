@@ -25,13 +25,21 @@ print-system:
 
 # 共享库构建规则
 shared-build: print-system
-ifeq ($(UNAME_S),Linux)
-	@echo "Building Linux shared library..."
-	go build -buildmode=c-shared -o $(LIB_DIR)/$(SHARED_LIB).so ./cmd/
-endif
-ifeq ($(UNAME_S),Windows_NT)
-	@echo "Building Windows shared library..."
-	go build -buildmode=c-shared -o $(LIB_DIR)/$(SHARED_LIB).dll ./cmd/
+ifeq ($(OS),Windows_NT) 
+	@echo "Building for native Windows..."
+	go build -buildmode=c-shared -o lib/libpacketdsl.dll ./cmd/
+else ifneq (,$(findstring MSYS_NT,$(UNAME_S)))
+	@echo "Building for Windows (MSYS2)..."
+	go build -buildmode=c-shared -o lib/libpacketdsl.dll ./cmd/
+else ifeq ($(UNAME_S),Linux)
+	@echo "Building for Linux..."
+	go build -buildmode=c-shared -o lib/libpacketdsl.so ./cmd/
+# else ifeq ($(UNAME_S),Darwin)
+# 	@echo "Building for macOS..."
+# 	go build -buildmode=c-shared -o lib/libpacketdsl.dylib ./cmd/
+else
+	@echo "Unsupported system: $(UNAME_S)"
+	exit 1
 endif
 
 shared-build-osxcross: print-system
