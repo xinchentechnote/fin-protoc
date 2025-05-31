@@ -1,7 +1,54 @@
-build:
-	go build -o bin/fin-protoc ./cmd/
-	GOOS=linux GOARCH=amd64 go build -buildmode=c-shared -o lib/libpacketdsl.so ./cmd/
+# 构建目录
+BIN_DIR := bin
+LIB_DIR := lib
+
+# 目标名称
+TARGET := fin-protoc
+SHARED_LIB := libpacketdsl
+
+# 默认目标
+all: build
+
+# 构建主程序和共享库
+build: dirs main-build shared-build
+
+# 仅构建主程序
+main-build:
+	go build -o $(BIN_DIR)/$(TARGET) ./cmd/
+
+# 跨平台构建共享库
+shared-build:
+	# Linux
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=1 \
+	go build -buildmode=c-shared -o $(LIB_DIR)/$(SHARED_LIB).so ./cmd/
+	
+	# Windows (需要安装MinGW)
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 \
+	CC="x86_64-w64-mingw32-gcc" \
+	go build -buildmode=c-shared -o $(LIB_DIR)/$(SHARED_LIB).dll ./cmd/
+
+# 创建必要的目录
+dirs:
+	mkdir -p $(BIN_DIR) $(LIB_DIR)
+
+# 运行程序
 run: build
-	./bin/fin-protoc format -f internal/parser/testdata/need_format.dsl
+	$(BIN_DIR)/$(TARGET) format -f internal/parser/testdata/need_format.dsl
+
+# 运行测试
 test:
-	go test -v ./...
+	go test -v -race -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+
+# 清理
+clean:
+	rm -rf $(BIN_DIR) $(LIB_DIR) coverage.*
+	
+# 安装依赖工具
+setup:
+	# 安装MinGW (Windows交叉编译)
+	sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64
+	# 安装macOS交叉编译工具 (可选)
+	sudo apt-get install clang llvm-dev libclang-dev
+
+.PHONY: all build main-build shared-build dirs run test clean setup

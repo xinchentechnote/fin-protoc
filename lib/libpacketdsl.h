@@ -79,7 +79,20 @@ typedef struct { void *data; GoInt len; GoInt cap; } GoSlice;
 extern "C" {
 #endif
 
-extern char* FormatPacketDslExport(char* dsl);
+
+// FormatPacketDslExport formats the packet DSL string from C char pointer and returns a C char pointer.
+// The function takes a C-style string (char*) as input and returns a newly allocated C-style string.
+// Caller is responsible for freeing the returned string using C.free().
+//
+// Parameters:
+//
+//	dsl - C string containing the packet DSL to format
+//
+// Returns:
+//
+//	Formatted DSL as C string, or error message if formatting fails
+//
+extern __declspec(dllexport) char* FormatPacketDslExport(char* dsl);
 
 #ifdef __cplusplus
 }
