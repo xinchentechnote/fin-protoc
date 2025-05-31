@@ -14,7 +14,7 @@ UNAME_M := $(shell uname -m)
 all: build
 
 # 构建主程序和共享库
-build: dirs main-build shared-build
+build: dirs main-build shared-build-osxcross
 
 # 仅构建主程序
 main-build:
@@ -59,7 +59,7 @@ dirs:
 
 # 运行程序
 run: build
-	$(BIN_DIR)/$(TARGET) format -f internal/parser/testdata/need_format.dsl
+	$(BIN_DIR)/$(TARGET) format -f internal/parser/testdata/sample_binary.dsl
 
 # 运行测试
 test:
