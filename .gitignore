@@ -1,3 +1,4 @@
 .antlr
 bin/
 **/target/
+coverage.*

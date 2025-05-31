@@ -14,7 +14,6 @@ build:
 
 # 运行规则
 run: build
-	@echo "设置库路径并运行测试程序..."
 	@LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:$(dir $(LIBRARY)) ./$(TARGET)
 
 # 清理规则
