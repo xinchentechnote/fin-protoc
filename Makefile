@@ -20,18 +20,17 @@ build: dirs main-build shared-build
 main-build:
 	go build -o $(BIN_DIR)/$(TARGET) ./cmd/
 
-	go build -buildmode=c-shared -o $(LIB_DIR)/$(SHARED_LIB).dll ./cmd/
+print-system:
+	@echo "Detected system: UNAME_S = $(UNAME_S)"
 
-shared-build:
+# 共享库构建规则
+shared-build: print-system
 ifeq ($(UNAME_S),Linux)
 	@echo "Building Linux shared library..."
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=1 \
 	go build -buildmode=c-shared -o $(LIB_DIR)/$(SHARED_LIB).so ./cmd/
 endif
-ifeq ($(findstring MINGW,$(UNAME_S)),MINGW)
+ifeq ($(UNAME_S),Windows_NT)
 	@echo "Building Windows shared library..."
-	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 \
-	CC="x86_64-w64-mingw32-gcc" \
 	go build -buildmode=c-shared -o $(LIB_DIR)/$(SHARED_LIB).dll ./cmd/
 endif
 
