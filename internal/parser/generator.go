@@ -25,7 +25,7 @@ func (g RustGenerator) GenerateCode(msg model.Packet) string {
 	b.WriteString("#[derive(Debug, Clone, PartialEq)]\n")
 	b.WriteString(fmt.Sprintf("pub struct %s {\n", structName))
 	for _, f := range msg.Fields {
-		b.WriteString(fmt.Sprintf("    pub %s: %s,\n", toSnake(f.Name), f.GetType()))
+		b.WriteString(fmt.Sprintf("    pub %s: %s,\n", toSnake(f.Name), GetFieldType(f)))
 	}
 	b.WriteString("}\n\n")
 
@@ -64,6 +64,17 @@ func toSnake(name string) string {
 // toRustStructName converts a name to CamelCase for Rust struct naming conventions.
 func toRustStructName(name string) string {
 	return strcase.ToCamel(name) // Rust structs 用 CamelCase
+}
+
+// GetFieldType convert field type for rust
+func GetFieldType(f model.Field) string {
+	switch f.GetType() {
+	case "string":
+		return "String"
+	default:
+		return f.GetType()
+
+	}
 }
 
 // EncodeField encoding field
