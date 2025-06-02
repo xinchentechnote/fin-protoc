@@ -13,7 +13,7 @@ type Field struct {
 	Name       string      // Field name
 	Type       string      // Type name if this is a basic field; empty for nested or match fields
 	IsRepeat   bool        // True if the 'repeat' modifier is present
-	InerObject Packet      // If the field is a nested object, this holds the nested Packet definition
+	InerObject *Packet     // If the field is a nested object, this holds the nested Packet definition
 	Doc        string      // Optional documentation string (from STRING_LITERAL), currently unused
 	MatchType  string      // If the field is a match field, this holds the typeName of match
 	MatchPairs []MatchPair // If the field is a match field, holds all match key-value pairs
