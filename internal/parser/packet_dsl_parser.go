@@ -125,7 +125,7 @@ func (v *PacketDslVisitorImpl) VisitInerObjectField(ctx *gen.InerObjectFieldCont
 		Name:       name,
 		Type:       "", // nested objects do not have a basic Type
 		IsRepeat:   ctx.REPEAT() != nil,
-		InerObject: p,
+		InerObject: &p,
 	}
 }
 
@@ -145,11 +145,10 @@ func (v *PacketDslVisitorImpl) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclara
 		doc = raw[1 : len(raw)-1]
 	}
 	return model.Field{
-		Name:       name,
-		Type:       typ,
-		IsRepeat:   false,
-		InerObject: model.Packet{},
-		Doc:        doc,
+		Name:     name,
+		Type:     typ,
+		IsRepeat: false,
+		Doc:      doc,
 	}
 }
 
@@ -166,7 +165,6 @@ func (v *PacketDslVisitorImpl) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDec
 		Type:       "match",
 		MatchType:  name, // Use the match field name as the type
 		IsRepeat:   false,
-		InerObject: model.Packet{},
 		MatchPairs: pairs,
 	}
 }

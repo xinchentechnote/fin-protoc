@@ -16,7 +16,7 @@ type RustGenerator struct {
 	Packets         map[string]model.Packet // Store packets by name
 }
 
-// GenerateCode gen struct and encode decode code
+// GenerateCode code for packet
 func (g RustGenerator) GenerateCode(msg model.Packet) string {
 	var b strings.Builder
 
@@ -27,7 +27,21 @@ func (g RustGenerator) GenerateCode(msg model.Packet) string {
 
 	b.WriteString(g.GenerateUseCode(msg))
 	b.WriteString("\n")
+	b.WriteString(g.GenerateStructCode(msg))
+	return b.String()
+}
+
+// GenerateStructCode generates Rust code for a struct based on the provided packet model.
+func (g RustGenerator) GenerateStructCode(msg model.Packet) string {
+	var b strings.Builder
 	b.WriteString(g.GenerateMatchFieldEnumCode(msg))
+	b.WriteString("\n")
+	for _, f := range msg.Fields {
+		if f.InerObject != nil {
+			b.WriteString(g.GenerateStructCode(*f.InerObject))
+			b.WriteString("\n")
+		}
+	}
 	b.WriteString("\n")
 	// struct
 	structName := toRustStructName(msg.Name)
@@ -75,7 +89,7 @@ func (g RustGenerator) GenerateUseCode(msg model.Packet) string {
 	for _, f := range msg.Fields {
 		if f.GetType() == "match" {
 			for _, pair := range f.MatchPairs {
-				b.WriteString(fmt.Sprintf("use crate::%s::%s;\n", toSnake(pair.Value), pair.Value))
+				b.WriteString(fmt.Sprintf("use crate::%s::*;\n", toSnake(pair.Value)))
 			}
 		}
 	}
@@ -148,6 +162,11 @@ func (g RustGenerator) EncodeField(f model.Field) string {
 			size := matches[1]
 			return fmt.Sprintf("put_char_array(buf, &self.%s, %s);", name, size)
 		}
+		if f.InerObject != nil {
+			// If it's a nested object, we need to encode it
+			return fmt.Sprintf("self.%s.encode(buf);", GetFieldName(f))
+
+		}
 		return fmt.Sprintf("// unknown type for encode: %s", f.GetType())
 	}
 }
@@ -186,6 +205,10 @@ func (g RustGenerator) DecodeField(f model.Field) string {
 		if len(matches) == 2 {
 			size := matches[1]
 			return fmt.Sprintf("let %s = get_char_array(buf, %s)?;", name, size)
+		}
+		if f.InerObject != nil {
+			// If it's a nested object, we need to decode it
+			return fmt.Sprintf("let %s = %s::decode(buf)?;", GetFieldName(f), f.InerObject.Name)
 		}
 		return fmt.Sprintf("// unknown type for decode: %s", f.GetType())
 	}
@@ -231,9 +254,12 @@ func (g RustGenerator) GenerateTestCode(packet model.Packet) string {
 	structName := toRustStructName(packet.Name)
 	instanceName := strcase.ToSnake(packet.Name)
 
-	b.WriteString("#[cfg(test)]\nmod tests {\n")
+	b.WriteString(fmt.Sprintf("#[cfg(test)]\nmod %s_tests {\n", instanceName))
 	b.WriteString("    use super::*;\n")
-	b.WriteString("    use bytes::BytesMut;\n\n")
+	b.WriteString("    use bytes::BytesMut;\n")
+
+	b.WriteString(g.GenerateUseCodeForTest() + "\n\n")
+
 	b.WriteString("    #[test]\n")
 	b.WriteString(fmt.Sprintf("    fn test_%s_codec() {\n", instanceName))
 
@@ -264,6 +290,15 @@ func (g RustGenerator) GenerateTestCode(packet model.Packet) string {
 	b.WriteString("    }\n")
 	b.WriteString("}\n")
 
+	return b.String()
+}
+
+// GenerateUseCodeForTest gen for test mod
+func (g RustGenerator) GenerateUseCodeForTest() string {
+	var b strings.Builder
+	for name := range g.Packets {
+		b.WriteString(fmt.Sprintf("    use crate::%s::*;\n", toSnake(name)))
+	}
 	return b.String()
 }
 
@@ -304,6 +339,15 @@ func (g RustGenerator) testValueSingle(f model.Field) string {
 	// handle primitive
 	if val, ok := primitiveSingleValues()[typ]; ok {
 		return val
+	}
+
+	if f.InerObject != nil {
+		// If it's a nested object, we need to create a default instance
+		var fieldValues []string
+		for _, subField := range f.InerObject.Fields {
+			fieldValues = append(fieldValues, fmt.Sprintf("%s: %s", toSnake(subField.Name), g.TestValue(subField)))
+		}
+		return fmt.Sprintf("%s{\n %s \n}", toRustStructName(f.InerObject.Name), strings.Join(fieldValues, ",\n"))
 	}
 
 	return "Default::default()"
@@ -351,10 +395,10 @@ func (g RustGenerator) testMatchValue(f model.Field) string {
 		innerFields = append(innerFields,
 			fmt.Sprintf("%s: %s", toSnake(subField.Name), g.TestValue(subField)))
 	}
-	return fmt.Sprintf("%s::%s(%s { %s })",
+	return fmt.Sprintf("%s::%s(%s { \n %s \n })",
 		f.MatchType,
 		matchName,
 		matchName,
-		strings.Join(innerFields, ", "),
+		strings.Join(innerFields, ", \n "),
 	)
 }
