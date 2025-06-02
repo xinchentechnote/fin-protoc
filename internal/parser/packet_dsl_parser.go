@@ -17,7 +17,6 @@ func ParseFile(filename string) (interface{}, error) {
 
 	// Invoke the root rule 'Packet' to parse the file
 	tree := parser.Packet()
-	fmt.Println("Parsing completed, parse tree generated:", tree)
 
 	// Use the custom visitor to build the model from the parse tree
 	visitor := NewPacketDslVisitor()
@@ -56,15 +55,20 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 
 	// Iterate over all fieldDefinition children
 	var fields []model.Field
+	var matchFields = make(map[string][]model.MatchPair)
 	for _, fctx := range ctx.AllFieldDefinition() {
 		fld := v.VisitFieldDefinition(fctx).(model.Field)
 		fields = append(fields, fld)
+		if fld.Type == "match" {
+			matchFields[fld.Name] = fld.MatchPairs
+		}
 	}
 
 	return model.Packet{
-		Name:   name,
-		IsRoot: isRoot,
-		Fields: fields,
+		Name:        name,
+		IsRoot:      isRoot,
+		Fields:      fields,
+		MatchFields: matchFields,
 	}
 }
 
@@ -159,7 +163,8 @@ func (v *PacketDslVisitorImpl) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDec
 	}
 	return model.Field{
 		Name:       name,
-		Type:       "",
+		Type:       "match",
+		MatchType:  name, // Use the match field name as the type
 		IsRepeat:   false,
 		InerObject: model.Packet{},
 		MatchPairs: pairs,
