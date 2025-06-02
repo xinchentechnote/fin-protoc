@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/iancoleman/strcase"
@@ -9,7 +10,9 @@ import (
 )
 
 // RustGenerator gen rust code
-type RustGenerator struct{}
+type RustGenerator struct {
+	Packets map[string]model.Packet // Store packets by name
+}
 
 // GenerateCode gen struct and encode decode code
 func (g RustGenerator) GenerateCode(msg model.Packet) string {
@@ -20,12 +23,16 @@ func (g RustGenerator) GenerateCode(msg model.Packet) string {
 	b.WriteString("use binary_codec::*;\n")
 	b.WriteString("use bytes::{Buf, BufMut, Bytes, BytesMut};\n\n")
 
+	b.WriteString(g.GenerateUseCode(msg))
+	b.WriteString("\n")
+	b.WriteString(g.GenerateMatchFieldEnumCode(msg))
+	b.WriteString("\n")
 	// struct
 	structName := toRustStructName(msg.Name)
 	b.WriteString("#[derive(Debug, Clone, PartialEq)]\n")
 	b.WriteString(fmt.Sprintf("pub struct %s {\n", structName))
 	for _, f := range msg.Fields {
-		b.WriteString(fmt.Sprintf("    pub %s: %s,\n", toSnake(f.Name), GetFieldType(f)))
+		b.WriteString(fmt.Sprintf("    pub %s: %s,\n", GetFieldName(f), GetFieldType(f)))
 	}
 	b.WriteString("}\n\n")
 
@@ -46,12 +53,26 @@ func (g RustGenerator) GenerateCode(msg model.Packet) string {
 	}
 	b.WriteString("        Some(Self {\n")
 	for _, f := range msg.Fields {
-		b.WriteString(fmt.Sprintf("            %s,\n", toSnake(f.Name)))
+		b.WriteString(fmt.Sprintf("            %s,\n", GetFieldName(f)))
 	}
 	b.WriteString("        })\n")
 	b.WriteString("    }\n")
 	b.WriteString("}\n")
+	b.WriteString("\n")
+	b.WriteString(g.GenerateTestCode(msg))
+	return b.String()
+}
 
+// GenerateUseCode generates use statements for match pairs in the packet.
+func (g RustGenerator) GenerateUseCode(msg model.Packet) string {
+	var b strings.Builder
+	for _, f := range msg.Fields {
+		if f.GetType() == "match" {
+			for _, pair := range f.MatchPairs {
+				b.WriteString(fmt.Sprintf("use crate::%s::%s;\n", toSnake(pair.Value), pair.Value))
+			}
+		}
+	}
 	return b.String()
 }
 
@@ -71,8 +92,26 @@ func GetFieldType(f model.Field) string {
 	switch f.GetType() {
 	case "string":
 		return "String"
+	case "match":
+		return f.MatchType
 	default:
+		pattern := `^char\[(\d+)\]$`
+		re := regexp.MustCompile(pattern)
+		if re.MatchString(f.GetType()) {
+			return "String"
+		}
 		return f.GetType()
+
+	}
+}
+
+// GetFieldName returns the field name in snake_case format.
+func GetFieldName(f model.Field) string {
+	switch f.GetType() {
+	case "match":
+		return toSnake(f.Name) + "_body"
+	default:
+		return toSnake(f.Name)
 
 	}
 }
@@ -81,6 +120,8 @@ func GetFieldType(f model.Field) string {
 func (RustGenerator) EncodeField(f model.Field) string {
 	name := toSnake(f.Name)
 	switch f.GetType() {
+	case "char":
+		return fmt.Sprintf("put_char(buf, self.%s);", name)
 	case "string", "String":
 		return fmt.Sprintf("put_string(buf, &self.%s);", name)
 	case "u8", "uint8":
@@ -91,15 +132,45 @@ func (RustGenerator) EncodeField(f model.Field) string {
 		return fmt.Sprintf("buf.put_u32(self.%s);", name)
 	case "u64", "uint64":
 		return fmt.Sprintf("buf.put_u64(self.%s);", name)
+	case "i8", "int8":
+		return fmt.Sprintf("buf.put_i8(self.%s);", name)
+	case "i16", "int16":
+		return fmt.Sprintf("buf.put_i16(self.%s);", name)
+	case "i32", "int32":
+		return fmt.Sprintf("buf.put_i32(self.%s);", name)
+	case "i64", "int64":
+		return fmt.Sprintf("buf.put_i64(self.%s);", name)
+	case "match":
+		return EncoderMatchField(f)
 	default:
+		pattern := `^char\[(\d+)\]$`
+		re := regexp.MustCompile(pattern)
+		matches := re.FindStringSubmatch(f.GetType())
+		if len(matches) == 2 {
+			size := matches[1]
+			return fmt.Sprintf("put_char_array(buf, &self.%s, %s);", name, size)
+		}
 		return fmt.Sprintf("// unknown type for encode: %s", f.GetType())
 	}
+}
+
+// EncoderMatchField encodes match field
+func EncoderMatchField(f model.Field) string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("match &self.%s {\n", GetFieldName(f)))
+	for _, pair := range f.MatchPairs {
+		b.WriteString(fmt.Sprintf("  %s::%s(msg) => msg.encode(buf),\n", f.MatchType, pair.Value))
+	}
+	b.WriteString("}")
+	return b.String()
 }
 
 // DecodeField decoding field
 func (RustGenerator) DecodeField(f model.Field) string {
 	name := toSnake(f.Name)
 	switch f.GetType() {
+	case "char":
+		return fmt.Sprintf("let %s = get_char(buf)?;", name)
 	case "string", "String":
 		return fmt.Sprintf("let %s = get_string(buf)?;", name)
 	case "u8", "uint8":
@@ -110,14 +181,59 @@ func (RustGenerator) DecodeField(f model.Field) string {
 		return fmt.Sprintf("let %s = buf.get_u32();", name)
 	case "u64", "uint64":
 		return fmt.Sprintf("let %s = buf.get_u64();", name)
+	case "i8", "int8":
+		return fmt.Sprintf("let %s = buf.get_i8();", name)
+	case "i16", "int16":
+		return fmt.Sprintf("let %s = buf.get_i16();", name)
+	case "i32", "int32":
+		return fmt.Sprintf("let %s = buf.get_i32();", name)
+	case "i64", "int64":
+		return fmt.Sprintf("let %s = buf.get_i64();", name)
+	case "match":
+		return DecodeMatchField(f)
 	default:
+		pattern := `^char\[(\d+)\]$`
+		re := regexp.MustCompile(pattern)
+		matches := re.FindStringSubmatch(f.GetType())
+		if len(matches) == 2 {
+			size := matches[1]
+			return fmt.Sprintf("let %s = get_char_array(buf, %s)?;", name, size)
+		}
 		return fmt.Sprintf("// unknown type for decode: %s", f.GetType())
 	}
+}
+
+// DecodeMatchField decodes match field
+func DecodeMatchField(f model.Field) string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("let %s_body = match %s {\n", toSnake(f.Name), toSnake(f.Name)))
+	for _, pair := range f.MatchPairs {
+		b.WriteString(fmt.Sprintf("  %s => %s::%s(%s::decode(buf)?),\n", pair.Key, f.MatchType, pair.Value, pair.Value))
+	}
+	b.WriteString(" _ => return None,\n")
+	b.WriteString("};")
+	return b.String()
 }
 
 // FileExtension rust file extension
 func (RustGenerator) FileExtension() string {
 	return ".rs"
+}
+
+// GenerateMatchFieldEnumCode to enum
+func (g RustGenerator) GenerateMatchFieldEnumCode(packet model.Packet) string {
+	var b strings.Builder
+	for _, f := range packet.Fields {
+		if f.GetType() == "match" {
+			b.WriteString("#[derive(Debug, Clone, PartialEq)]")
+			b.WriteString(fmt.Sprintf("pub enum %s {\n", f.MatchType))
+			for _, pair := range f.MatchPairs {
+				b.WriteString(fmt.Sprintf("    %s(%s),\n", pair.Value, pair.Value))
+			}
+			b.WriteString("}\n\n")
+		}
+	}
+	return b.String()
 }
 
 // GenerateTestCode gen unit test code
@@ -136,7 +252,14 @@ func (g RustGenerator) GenerateTestCode(packet model.Packet) string {
 	// new instance
 	b.WriteString(fmt.Sprintf("        let original = %s {\n", structName))
 	for _, f := range packet.Fields {
-		b.WriteString(fmt.Sprintf("            %s: %s,\n", toSnake(f.Name), g.TestValue(f)))
+		if packet.MatchFields[f.Name] != nil {
+			if len(f.MatchPairs) > 0 {
+				b.WriteString(fmt.Sprintf("            %s: %s,\n", toSnake(f.Name), f.MatchPairs[0].Key))
+				b.WriteString(fmt.Sprintf("            %s: %s,\n", GetFieldName(f), g.TestValue(f)))
+			}
+			continue
+		}
+		b.WriteString(fmt.Sprintf("            %s: %s,\n", GetFieldName(f), g.TestValue(f)))
 	}
 	b.WriteString("        };\n\n")
 
@@ -157,10 +280,12 @@ func (g RustGenerator) GenerateTestCode(packet model.Packet) string {
 }
 
 // TestValue gen test value for deferent field type
-func (RustGenerator) TestValue(f model.Field) string {
+func (g RustGenerator) TestValue(f model.Field) string {
 	switch f.GetType() {
 	case "string":
 		return `"example".to_string()`
+	case "char":
+		return `'a'`
 	case "u8":
 		return "42"
 	case "u16":
@@ -169,7 +294,42 @@ func (RustGenerator) TestValue(f model.Field) string {
 		return "123456"
 	case "u64":
 		return "123456789"
+	case "i8":
+		return "-42"
+	case "i16":
+		return "-1234"
+	case "i32":
+		return "-123456"
+	case "i64":
+		return "-123456789"
 	default:
+		pattern := `^char\[(\d+)\]$`
+		re := regexp.MustCompile(pattern)
+		matches := re.FindStringSubmatch(f.GetType())
+		if len(matches) == 2 {
+			size := matches[1]
+			return fmt.Sprintf("vec!['a'; %s].into_iter().collect::<String>()", size)
+		}
+
+		// match 类型，生成结构体初始化
+		if f.GetType() == "match" {
+			if len(f.MatchPairs) > 0 {
+				matchName := f.MatchPairs[0].Value
+				var innerFields []string
+				subPacket := g.Packets[matchName]
+				for _, subField := range subPacket.Fields {
+					innerFields = append(innerFields,
+						fmt.Sprintf("%s: %s", toSnake(subField.Name), RustGenerator{}.TestValue(subField)))
+				}
+				return fmt.Sprintf("%s::%s(%s { %s })",
+					f.MatchType,
+					matchName,
+					matchName,
+					strings.Join(innerFields, ", "),
+				)
+			}
+			return fmt.Sprintf("%s::default()", f.MatchType)
+		}
 		return "Default::default()"
 	}
 }
