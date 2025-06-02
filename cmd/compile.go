@@ -26,7 +26,9 @@ var compileCmd = &cobra.Command{
 		}
 		// 2. initialize generator
 		generator := parser.RustGenerator{
-			Packets: packetsMap,
+			ListLenPrefix:   "u16",
+			StringLenPrefix: "u16",
+			Packets:         packetsMap,
 		}
 
 		// 3. generate code for each packet

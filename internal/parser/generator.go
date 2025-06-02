@@ -11,7 +11,9 @@ import (
 
 // RustGenerator gen rust code
 type RustGenerator struct {
-	Packets map[string]model.Packet // Store packets by name
+	ListLenPrefix   string                  // Prefix for list length fields
+	StringLenPrefix string                  // Prefix for string length fields
+	Packets         map[string]model.Packet // Store packets by name
 }
 
 // GenerateCode gen struct and encode decode code
@@ -32,7 +34,11 @@ func (g RustGenerator) GenerateCode(msg model.Packet) string {
 	b.WriteString("#[derive(Debug, Clone, PartialEq)]\n")
 	b.WriteString(fmt.Sprintf("pub struct %s {\n", structName))
 	for _, f := range msg.Fields {
-		b.WriteString(fmt.Sprintf("    pub %s: %s,\n", GetFieldName(f), GetFieldType(f)))
+		if f.IsRepeat {
+			b.WriteString(fmt.Sprintf("    pub %s: Vec<%s>,\n", GetFieldName(f), GetFieldType(f)))
+		} else {
+			b.WriteString(fmt.Sprintf("    pub %s: %s,\n", GetFieldName(f), GetFieldType(f)))
+		}
 	}
 	b.WriteString("}\n\n")
 
@@ -117,29 +123,21 @@ func GetFieldName(f model.Field) string {
 }
 
 // EncodeField encoding field
-func (RustGenerator) EncodeField(f model.Field) string {
+func (g RustGenerator) EncodeField(f model.Field) string {
 	name := toSnake(f.Name)
+	if f.IsRepeat {
+		if f.GetType() == "string" {
+			return fmt.Sprintf("put_string_list::<%s,%s>(buf, &self.%s);", g.ListLenPrefix, g.StringLenPrefix, name)
+		}
+		return fmt.Sprintf("put_list::<%s,%s>(buf, &self.%s);", g.ListLenPrefix, g.StringLenPrefix, name)
+	}
 	switch f.GetType() {
+	case "string":
+		return fmt.Sprintf("put_%s(buf, &self.%s);", f.GetType(), name)
 	case "char":
-		return fmt.Sprintf("put_char(buf, self.%s);", name)
-	case "string", "String":
-		return fmt.Sprintf("put_string(buf, &self.%s);", name)
-	case "u8", "uint8":
-		return fmt.Sprintf("buf.put_u8(self.%s);", name)
-	case "u16", "uint16":
-		return fmt.Sprintf("buf.put_u16(self.%s);", name)
-	case "u32", "uint32":
-		return fmt.Sprintf("buf.put_u32(self.%s);", name)
-	case "u64", "uint64":
-		return fmt.Sprintf("buf.put_u64(self.%s);", name)
-	case "i8", "int8":
-		return fmt.Sprintf("buf.put_i8(self.%s);", name)
-	case "i16", "int16":
-		return fmt.Sprintf("buf.put_i16(self.%s);", name)
-	case "i32", "int32":
-		return fmt.Sprintf("buf.put_i32(self.%s);", name)
-	case "i64", "int64":
-		return fmt.Sprintf("buf.put_i64(self.%s);", name)
+		return fmt.Sprintf("put_%s(buf, self.%s);", f.GetType(), name)
+	case "u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64":
+		return fmt.Sprintf("buf.put_%s(self.%s);", f.GetType(), name)
 	case "match":
 		return EncoderMatchField(f)
 	default:
@@ -166,29 +164,19 @@ func EncoderMatchField(f model.Field) string {
 }
 
 // DecodeField decoding field
-func (RustGenerator) DecodeField(f model.Field) string {
+func (g RustGenerator) DecodeField(f model.Field) string {
 	name := toSnake(f.Name)
+	if f.IsRepeat {
+		if f.GetType() == "string" {
+			return fmt.Sprintf("let %s = get_string_list::<%s,%s>(buf)?;", name, g.ListLenPrefix, g.StringLenPrefix)
+		}
+		return fmt.Sprintf("let %s = get_list::<%s,%s>(buf)?;", name, g.ListLenPrefix, g.StringLenPrefix)
+	}
 	switch f.GetType() {
-	case "char":
-		return fmt.Sprintf("let %s = get_char(buf)?;", name)
-	case "string", "String":
-		return fmt.Sprintf("let %s = get_string(buf)?;", name)
-	case "u8", "uint8":
-		return fmt.Sprintf("let %s = buf.get_u8();", name)
-	case "u16", "uint16":
-		return fmt.Sprintf("let %s = buf.get_u16();", name)
-	case "u32", "uint32":
-		return fmt.Sprintf("let %s = buf.get_u32();", name)
-	case "u64", "uint64":
-		return fmt.Sprintf("let %s = buf.get_u64();", name)
-	case "i8", "int8":
-		return fmt.Sprintf("let %s = buf.get_i8();", name)
-	case "i16", "int16":
-		return fmt.Sprintf("let %s = buf.get_i16();", name)
-	case "i32", "int32":
-		return fmt.Sprintf("let %s = buf.get_i32();", name)
-	case "i64", "int64":
-		return fmt.Sprintf("let %s = buf.get_i64();", name)
+	case "string", "char":
+		return fmt.Sprintf("let %s = get_%s(buf)?;", name, f.GetType())
+	case "u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64":
+		return fmt.Sprintf("let %s = buf.get_%s();", name, f.GetType())
 	case "match":
 		return DecodeMatchField(f)
 	default:
@@ -281,55 +269,92 @@ func (g RustGenerator) GenerateTestCode(packet model.Packet) string {
 
 // TestValue gen test value for deferent field type
 func (g RustGenerator) TestValue(f model.Field) string {
-	switch f.GetType() {
-	case "string":
-		return `"example".to_string()`
-	case "char":
-		return `'a'`
-	case "u8":
-		return "42"
-	case "u16":
-		return "1234"
-	case "u32":
-		return "123456"
-	case "u64":
-		return "123456789"
-	case "i8":
-		return "-42"
-	case "i16":
-		return "-1234"
-	case "i32":
-		return "-123456"
-	case "i64":
-		return "-123456789"
-	default:
-		pattern := `^char\[(\d+)\]$`
-		re := regexp.MustCompile(pattern)
-		matches := re.FindStringSubmatch(f.GetType())
+	if f.IsRepeat {
+		return testValueList(f.GetType())
+	}
+
+	return g.testValueSingle(f)
+}
+
+func testValueList(typ string) string {
+	if val, ok := primitiveListValues()[typ]; ok {
+		return val
+	}
+	return "vec![]"
+}
+
+func (g RustGenerator) testValueSingle(f model.Field) string {
+	typ := f.GetType()
+
+	// handle match
+	if typ == "match" {
+		return g.testMatchValue(f)
+	}
+
+	// handle char[n]
+	if strings.HasPrefix(typ, "char[") {
+		re := regexp.MustCompile(`^char\[(\d+)\]$`)
+		matches := re.FindStringSubmatch(typ)
 		if len(matches) == 2 {
 			size := matches[1]
 			return fmt.Sprintf("vec!['a'; %s].into_iter().collect::<String>()", size)
 		}
-
-		// match 类型，生成结构体初始化
-		if f.GetType() == "match" {
-			if len(f.MatchPairs) > 0 {
-				matchName := f.MatchPairs[0].Value
-				var innerFields []string
-				subPacket := g.Packets[matchName]
-				for _, subField := range subPacket.Fields {
-					innerFields = append(innerFields,
-						fmt.Sprintf("%s: %s", toSnake(subField.Name), RustGenerator{}.TestValue(subField)))
-				}
-				return fmt.Sprintf("%s::%s(%s { %s })",
-					f.MatchType,
-					matchName,
-					matchName,
-					strings.Join(innerFields, ", "),
-				)
-			}
-			return fmt.Sprintf("%s::default()", f.MatchType)
-		}
-		return "Default::default()"
 	}
+
+	// handle primitive
+	if val, ok := primitiveSingleValues()[typ]; ok {
+		return val
+	}
+
+	return "Default::default()"
+}
+
+func primitiveListValues() map[string]string {
+	return map[string]string{
+		"string": `vec!["example".to_string(), "test".to_string()]`,
+		"char":   `vec!['a','b']`,
+		"u8":     "vec![42,12]",
+		"u16":    "vec![1234,4321]",
+		"u32":    "vec![123456,654321]",
+		"u64":    "vec![123456789,987654321]",
+		"i8":     "vec![-42,-12]",
+		"i16":    "vec![-1234,-4321]",
+		"i32":    "vec![-123456,-654321]",
+		"i64":    "vec![-123456789,-987654321]",
+	}
+}
+
+func primitiveSingleValues() map[string]string {
+	return map[string]string{
+		"string": `"example".to_string()`,
+		"char":   `'a'`,
+		"u8":     "42",
+		"u16":    "1234",
+		"u32":    "123456",
+		"u64":    "123456789",
+		"i8":     "-42",
+		"i16":    "-1234",
+		"i32":    "-123456",
+		"i64":    "-123456789",
+	}
+}
+
+func (g RustGenerator) testMatchValue(f model.Field) string {
+	if len(f.MatchPairs) == 0 {
+		return fmt.Sprintf("%s::default()", f.MatchType)
+	}
+
+	matchName := f.MatchPairs[0].Value
+	subPacket := g.Packets[matchName]
+	var innerFields []string
+	for _, subField := range subPacket.Fields {
+		innerFields = append(innerFields,
+			fmt.Sprintf("%s: %s", toSnake(subField.Name), g.TestValue(subField)))
+	}
+	return fmt.Sprintf("%s::%s(%s { %s })",
+		f.MatchType,
+		matchName,
+		matchName,
+		strings.Join(innerFields, ", "),
+	)
 }
