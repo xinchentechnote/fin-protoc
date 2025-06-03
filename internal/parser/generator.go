@@ -143,7 +143,11 @@ func (g RustGenerator) EncodeField(f model.Field) string {
 		if f.GetType() == "string" {
 			return fmt.Sprintf("put_string_list::<%s,%s>(buf, &self.%s);", g.ListLenPrefix, g.StringLenPrefix, name)
 		}
-		return fmt.Sprintf("put_list::<%s,%s>(buf, &self.%s);", g.ListLenPrefix, g.StringLenPrefix, name)
+		size, ok := parseCharArrayType(f.GetType())
+		if ok {
+			return fmt.Sprintf("put_fixed_string_list::<%s>(buf, &self.%s, %s);", g.ListLenPrefix, name, size)
+		}
+		return fmt.Sprintf("put_list::<%s,%s>(buf, &self.%s);", f.GetType(), g.ListLenPrefix, name)
 	}
 	switch f.GetType() {
 	case "string":
@@ -155,11 +159,8 @@ func (g RustGenerator) EncodeField(f model.Field) string {
 	case "match":
 		return EncoderMatchField(f)
 	default:
-		pattern := `^char\[(\d+)\]$`
-		re := regexp.MustCompile(pattern)
-		matches := re.FindStringSubmatch(f.GetType())
-		if len(matches) == 2 {
-			size := matches[1]
+		size, ok := parseCharArrayType(f.GetType())
+		if ok {
 			return fmt.Sprintf("put_char_array(buf, &self.%s, %s);", name, size)
 		}
 		if f.InerObject != nil {
@@ -189,7 +190,11 @@ func (g RustGenerator) DecodeField(f model.Field) string {
 		if f.GetType() == "string" {
 			return fmt.Sprintf("let %s = get_string_list::<%s,%s>(buf)?;", name, g.ListLenPrefix, g.StringLenPrefix)
 		}
-		return fmt.Sprintf("let %s = get_list::<%s,%s>(buf)?;", name, g.ListLenPrefix, g.StringLenPrefix)
+		size, ok := parseCharArrayType(f.GetType())
+		if ok {
+			return fmt.Sprintf("let %s = get_fixed_string_list::<%s>(buf, %s)?;", name, g.ListLenPrefix, size)
+		}
+		return fmt.Sprintf("let %s = get_list::<%s,%s>(buf)?;", name, f.GetType(), g.ListLenPrefix)
 	}
 	switch f.GetType() {
 	case "string", "char":
@@ -302,6 +307,16 @@ func (g RustGenerator) GenerateUseCodeForTest() string {
 	return b.String()
 }
 
+// parseCharArrayType parse char[\d]
+func parseCharArrayType(fieldType string) (size string, ok bool) {
+	pattern := `^char\[(\d+)\]$`
+	matches := regexp.MustCompile(pattern).FindStringSubmatch(fieldType)
+	if len(matches) == 2 {
+		return matches[1], true
+	}
+	return "", false
+}
+
 // TestValue gen test value for deferent field type
 func (g RustGenerator) TestValue(f model.Field) string {
 	if f.IsRepeat {
@@ -315,6 +330,10 @@ func testValueList(typ string) string {
 	if val, ok := primitiveListValues()[typ]; ok {
 		return val
 	}
+	size, ok := parseCharArrayType(typ)
+	if ok {
+		return fmt.Sprintf("vec![\"a\".to_string(); %s]", size)
+	}
 	return "vec![]"
 }
 
@@ -327,13 +346,9 @@ func (g RustGenerator) testValueSingle(f model.Field) string {
 	}
 
 	// handle char[n]
-	if strings.HasPrefix(typ, "char[") {
-		re := regexp.MustCompile(`^char\[(\d+)\]$`)
-		matches := re.FindStringSubmatch(typ)
-		if len(matches) == 2 {
-			size := matches[1]
-			return fmt.Sprintf("vec!['a'; %s].into_iter().collect::<String>()", size)
-		}
+	size, ok := parseCharArrayType(f.GetType())
+	if ok {
+		return fmt.Sprintf("vec!['a'; %s].into_iter().collect::<String>()", size)
 	}
 
 	// handle primitive
