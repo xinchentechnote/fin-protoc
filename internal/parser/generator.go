@@ -60,14 +60,22 @@ func (g RustGenerator) GenerateStructCode(msg model.Packet) string {
 	b.WriteString(fmt.Sprintf("impl BinaryCodec for %s {\n", structName))
 
 	// encode()
-	b.WriteString("    fn encode(&self, buf: &mut BytesMut) {\n")
+	if len(msg.Fields) == 0 {
+		b.WriteString("    fn encode(&self, _buf: &mut BytesMut) {\n")
+	} else {
+		b.WriteString("    fn encode(&self, buf: &mut BytesMut) {\n")
+	}
 	for _, f := range msg.Fields {
 		b.WriteString(fmt.Sprintf("        %s\n", g.EncodeField(f)))
 	}
 	b.WriteString("    }\n\n")
 
 	// decode()
-	b.WriteString(fmt.Sprintf("    fn decode(buf: &mut Bytes) -> Option<%s> {\n", structName))
+	if len(msg.Fields) == 0 {
+		b.WriteString(fmt.Sprintf("    fn decode(_buf: &mut Bytes) -> Option<%s> {\n", structName))
+	} else {
+		b.WriteString(fmt.Sprintf("    fn decode(buf: &mut Bytes) -> Option<%s> {\n", structName))
+	}
 	for _, f := range msg.Fields {
 		b.WriteString(fmt.Sprintf("        %s\n", g.DecodeField(f)))
 	}
