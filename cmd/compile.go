@@ -19,11 +19,8 @@ var compileCmd = &cobra.Command{
 
 		// 1. parse DSL file
 		result, _ := parser.ParseFile(file)
-		packets := result.([]model.Packet)
-		packetsMap := make(map[string]model.Packet)
-		for _, pkt := range packets {
-			packetsMap[pkt.Name] = pkt
-		}
+		binModel := result.(*model.BinaryModel)
+		packetsMap := binModel.Packets
 		// 2. initialize generator
 		generator := parser.RustGenerator{
 			ListLenPrefix:   "u16",
@@ -34,7 +31,7 @@ var compileCmd = &cobra.Command{
 		// 3. generate code for each packet
 		libFilePath := fmt.Sprintf("%s/lib.rs", output)
 		libFile, _ := os.Create(libFilePath)
-		for _, pkt := range packets {
+		for _, pkt := range packetsMap {
 			outputFile := fmt.Sprintf("%s/%s%s", output, strcase.ToSnake(pkt.Name), generator.FileExtension())
 			f, _ := os.Create(outputFile)
 			defer f.Close()
