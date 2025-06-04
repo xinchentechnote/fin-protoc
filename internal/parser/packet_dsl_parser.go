@@ -27,23 +27,54 @@ func ParseFile(filename string) (interface{}, error) {
 // PacketDslVisitorImpl visits parse tree nodes and constructs model.Packet and model.Field.
 type PacketDslVisitorImpl struct {
 	*gen.BasePacketDslVisitor
+	BinModel *model.BinaryModel
 }
 
 // NewPacketDslVisitor returns a new PacketDslVisitorImpl.
 func NewPacketDslVisitor() *PacketDslVisitorImpl {
 	return &PacketDslVisitorImpl{
 		BasePacketDslVisitor: &gen.BasePacketDslVisitor{},
+		BinModel:             model.NewBinaryModel(),
 	}
 }
 
 // VisitPacket handles a list of packetDefinition nodes and returns []model.Packet.
 func (v *PacketDslVisitorImpl) VisitPacket(ctx *gen.PacketContext) interface{} {
-	var packets []model.Packet
+
+	// MetaData map
+	for _, metaDataDifinition := range ctx.AllMetaDataDefinition() {
+		for _, metaDataDeclaration := range metaDataDifinition.AllMetaDataDeclaration() {
+			name := metaDataDeclaration.IDENTIFIER().GetText()
+			typ := metaDataDeclaration.Type_().GetText()
+			basicType := metaDataDeclaration.Type_().GetText()
+			// Store metadata in the map
+			v.BinModel.AddMetaData(model.MetaData{
+				Name:        name,
+				Typ:         typ,
+				BasicType:   basicType,
+				Description: metaDataDeclaration.STRING_LITERAL().GetText(),
+			})
+
+		}
+	}
+
+	// Options map
+	for _, optionDefinition := range ctx.AllOptionDefinition() {
+		for _, option := range optionDefinition.AllOptionDeclaration() {
+			name := option.IDENTIFIER().GetText()
+			value := option.Value().GetText()
+			// Store option in the map
+			v.BinModel.AddOption(name, value)
+		}
+	}
+
+	fmt.Println("Options:", v.BinModel.Options)
+
 	for _, def := range ctx.AllPacketDefinition() {
 		packet := def.Accept(v).(model.Packet)
-		packets = append(packets, packet)
+		v.BinModel.AddPacket(packet) // Store in PacketMap
 	}
-	return packets
+	return v.BinModel
 }
 
 // VisitPacketDefinition constructs a model.Packet from a packetDefinition context.
@@ -77,9 +108,15 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinition(ctx interface{}) interface{}
 	switch c := ctx.(type) {
 	// Basic object field: REPEAT? IDENTIFIER
 	case *gen.ObjectFieldContext:
+		name := c.IDENTIFIER().GetText()
+		typ := name
+		if v.BinModel.MetaDataMap[name] != (model.MetaData{}) {
+			// If metadata exists, use its basic type
+			typ = v.BinModel.MetaDataMap[name].BasicType
+		}
 		return model.Field{
-			Name:     c.IDENTIFIER().GetText(),
-			Type:     c.IDENTIFIER().GetText(),
+			Name:     name,
+			Type:     typ,
 			IsRepeat: c.REPEAT() != nil,
 		}
 
@@ -137,6 +174,12 @@ func (v *PacketDslVisitorImpl) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclara
 	var typ string
 	if ctx.Type_() != nil {
 		typ = ctx.Type_().GetText()
+	} else {
+		typ = name
+	}
+	// If metadata exists, use its basic type
+	if meta, exists := v.BinModel.MetaDataMap[typ]; exists {
+		typ = meta.BasicType
 	}
 	// Extract documentation string if present, by removing backticks
 	var doc string
@@ -157,8 +200,8 @@ func (v *PacketDslVisitorImpl) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDec
 	name := ctx.IDENTIFIER().GetText()
 	var pairs []model.MatchPair
 	for _, pairCtx := range ctx.AllMatchPair() {
-		mp := pairCtx.Accept(v).(model.MatchPair)
-		pairs = append(pairs, mp)
+		mp := pairCtx.Accept(v).([]model.MatchPair)
+		pairs = append(pairs, mp...)
 	}
 	return model.Field{
 		Name:       name,
@@ -171,16 +214,24 @@ func (v *PacketDslVisitorImpl) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDec
 
 // VisitMatchPair handles an individual match key-value: (DIGITS|STRING|list) ':' IDENTIFIER
 func (v *PacketDslVisitorImpl) VisitMatchPair(ctx *gen.MatchPairContext) interface{} {
+	var pairs []model.MatchPair
+	val := ctx.IDENTIFIER().GetText()
 	var key string
 	if ctx.DIGITS() != nil {
 		key = ctx.DIGITS().GetText()
 	} else if ctx.STRING() != nil {
 		key = ctx.STRING().GetText()
 	} else if ctx.List() != nil {
-		key = ctx.List().GetText()
+		for _, k := range ctx.List().AllDIGITS() {
+			pairs = append(pairs, model.MatchPair{Key: k.GetText(), Value: val})
+		}
+		for _, k := range ctx.List().AllSTRING() {
+			pairs = append(pairs, model.MatchPair{Key: k.GetText(), Value: val})
+		}
+		return pairs
 	}
-	val := ctx.IDENTIFIER().GetText()
-	return model.MatchPair{Key: key, Value: val}
+
+	return append(pairs, model.MatchPair{Key: key, Value: val})
 }
 
 // VisitMetaDataDefinition is not used currently; just logs visiting metadata definitions.

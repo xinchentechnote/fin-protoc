@@ -1,5 +1,49 @@
 package model
 
+import "strings"
+
+// BinaryModel contains metaData, options,and packets
+type BinaryModel struct {
+	MetaDataMap map[string]MetaData // Map of metadata definitions
+	Options     map[string]string   // Map of options
+	Packets     map[string]Packet   // Map of packet definitions, keyed by packet name
+}
+
+// NewBinaryModel new BinaryModel
+func NewBinaryModel() *BinaryModel {
+	return &BinaryModel{
+		MetaDataMap: make(map[string]MetaData),
+		Options:     make(map[string]string),
+		Packets:     make(map[string]Packet),
+	}
+}
+
+// AddMetaData add MetaData
+func (m *BinaryModel) AddMetaData(metaData MetaData) {
+	if m.MetaDataMap[metaData.Typ] != (MetaData{}) {
+		metaData.BasicType = m.MetaDataMap[metaData.Typ].BasicType
+	}
+	m.MetaDataMap[metaData.Name] = metaData
+}
+
+// AddOption add option
+func (m *BinaryModel) AddOption(name, value string) {
+	m.Options[name] = value
+}
+
+// AddPacket add packet
+func (m *BinaryModel) AddPacket(packet Packet) {
+	m.Packets[packet.Name] = packet
+}
+
+// MetaData metaData
+type MetaData struct {
+	Name        string // Name of the metadata
+	Typ         string // Type of the metadata,
+	BasicType   string // Basic type if applicable, e.g., "i32", "u16"
+	Description string // Description of the metadata
+}
+
 // Packet represents a message definition, which may be a root or nested packet.
 type Packet struct {
 	Name        string                 // Name of the packet
@@ -22,7 +66,7 @@ type Field struct {
 // GetType return field type
 func (f Field) GetType() string {
 	if f.Type != "" {
-		switch f.Type {
+		switch strings.ToLower(f.Type) {
 		case "i8", "int8":
 			return "i8"
 		case "i16", "int16":
@@ -43,14 +87,14 @@ func (f Field) GetType() string {
 			return "f32"
 		case "f64", "float64":
 			return "f64"
-		case "string":
+		case "string", "char[]":
 			return "string"
 		default:
 
 			return f.Type // Return the type as is if it doesn't match any known types
 		}
 	}
-	if f.InerObject.Name != "" {
+	if f.InerObject != nil && f.InerObject.Name != "" {
 		return f.InerObject.Name
 	} else if len(f.MatchPairs) > 0 {
 		return "match"

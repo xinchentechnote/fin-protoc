@@ -37,11 +37,11 @@ root packet Logon {
 		t.Fatalf("ParseFile returned error: %v", err)
 	}
 	// Expect []model.Packet with one entry
-	packets := data.([]model.Packet)
+	packets := data.(*model.BinaryModel).Packets
 	if len(packets) != 1 {
 		t.Fatalf("expected 1 packet, got %d", len(packets))
 	}
-	pkt := packets[0]
+	pkt := packets["Logon"]
 	if pkt.Name != "Logon" {
 		t.Errorf("expected packet name 'Logon', got '%s'", pkt.Name)
 	}
@@ -78,11 +78,11 @@ packet Parent {
 	if err != nil {
 		t.Fatalf("ParseFile returned error: %v", err)
 	}
-	packets := data.([]model.Packet)
+	packets := data.(*model.BinaryModel).Packets
 	if len(packets) != 1 {
 		t.Fatalf("expected 1 packet, got %d", len(packets))
 	}
-	pkt := packets[0]
+	pkt := packets["Parent"]
 	if pkt.Name != "Parent" {
 		t.Errorf("expected packet name 'Parent', got '%s'", pkt.Name)
 	}
