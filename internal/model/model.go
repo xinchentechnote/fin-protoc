@@ -7,6 +7,7 @@ type BinaryModel struct {
 	MetaDataMap map[string]MetaData // Map of metadata definitions
 	Options     map[string]string   // Map of options
 	Packets     map[string]Packet   // Map of packet definitions, keyed by packet name
+	RootPacket  Packet              // root packet
 }
 
 // NewBinaryModel new BinaryModel
@@ -34,6 +35,9 @@ func (m *BinaryModel) AddOption(name, value string) {
 // AddPacket add packet
 func (m *BinaryModel) AddPacket(packet Packet) {
 	m.Packets[packet.Name] = packet
+	if packet.IsRoot {
+		m.RootPacket = packet
+	}
 }
 
 // MetaData metaData
