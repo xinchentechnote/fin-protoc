@@ -153,12 +153,17 @@ func (g LuaWspGenerator) generateSubDissector(parentName string, pkt model.Packe
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("local function dissect_%s(buf, tree, offset)\n", strcase.ToSnake(pkt.Name)))
 	b.WriteString(fmt.Sprintf("    local subtree = tree:add(%s_proto, buf(offset, 1), \"%s\")\n", strcase.ToSnake(parentName), pkt.Name))
-	for _, f := range pkt.Fields {
-		if isMatchField(f, pkt) && f.GetType() != "match" {
-			b.WriteString(fmt.Sprintf("    local %s = buf(offset, %s):uint()\n", strcase.ToSnake(f.Name), "4"))
+	if len(pkt.Fields) > 0 {
+		for _, f := range pkt.Fields {
+			if isMatchField(f, pkt) && f.GetType() != "match" {
+				b.WriteString(fmt.Sprintf("    local %s = buf(offset, %s):uint()\n", strcase.ToSnake(f.Name), "4"))
+			}
+			b.WriteString(g.decodeField("subtree", f))
 		}
-		b.WriteString(g.decodeField("subtree", f))
+	} else {
+		b.WriteString("    subtree:append_text(\" (No Body)\")\n")
 	}
+	b.WriteString("    return offset\n")
 	b.WriteString("end\n")
 	return b.String()
 }
@@ -213,22 +218,23 @@ func (g LuaWspGenerator) decodeField(treeName string, f model.Field) string {
 			return ""
 		}
 		var b strings.Builder
+		b.WriteString("    ")
 		for i, pair := range f.MatchPairs {
 			if i != 0 {
 				b.WriteString("else")
 			}
 			b.WriteString(fmt.Sprintf("if %s == %s then -- %s\n", strcase.ToSnake(f.MatchType), pair.Key, pair.Value))
-			b.WriteString(fmt.Sprintf("    dissect_%s(buf, tree, offset)\n", strcase.ToSnake(pair.Value)))
-			b.WriteString(fmt.Sprintf("    pinfo.cols.info:set(\"%s\")\n", pair.Value))
+			b.WriteString(fmt.Sprintf("        dissect_%s(buf, tree, offset)\n", strcase.ToSnake(pair.Value)))
+			b.WriteString(fmt.Sprintf("        pinfo.cols.info:set(\"%s\")\n", pair.Value))
 		}
-		b.WriteString("end\n")
+		b.WriteString("    end\n")
 		return b.String()
 
 	default:
 		if size, ok := ParseCharArrayType(f.GetType()); ok {
 			var b strings.Builder
-			b.WriteString(fmt.Sprintf("%s:add(fields.%s, buf(offset, %s))\n", treeName, strcase.ToSnake(f.Name), size))
-			b.WriteString(fmt.Sprintf("offset = offset + %s\n", size))
+			b.WriteString(fmt.Sprintf("    %s:add(fields.%s, buf(offset, %s))\n", treeName, strcase.ToSnake(f.Name), size))
+			b.WriteString(fmt.Sprintf("    offset = offset + %s\n", size))
 			return b.String()
 		}
 		return "-- unsupported type: " + f.GetType() + "\n"
