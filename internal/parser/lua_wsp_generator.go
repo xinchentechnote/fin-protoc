@@ -158,7 +158,7 @@ func (g LuaWspGenerator) generateSubDissector(parentName string, pkt model.Packe
 			if isMatchField(f, pkt) && f.GetType() != "match" {
 				b.WriteString(fmt.Sprintf("    local %s = buf(offset, %s):uint()\n", strcase.ToSnake(f.Name), "4"))
 			}
-			b.WriteString(g.decodeField("subtree", f))
+			b.WriteString(g.decodeField("subtree", pkt, f))
 		}
 	} else {
 		b.WriteString("    subtree:append_text(\" (No Body)\")\n")
@@ -177,7 +177,7 @@ func (g LuaWspGenerator) generateMainDissector(rootPacket model.Packet) string {
 		if isMatchField(f, rootPacket) && f.GetType() != "match" {
 			b.WriteString(fmt.Sprintf("    local %s = buf(offset, %s):uint()\n", strcase.ToSnake(f.Name), "4"))
 		}
-		b.WriteString(g.decodeField("tree", f))
+		b.WriteString(g.decodeField("tree", rootPacket, f))
 	}
 	b.WriteString("end\n")
 	return b.String()
@@ -196,7 +196,7 @@ func isMatchField(f model.Field, rootPacket model.Packet) bool {
 const decodeFieldTmpl = `    {{.TreeName}}:add(fields.{{.Name}}, buf(offset, {{.Type.Size}}))
     offset = offset + {{.Type.Size}}`
 
-func (g LuaWspGenerator) decodeField(treeName string, f model.Field) string {
+func (g LuaWspGenerator) decodeField(treeName string, p model.Packet, f model.Field) string {
 	switch f.GetType() {
 	case "i8", "u8", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64", "char":
 		luaType, ok := luaBasicTypeMap[f.GetType()]
@@ -204,7 +204,7 @@ func (g LuaWspGenerator) decodeField(treeName string, f model.Field) string {
 			return "-- unsupported numeric type: " + f.GetType() + "\n"
 		}
 		data := map[string]interface{}{
-			"Name":     strcase.ToSnake(f.Name),
+			"Name":     fmt.Sprintf("%s_%s", strcase.ToSnake(p.Name), strcase.ToSnake(f.Name)),
 			"TreeName": treeName,
 			"Type":     luaType,
 		}
@@ -233,7 +233,7 @@ func (g LuaWspGenerator) decodeField(treeName string, f model.Field) string {
 	default:
 		if size, ok := ParseCharArrayType(f.GetType()); ok {
 			var b strings.Builder
-			b.WriteString(fmt.Sprintf("    %s:add(fields.%s, buf(offset, %s))\n", treeName, strcase.ToSnake(f.Name), size))
+			b.WriteString(fmt.Sprintf("    %s:add(fields.%s_%s, buf(offset, %s))\n", treeName, strcase.ToSnake(p.Name), strcase.ToSnake(f.Name), size))
 			b.WriteString(fmt.Sprintf("    offset = offset + %s\n", size))
 			return b.String()
 		}
@@ -258,30 +258,30 @@ func (g LuaWspGenerator) generateFieldDefinitionFromPacket(pkt *model.Packet) st
 	for _, f := range pkt.Fields {
 		switch f.GetType() {
 		case "char":
-			b.WriteString(fmt.Sprintf("    %s = ProtoField.char(\"%s\", \"%s\", base.OCT),\n",
-				strcase.ToSnake(f.Name), strcase.ToSnake(pkt.Name)+"."+strcase.ToSnake(f.Name), f.Name))
+			b.WriteString(fmt.Sprintf("    %s_%s = ProtoField.char(\"%s.%s\", \"%s\", base.OCT),\n",
+				strcase.ToSnake(pkt.Name), strcase.ToSnake(f.Name), strcase.ToSnake(pkt.Name), strcase.ToSnake(f.Name), f.Name))
 		case "i8", "u8", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64":
 			luaType, ok := luaBasicTypeMap[f.GetType()]
 			if !ok {
 				b.WriteString("-- unsupported numeric type: " + f.GetType() + "\n")
 			} else {
-				b.WriteString(fmt.Sprintf("    %s = ProtoField.%s(\"%s\", \"%s\", base.DEC),\n",
-					strcase.ToSnake(f.Name), luaType.To, strcase.ToSnake(pkt.Name)+"."+strcase.ToSnake(f.Name), f.Name))
+				b.WriteString(fmt.Sprintf("    %s_%s = ProtoField.%s(\"%s.%s\", \"%s\", base.DEC),\n",
+					strcase.ToSnake(pkt.Name), strcase.ToSnake(f.Name), luaType.To, strcase.ToSnake(pkt.Name), strcase.ToSnake(f.Name), f.Name))
 			}
 		case "string", "char[]":
-			b.WriteString(fmt.Sprintf("    %s = ProtoField.string(\"%s\", \"%s\"),\n",
-				strcase.ToSnake(f.Name), strcase.ToSnake(pkt.Name)+"."+strcase.ToSnake(f.Name), f.Name))
+			b.WriteString(fmt.Sprintf("    %s_%s = ProtoField.string(\"%s.%s\", \"%s\"),\n",
+				strcase.ToSnake(pkt.Name), strcase.ToSnake(f.Name), strcase.ToSnake(pkt.Name), strcase.ToSnake(f.Name), f.Name))
 		case "bytes":
-			b.WriteString(fmt.Sprintf("    %s = ProtoField.bytes(\"%s\", \"%s\"),\n",
-				strcase.ToSnake(f.Name), strcase.ToSnake(pkt.Name)+"."+strcase.ToSnake(f.Name), f.Name))
+			b.WriteString(fmt.Sprintf("    %s_%s = ProtoField.bytes(\"%s.%s\", \"%s\"),\n",
+				strcase.ToSnake(pkt.Name), strcase.ToSnake(f.Name), strcase.ToSnake(pkt.Name), strcase.ToSnake(f.Name), f.Name))
 		case "bool":
-			b.WriteString(fmt.Sprintf("    %s = ProtoField.bool(\"%s\", \"%s\"),\n",
-				strcase.ToSnake(f.Name), strcase.ToSnake(pkt.Name)+"."+strcase.ToSnake(f.Name), f.Name))
+			b.WriteString(fmt.Sprintf("    %s_%s = ProtoField.bool(\"%s.%s\", \"%s\"),\n",
+				strcase.ToSnake(pkt.Name), strcase.ToSnake(f.Name), strcase.ToSnake(pkt.Name), strcase.ToSnake(f.Name), f.Name))
 		default:
 			_, ok := ParseCharArrayType(f.GetType())
 			if ok {
-				b.WriteString(fmt.Sprintf("    %s = ProtoField.string(\"%s\", \"%s\"),\n",
-					strcase.ToSnake(f.Name), strcase.ToSnake(pkt.Name)+"."+strcase.ToSnake(f.Name), f.Name))
+				b.WriteString(fmt.Sprintf("    %s_%s = ProtoField.string(\"%s.%s\", \"%s\"),\n",
+					strcase.ToSnake(pkt.Name), strcase.ToSnake(f.Name), strcase.ToSnake(pkt.Name), strcase.ToSnake(f.Name), f.Name))
 			} else {
 				b.WriteString(fmt.Sprintf("    -- Unsupported type: %s\n", f.GetType()))
 			}
