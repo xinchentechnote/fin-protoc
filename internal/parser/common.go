@@ -1,8 +1,11 @@
 package parser
 
 import (
+	"bytes"
 	"fmt"
+	"html/template"
 	"os"
+	"regexp"
 
 	"github.com/antlr4-go/antlr/v4"
 	gen "github.com/xinchentechnote/fin-protoc/internal/grammar"
@@ -38,4 +41,27 @@ func NewPacketDslParserByContent(data string) (*gen.PacketDslParser, error) {
 	// 创建一个新的语法分析器
 	parser := gen.NewPacketDslParser(stream)
 	return parser, nil
+}
+
+// ParseCharArrayType parse char[\d]
+func ParseCharArrayType(fieldType string) (size string, ok bool) {
+	pattern := `^char\[(\d+)\]$`
+	matches := regexp.MustCompile(pattern).FindStringSubmatch(fieldType)
+	if len(matches) == 2 {
+		return matches[1], true
+	}
+	return "", false
+}
+
+// RenderToString render tmpl
+func RenderToString(tmpl string, lang string, data interface{}) (string, error) {
+	t := template.Must(template.New(lang).Parse(tmpl))
+
+	var buf bytes.Buffer
+	err := t.Execute(&buf, data) // Directly pass data instead of wrapping it
+	if err != nil {
+		return "", fmt.Errorf("template execution failed: %w", err)
+	}
+
+	return buf.String(), nil
 }
