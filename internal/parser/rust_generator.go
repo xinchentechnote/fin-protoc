@@ -167,7 +167,7 @@ func (g RustGenerator) EncodeField(parentName string, f model.Field) string {
 		if f.GetType() == "string" {
 			return fmt.Sprintf("put_string_list::<%s,%s>(buf, &self.%s);", g.ListLenPrefix, g.StringLenPrefix, name)
 		}
-		size, ok := parseCharArrayType(f.GetType())
+		size, ok := ParseCharArrayType(f.GetType())
 		if ok {
 			return fmt.Sprintf("put_fixed_string_list::<%s>(buf, &self.%s, %s);", g.ListLenPrefix, name, size)
 		}
@@ -183,7 +183,7 @@ func (g RustGenerator) EncodeField(parentName string, f model.Field) string {
 	case "match":
 		return EncoderMatchField(parentName, f)
 	default:
-		size, ok := parseCharArrayType(f.GetType())
+		size, ok := ParseCharArrayType(f.GetType())
 		if ok {
 			return fmt.Sprintf("put_char_array(buf, &self.%s, %s);", name, size)
 		}
@@ -219,7 +219,7 @@ func (g RustGenerator) DecodeField(parentName string, f model.Field) string {
 		if f.GetType() == "string" {
 			return fmt.Sprintf("let %s = get_string_list::<%s,%s>(buf)?;", name, g.ListLenPrefix, g.StringLenPrefix)
 		}
-		size, ok := parseCharArrayType(f.GetType())
+		size, ok := ParseCharArrayType(f.GetType())
 		if ok {
 			return fmt.Sprintf("let %s = get_fixed_string_list::<%s>(buf, %s)?;", name, g.ListLenPrefix, size)
 		}
@@ -355,16 +355,6 @@ func (g RustGenerator) GenerateTestCode(packet model.Packet) string {
 	return b.String()
 }
 
-// parseCharArrayType parse char[\d]
-func parseCharArrayType(fieldType string) (size string, ok bool) {
-	pattern := `^char\[(\d+)\]$`
-	matches := regexp.MustCompile(pattern).FindStringSubmatch(fieldType)
-	if len(matches) == 2 {
-		return matches[1], true
-	}
-	return "", false
-}
-
 // TestValue gen test value for deferent field type
 func (g RustGenerator) TestValue(parentName string, f model.Field) string {
 	if f.IsRepeat {
@@ -378,7 +368,7 @@ func testValueList(typ string) string {
 	if val, ok := primitiveListValues()[typ]; ok {
 		return val
 	}
-	size, ok := parseCharArrayType(typ)
+	size, ok := ParseCharArrayType(typ)
 	if ok {
 		return fmt.Sprintf("vec![\"a\".to_string(); %s]", size)
 	}
@@ -394,7 +384,7 @@ func (g RustGenerator) testValueSingle(parentName string, f model.Field) string 
 	}
 
 	// handle char[n]
-	size, ok := parseCharArrayType(f.GetType())
+	size, ok := ParseCharArrayType(f.GetType())
 	if ok {
 		return fmt.Sprintf("vec!['a'; %s].into_iter().collect::<String>()", size)
 	}
