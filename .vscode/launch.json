@@ -9,11 +9,13 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/cmd/main.go",
+            "program": "${workspaceFolder}/cmd/",
             "args": [
                 "compile",
                 "-f",
-                "/home/s0596/workspace/fin-proto-rs/sample-binary/proto/sample_binary.dsl"
+                "/home/s0596/workspace/fin-proto-rs/sse-bianry/proto/sse_bin_v0.57.dsl",
+                "-l",
+                "/home/s0596/workspace/fin-proto-rs/sse-binary/proto/"
             ]
         }
     ]
