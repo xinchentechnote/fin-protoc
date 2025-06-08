@@ -11,9 +11,8 @@ import (
 
 // RustGenerator gen rust code
 type RustGenerator struct {
-	ListLenPrefix   string                  // Prefix for list length fields
-	StringLenPrefix string                  // Prefix for string length fields
-	Packets         map[string]model.Packet // Store packets by name
+	Config  *GeneratorConfig
+	Packets map[string]model.Packet // Store packets by name
 }
 
 // GenerateCode code for packet
@@ -165,13 +164,13 @@ func (g RustGenerator) EncodeField(parentName string, f model.Field) string {
 	name := toSnake(f.Name)
 	if f.IsRepeat {
 		if f.GetType() == "string" {
-			return fmt.Sprintf("put_string_list::<%s,%s>(buf, &self.%s);", g.ListLenPrefix, g.StringLenPrefix, name)
+			return fmt.Sprintf("put_string_list::<%s,%s>(buf, &self.%s);", g.Config.ListLenPrefixLenType, g.Config.StringLenPrefixLenType, name)
 		}
 		size, ok := ParseCharArrayType(f.GetType())
 		if ok {
-			return fmt.Sprintf("put_fixed_string_list::<%s>(buf, &self.%s, %s);", g.ListLenPrefix, name, size)
+			return fmt.Sprintf("put_fixed_string_list::<%s>(buf, &self.%s, %s);", g.Config.ListLenPrefixLenType, name, size)
 		}
-		return fmt.Sprintf("put_list::<%s,%s>(buf, &self.%s);", f.GetType(), g.ListLenPrefix, name)
+		return fmt.Sprintf("put_list::<%s,%s>(buf, &self.%s);", f.GetType(), g.Config.ListLenPrefixLenType, name)
 	}
 	switch f.GetType() {
 	case "string":
@@ -217,13 +216,13 @@ func (g RustGenerator) DecodeField(parentName string, f model.Field) string {
 	name := toSnake(f.Name)
 	if f.IsRepeat {
 		if f.GetType() == "string" {
-			return fmt.Sprintf("let %s = get_string_list::<%s,%s>(buf)?;", name, g.ListLenPrefix, g.StringLenPrefix)
+			return fmt.Sprintf("let %s = get_string_list::<%s,%s>(buf)?;", name, g.Config.ListLenPrefixLenType, g.Config.StringLenPrefixLenType)
 		}
 		size, ok := ParseCharArrayType(f.GetType())
 		if ok {
-			return fmt.Sprintf("let %s = get_fixed_string_list::<%s>(buf, %s)?;", name, g.ListLenPrefix, size)
+			return fmt.Sprintf("let %s = get_fixed_string_list::<%s>(buf, %s)?;", name, g.Config.ListLenPrefixLenType, size)
 		}
-		return fmt.Sprintf("let %s = get_list::<%s,%s>(buf)?;", name, f.GetType(), g.ListLenPrefix)
+		return fmt.Sprintf("let %s = get_list::<%s,%s>(buf)?;", name, f.GetType(), g.Config.ListLenPrefixLenType)
 	}
 	switch f.GetType() {
 	case "string", "char":

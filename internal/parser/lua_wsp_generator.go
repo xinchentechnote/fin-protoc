@@ -93,11 +93,11 @@ var luaBasicTypeMap = map[string]LuaType{
 
 // LuaWspGenerator implements Generator for lua bases wireshark plugin
 type LuaWspGenerator struct {
-	config GeneratorConfig
+	config *GeneratorConfig
 }
 
 // NewLuaWspGenerator new
-func NewLuaWspGenerator(config GeneratorConfig) *LuaWspGenerator {
+func NewLuaWspGenerator(config *GeneratorConfig) *LuaWspGenerator {
 	return &LuaWspGenerator{
 		config: config,
 	}
@@ -229,7 +229,7 @@ const decodeFieldTmpl = `    {{.TreeName}}:add(fields.{{.Name}}, buf(offset, {{.
     offset = offset + {{.Type.Size}}`
 
 func (g LuaWspGenerator) decodeListSize(treeName string, p model.Packet, f model.Field) string {
-	var prefix = g.config.ListLenPrefix
+	var prefix = g.config.ListLenPrefixLenType
 	switch prefix {
 	case "i8", "u8", "i16", "u16", "i32", "u32", "i64", "u64":
 		luaType := luaBasicTypeMap[prefix]
