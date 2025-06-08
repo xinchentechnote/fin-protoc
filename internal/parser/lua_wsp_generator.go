@@ -93,13 +93,15 @@ var luaBasicTypeMap = map[string]LuaType{
 
 // LuaWspGenerator implements Generator for lua bases wireshark plugin
 type LuaWspGenerator struct {
-	config *GeneratorConfig
+	config   *GeneratorConfig
+	binModel *model.BinaryModel
 }
 
 // NewLuaWspGenerator new
-func NewLuaWspGenerator(config *GeneratorConfig) *LuaWspGenerator {
+func NewLuaWspGenerator(config *GeneratorConfig, binModel *model.BinaryModel) *LuaWspGenerator {
 	return &LuaWspGenerator{
-		config: config,
+		config:   config,
+		binModel: binModel,
 	}
 }
 
@@ -145,7 +147,7 @@ end`, strcase.ToSnake(rootPacket.Name)))
 	//registry port
 	b.WriteString("local tcp_table = DissectorTable.get(\"tcp.port\")\n")
 	b.WriteString(fmt.Sprintf("tcp_table:add(%d, %s_proto)\n", 8080, strcase.ToSnake(rootPacket.Name)))
-	output[strcase.ToSnake(strcase.ToSnake(rootPacket.Name))+".lua"] = []byte(b.String())
+	output[strcase.ToSnake(rootPacket.Name)+".lua"] = []byte(b.String())
 	return output, nil
 }
 
