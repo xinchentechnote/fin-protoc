@@ -6,10 +6,27 @@ import (
 	"html/template"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/antlr4-go/antlr/v4"
 	gen "github.com/xinchentechnote/fin-protoc/internal/grammar"
 )
+
+// AndIndent4ln adds 4-space indent and a newline (similar to fmt.Println)
+func AndIndent4ln(s string) string {
+	return AddIndent4(s) + "\n"
+}
+
+// AddIndent4 add 4 Indent bydefault
+func AddIndent4(s string) string {
+	return AddIndent(s, 4)
+}
+
+// AddIndent add Indent
+func AddIndent(s string, spaces int) string {
+	indent := strings.Repeat(" ", spaces)
+	return indent + strings.ReplaceAll(s, "\n", "\n"+indent)
+}
 
 // ReadFileToString reads the content of a file and returns it as a string.
 func ReadFileToString(filename string) (string, error) {
