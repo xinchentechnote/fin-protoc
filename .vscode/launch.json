@@ -13,9 +13,9 @@
             "args": [
                 "compile",
                 "-f",
-                "/home/s0596/workspace/fin-proto-rs/sse-bianry/proto/sse_bin_v0.57.dsl",
+                "/home/s0596/workspace/fin-proto-rs/sample-binary/proto/sample_binary.dsl",
                 "-l",
-                "/home/s0596/workspace/fin-proto-rs/sse-binary/proto/"
+                "/home/s0596/workspace/fin-proto-rs/sample-binary/proto/"
             ]
         }
     ]
