@@ -16,10 +16,10 @@ packetDefinition:
 
 // Field definitions are either identifiers, metadata declarations, or match fields
 fieldDefinition:
-	REPEAT? inerObjectDeclaration	# InerObjectField
-	| REPEAT? metaDataDeclaration	# MetaField
-	| REPEAT? IDENTIFIER			# ObjectField
-	| matchFieldDeclaration			# MatchField;
+	REPEAT? inerObjectDeclaration COMMA?	# InerObjectField
+	| REPEAT? metaDataDeclaration			# MetaField
+	| REPEAT? IDENTIFIER COMMA?				# ObjectField
+	| matchFieldDeclaration COMMA?			# MatchField;
 
 // MetaData rule with declarations inside curly braces
 metaDataDefinition:

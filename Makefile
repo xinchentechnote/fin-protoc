@@ -13,8 +13,19 @@ UNAME_M := $(shell uname -m)
 # 默认目标
 all: build
 
+ifeq ($(OS),Windows_NT)
+    # Windows
+    ANTLR_JAR := $(subst \,/,${USERPROFILE})/software/antlr-4.13.2-complete.jar
+else
+    # Unix/Linux/Mac
+    ANTLR_JAR := ${HOME}/software/antlr-4.13.2-complete.jar
+endif
+
+gen: 
+	java -jar "$(ANTLR_JAR)" -Dlanguage=Go -no-listener -visitor -package gen -o internal grammar/PacketDsl.g4
+
 # 构建主程序和共享库
-build: dirs main-build shared-build
+build: gen dirs main-build shared-build
 # 仅构建主程序
 main-build:
 	go build -o $(BIN_DIR)/$(TARGET) ./cmd/
