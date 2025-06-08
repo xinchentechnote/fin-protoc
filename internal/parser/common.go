@@ -82,3 +82,20 @@ func RenderToString(tmpl string, lang string, data interface{}) (string, error) 
 
 	return buf.String(), nil
 }
+
+// WriteCodeToFile write code to file
+func WriteCodeToFile(path string, codeMap map[string][]byte) {
+	for name, datas := range codeMap {
+		filepath := path + "/" + name
+		f, err := os.Create(filepath)
+		if nil != err {
+			fmt.Println("create file fail.")
+		}
+		defer f.Close()
+		_, err = f.Write(datas)
+		if nil != err {
+			fmt.Println("write file fail.")
+		}
+		fmt.Println("Generated code for packet:", filepath)
+	}
+}
