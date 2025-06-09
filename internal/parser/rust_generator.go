@@ -103,9 +103,9 @@ func (g RustGenerator) generateStructCode(pkt *model.Packet) string {
 	//struct fields
 	for _, f := range pkt.Fields {
 		if f.IsRepeat {
-			b.WriteString(fmt.Sprintf("    pub %s: Vec<%s>,\n", GetFieldName(f), GetFieldType(structName, f)))
+			b.WriteString(AddIndent4ln(fmt.Sprintf("pub %s: Vec<%s>,", GetFieldName(f), GetFieldType(structName, f))))
 		} else {
-			b.WriteString(fmt.Sprintf("    pub %s: %s,\n", GetFieldName(f), GetFieldType(structName, f)))
+			b.WriteString(AddIndent4ln(fmt.Sprintf("pub %s: %s,", GetFieldName(f), GetFieldType(structName, f))))
 		}
 	}
 	b.WriteString("}\n\n")
@@ -115,34 +115,33 @@ func (g RustGenerator) generateStructCode(pkt *model.Packet) string {
 
 	// encode()
 	if len(pkt.Fields) == 0 {
-		b.WriteString("    fn encode(&self, _buf: &mut BytesMut) {\n")
+		b.WriteString(AddIndent4ln("fn encode(&self, _buf: &mut BytesMut) {"))
 	} else {
-		b.WriteString("    fn encode(&self, buf: &mut BytesMut) {\n")
+		b.WriteString(AddIndent4ln("fn encode(&self, buf: &mut BytesMut) {"))
 	}
 	for _, f := range pkt.Fields {
-		b.WriteString(fmt.Sprintf("        %s\n", g.EncodeField(structName, f)))
+		b.WriteString(AddIndent4ln(AddIndent4ln(g.EncodeField(structName, f))))
 	}
-	b.WriteString("    }\n\n")
+	b.WriteString(AddIndent4ln("}"))
 
 	// decode()
 	if len(pkt.Fields) == 0 {
-		b.WriteString(fmt.Sprintf("    fn decode(_buf: &mut Bytes) -> Option<%s> {\n", structName))
+		b.WriteString(AddIndent4ln(fmt.Sprintf("fn decode(_buf: &mut Bytes) -> Option<%s> {", structName)))
 	} else {
-		b.WriteString(fmt.Sprintf("    fn decode(buf: &mut Bytes) -> Option<%s> {\n", structName))
+		b.WriteString(AddIndent4ln(fmt.Sprintf("fn decode(buf: &mut Bytes) -> Option<%s> {", structName)))
 	}
 	for _, f := range pkt.Fields {
-		b.WriteString(fmt.Sprintf("        %s\n", g.DecodeField(structName, f)))
+		b.WriteString(AddIndent4ln(AddIndent4ln(g.DecodeField(structName, f))))
 	}
-	b.WriteString("        Some(Self {\n")
+	b.WriteString(AddIndent4ln(AddIndent4ln("Some(Self {")))
 	for _, f := range pkt.Fields {
-		b.WriteString(fmt.Sprintf("            %s,\n", GetFieldName(f)))
+		b.WriteString(AddIndent4ln(AddIndent4ln(AddIndent4ln(GetFieldName(f)))))
 	}
-	b.WriteString("        })\n")
-	b.WriteString("    }\n")
+	b.WriteString(AddIndent4ln(AddIndent4ln("})")))
+	b.WriteString(AddIndent4ln("}"))
 	b.WriteString("}\n")
 	b.WriteString("\n")
 
-	b.WriteString("\n")
 	b.WriteString(g.generateUnitTestCode(pkt))
 	return b.String()
 }
@@ -222,7 +221,7 @@ func EncoderMatchField(parentName string, f model.Field) string {
 			continue
 		}
 		pairs[pair.Value] = struct{}{}
-		b.WriteString(fmt.Sprintf("  %s%sEnum::%s(msg) => msg.encode(buf),\n", parentName, f.MatchType, pair.Value))
+		b.WriteString(AddIndent4ln(fmt.Sprintf("%s%sEnum::%s(msg) => msg.encode(buf),", parentName, f.MatchType, pair.Value)))
 	}
 	b.WriteString("}")
 	return b.String()
@@ -288,9 +287,9 @@ func DecodeMatchField(parentName string, f model.Field) string {
 			continue
 		}
 		pairs[key] = struct{}{}
-		b.WriteString(fmt.Sprintf("  %s => %s%sEnum::%s(%s::decode(buf)?),\n", key, parentName, f.MatchType, pair.Value, pair.Value))
+		b.WriteString(AddIndent4ln(fmt.Sprintf("%s => %s%sEnum::%s(%s::decode(buf)?),", key, parentName, f.MatchType, pair.Value, pair.Value)))
 	}
-	b.WriteString(" _ => return None,\n")
+	b.WriteString(AddIndent4ln("_ => return None,"))
 	b.WriteString("};")
 	return b.String()
 }
@@ -320,16 +319,16 @@ func (g RustGenerator) generateUnitTestCode(pkt *model.Packet) string {
 	var b strings.Builder
 
 	b.WriteString(fmt.Sprintf("#[cfg(test)]\nmod %s_tests {\n", strcase.ToSnake(pkt.Name)))
-	b.WriteString("    use super::*;\n")
-	b.WriteString("    use bytes::BytesMut;\n")
+	b.WriteString(AddIndent4ln("use super::*;"))
+	b.WriteString(AddIndent4ln("use bytes::BytesMut;"))
 
 	b.WriteString(g.generateUseCode(pkt) + "\n\n")
 
-	b.WriteString("    #[test]\n")
-	b.WriteString(fmt.Sprintf("    fn test_%s_codec() {\n", strcase.ToSnake(pkt.Name)))
+	b.WriteString(AddIndent4ln("#[test]"))
+	b.WriteString(AddIndent4ln(fmt.Sprintf("fn test_%s_codec() {", strcase.ToSnake(pkt.Name))))
 
 	// new instance
-	b.WriteString(fmt.Sprintf("        let original = %s {\n", strcase.ToCamel(pkt.Name)))
+	b.WriteString(AddIndent4ln(AddIndent4ln(fmt.Sprintf("let original = %s {", strcase.ToCamel(pkt.Name)))))
 	for _, f := range pkt.Fields {
 		if pkt.MatchFields[f.Name] != nil {
 			if len(f.MatchPairs) > 0 {
@@ -337,26 +336,26 @@ func (g RustGenerator) generateUnitTestCode(pkt *model.Packet) string {
 				if HasQuotes(key) {
 					key = fmt.Sprintf("%s.to_string()", key)
 				}
-				b.WriteString(fmt.Sprintf("            %s: %s,\n", strcase.ToSnake(f.Name), key))
-				b.WriteString(fmt.Sprintf("            %s: %s,\n", GetFieldName(f), g.TestValue(pkt.Name, f)))
+				b.WriteString(AddIndent4ln(AddIndent4ln(AddIndent4ln(fmt.Sprintf("%s: %s,\n", strcase.ToSnake(f.Name), key)))))
+				b.WriteString(AddIndent4ln(AddIndent4ln(AddIndent4ln(fmt.Sprintf("%s: %s,\n", GetFieldName(f), g.TestValue(pkt.Name, f))))))
 			}
 			continue
 		}
-		b.WriteString(fmt.Sprintf("            %s: %s,\n", GetFieldName(f), g.TestValue(pkt.Name, f)))
+		b.WriteString(AddIndent4ln(AddIndent4ln(AddIndent4ln(fmt.Sprintf("%s: %s,\n", GetFieldName(f), g.TestValue(pkt.Name, f))))))
 	}
-	b.WriteString("        };\n\n")
+	b.WriteString(AddIndent4ln(AddIndent4ln("};\n")))
 
 	// encoding
-	b.WriteString("        let mut buf = BytesMut::new();\n")
-	b.WriteString("        original.encode(&mut buf);\n")
-	b.WriteString("        let mut bytes = buf.freeze();\n\n")
+	b.WriteString(AddIndent4ln(AddIndent4ln("let mut buf = BytesMut::new();")))
+	b.WriteString(AddIndent4ln(AddIndent4ln("original.encode(&mut buf);")))
+	b.WriteString(AddIndent4ln(AddIndent4ln("let mut bytes = buf.freeze();\n")))
 
 	// decoding
-	b.WriteString(fmt.Sprintf("        let decoded = %s::decode(&mut bytes).unwrap();\n\n", strcase.ToCamel(pkt.Name)))
+	b.WriteString(AddIndent4ln(AddIndent4ln(fmt.Sprintf("let decoded = %s::decode(&mut bytes).unwrap();", strcase.ToCamel(pkt.Name)))))
 
 	// assertion
-	b.WriteString("        assert_eq!(original, decoded);\n")
-	b.WriteString("    }\n")
+	b.WriteString(AddIndent4ln(AddIndent4ln("assert_eq!(original, decoded);")))
+	b.WriteString(AddIndent4ln("}"))
 	b.WriteString("}\n")
 
 	return b.String()
