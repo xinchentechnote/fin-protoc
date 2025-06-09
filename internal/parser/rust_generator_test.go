@@ -266,7 +266,7 @@ func TestRustEncodeField(t *testing.T) {
 			name:     "string",
 			parent:   "Parent",
 			field:    model.Field{Name: "text", Type: "string"},
-			expected: "put_string(buf, &self.text);",
+			expected: "put_string::<u8>(buf, &self.text);",
 		},
 		{
 			name:     "primitive",
@@ -329,7 +329,7 @@ func TestRustDecodeField(t *testing.T) {
 			name:     "string",
 			parent:   "Parent",
 			field:    model.Field{Name: "text", Type: "string"},
-			expected: "let text = get_string(buf)?;",
+			expected: "let text = get_string::<u8>(buf)?;",
 		},
 		{
 			name:     "primitive",

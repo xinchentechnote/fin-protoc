@@ -28,10 +28,10 @@ func NewGeneratorConfig(options map[string]string) *GeneratorConfig {
 	}
 
 	// Override with provided options
-	if val, ok := options["ListLenPrefixLenType"]; ok {
+	if val, ok := options["RepeatPreFixSizeType"]; ok {
 		config.ListLenPrefixLenType = val
 	}
-	if val, ok := options["StringLenPrefixLenType"]; ok {
+	if val, ok := options["StringPreFixLenType"]; ok {
 		config.StringLenPrefixLenType = val
 	}
 	if val, ok := options["LittleEndian"]; ok {

@@ -180,20 +180,45 @@ func (g RustGenerator) EncodeField(parentName string, f model.Field) string {
 	name := strcase.ToSnake(f.Name)
 	if f.IsRepeat {
 		if f.GetType() == "string" {
+			if g.config.LittleEndian {
+				return fmt.Sprintf("put_string_list_le::<%s,%s>(buf, &self.%s);", g.config.ListLenPrefixLenType, g.config.StringLenPrefixLenType, name)
+			}
 			return fmt.Sprintf("put_string_list::<%s,%s>(buf, &self.%s);", g.config.ListLenPrefixLenType, g.config.StringLenPrefixLenType, name)
+		}
+		if f.InerObject != nil {
+			if g.config.LittleEndian {
+				return fmt.Sprintf("put_object_list_le::<%s,%s>(buf, &self.%s);", f.GetType(), g.config.ListLenPrefixLenType, name)
+			}
+			return fmt.Sprintf("put_object_list::<%s,%s>(buf, &self.%s);", f.GetType(), g.config.ListLenPrefixLenType, name)
+
+		}
+		if _, ok := g.binModel.PacketsMap[f.Name]; ok {
+			if g.config.LittleEndian {
+				return fmt.Sprintf("put_object_list_le::<%s,%s>(buf, &self.%s);", f.GetType(), g.config.ListLenPrefixLenType, name)
+			}
+			return fmt.Sprintf("put_object_list::<%s,%s>(buf, &self.%s);", f.GetType(), g.config.ListLenPrefixLenType, name)
 		}
 		size, ok := ParseCharArrayType(f.GetType())
 		if ok {
 			return fmt.Sprintf("put_fixed_string_list::<%s>(buf, &self.%s, %s);", g.config.ListLenPrefixLenType, name, size)
 		}
+		if g.config.LittleEndian {
+			return fmt.Sprintf("put_list_le::<%s,%s>(buf, &self.%s);", f.GetType(), g.config.ListLenPrefixLenType, name)
+		}
 		return fmt.Sprintf("put_list::<%s,%s>(buf, &self.%s);", f.GetType(), g.config.ListLenPrefixLenType, name)
 	}
 	switch f.GetType() {
 	case "string":
-		return fmt.Sprintf("put_%s(buf, &self.%s);", f.GetType(), name)
+		if g.config.LittleEndian {
+			return fmt.Sprintf("put_%s_le::<%s>(buf, &self.%s);", f.GetType(), g.config.StringLenPrefixLenType, name)
+		}
+		return fmt.Sprintf("put_%s::<%s>(buf, &self.%s);", f.GetType(), g.config.StringLenPrefixLenType, name)
 	case "char":
 		return fmt.Sprintf("put_%s(buf, self.%s);", f.GetType(), name)
 	case "u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64":
+		if g.config.LittleEndian {
+			return fmt.Sprintf("buf.put_%s_le(self.%s);", f.GetType(), name)
+		}
 		return fmt.Sprintf("buf.put_%s(self.%s);", f.GetType(), name)
 	case "match":
 		return EncoderMatchField(parentName, f)
@@ -232,18 +257,44 @@ func (g RustGenerator) DecodeField(parentName string, f model.Field) string {
 	name := strcase.ToSnake(f.Name)
 	if f.IsRepeat {
 		if f.GetType() == "string" {
+			if g.config.LittleEndian {
+				return fmt.Sprintf("let %s = get_string_list_le::<%s,%s>(buf)?;", name, g.config.ListLenPrefixLenType, g.config.StringLenPrefixLenType)
+			}
 			return fmt.Sprintf("let %s = get_string_list::<%s,%s>(buf)?;", name, g.config.ListLenPrefixLenType, g.config.StringLenPrefixLenType)
+		}
+		if f.InerObject != nil {
+			if g.config.LittleEndian {
+				return fmt.Sprintf("let %s = get_object_list_le::<%s,%s>(buf)?;", name, f.GetType(), g.config.ListLenPrefixLenType)
+			}
+			return fmt.Sprintf("let %s = get_object_list::<%s,%s>(buf)?;", name, f.GetType(), g.config.ListLenPrefixLenType)
+		}
+		if _, ok := g.binModel.PacketsMap[f.Name]; ok {
+			if g.config.LittleEndian {
+				return fmt.Sprintf("let %s = get_object_list_le::<%s,%s>(buf)?;", name, f.GetType(), g.config.ListLenPrefixLenType)
+			}
+			return fmt.Sprintf("let %s = get_object_list::<%s,%s>(buf)?;", name, f.GetType(), g.config.ListLenPrefixLenType)
 		}
 		size, ok := ParseCharArrayType(f.GetType())
 		if ok {
 			return fmt.Sprintf("let %s = get_fixed_string_list::<%s>(buf, %s)?;", name, g.config.ListLenPrefixLenType, size)
 		}
+		if g.config.LittleEndian {
+			return fmt.Sprintf("let %s = get_list_le::<%s,%s>(buf)?;", name, f.GetType(), g.config.ListLenPrefixLenType)
+		}
 		return fmt.Sprintf("let %s = get_list::<%s,%s>(buf)?;", name, f.GetType(), g.config.ListLenPrefixLenType)
 	}
 	switch f.GetType() {
-	case "string", "char":
+	case "string":
+		if g.config.LittleEndian {
+			return fmt.Sprintf("let %s = get_%s_le::<%s>(buf)?;", name, f.GetType(), g.config.StringLenPrefixLenType)
+		}
+		return fmt.Sprintf("let %s = get_%s::<%s>(buf)?;", name, f.GetType(), g.config.StringLenPrefixLenType)
+	case "char":
 		return fmt.Sprintf("let %s = get_%s(buf)?;", name, f.GetType())
 	case "u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64":
+		if g.config.LittleEndian {
+			return fmt.Sprintf("let %s = buf.get_%s_le();", name, f.GetType())
+		}
 		return fmt.Sprintf("let %s = buf.get_%s();", name, f.GetType())
 	case "match":
 		return DecodeMatchField(parentName, f)
