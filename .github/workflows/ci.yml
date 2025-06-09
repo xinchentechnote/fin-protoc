@@ -33,6 +33,8 @@ jobs:
         mkdir -p ~/software
         curl -o "$HOME/software/antlr-4.13.2-complete.jar" https://www.antlr.org/download/antlr-4.13.2-complete.jar
 
+    - name: Install gotest
+      run: go install github.com/rakyll/gotest@latest
 
     - name: Cache Go modules
       uses: actions/cache@v3
