@@ -285,7 +285,7 @@ func TestRustEncodeField(t *testing.T) {
 					{Value: "Value"},
 				},
 			},
-			expected: "match &self.match_field_body {\n  ParentTypeEnum::Value(msg) => msg.encode(buf),\n}",
+			expected: "match &self.match_field_body {\n    ParentTypeEnum::Value(msg) => msg.encode(buf),\n}",
 		},
 	}
 
@@ -349,8 +349,8 @@ func TestRustDecodeField(t *testing.T) {
 				},
 			},
 			expected: `let match_field_body = match match_field.as_str() {
-  "1" => ParentmatchFieldEnum::Value(Value::decode(buf)?),
- _ => return None,
+    "1" => ParentmatchFieldEnum::Value(Value::decode(buf)?),
+    _ => return None,
 };`,
 		},
 	}

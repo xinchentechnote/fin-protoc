@@ -34,7 +34,7 @@ func TestAndIndent4ln(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := AndIndent4ln(tt.input)
+			result := AddIndent4ln(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

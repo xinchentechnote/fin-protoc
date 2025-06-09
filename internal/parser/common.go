@@ -12,8 +12,8 @@ import (
 	gen "github.com/xinchentechnote/fin-protoc/internal/grammar"
 )
 
-// AndIndent4ln adds 4-space indent and a newline (similar to fmt.Println)
-func AndIndent4ln(s string) string {
+// AddIndent4ln adds 4-space indent and a newline (similar to fmt.Println)
+func AddIndent4ln(s string) string {
 	return AddIndent4(s) + "\n"
 }
 
