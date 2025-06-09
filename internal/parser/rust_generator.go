@@ -112,7 +112,7 @@ func (g RustGenerator) generateStructCode(pkt *model.Packet) string {
 
 	// impl BinaryCodec
 	b.WriteString(fmt.Sprintf("impl BinaryCodec for %s {\n", structName))
-
+	b.WriteString("\n")
 	// encode()
 	if len(pkt.Fields) == 0 {
 		b.WriteString(AddIndent4ln("fn encode(&self, _buf: &mut BytesMut) {"))
@@ -120,10 +120,10 @@ func (g RustGenerator) generateStructCode(pkt *model.Packet) string {
 		b.WriteString(AddIndent4ln("fn encode(&self, buf: &mut BytesMut) {"))
 	}
 	for _, f := range pkt.Fields {
-		b.WriteString(AddIndent4ln(AddIndent4ln(g.EncodeField(structName, f))))
+		b.WriteString(AddIndent4ln(AddIndent4(g.EncodeField(structName, f))))
 	}
 	b.WriteString(AddIndent4ln("}"))
-
+	b.WriteString("\n")
 	// decode()
 	if len(pkt.Fields) == 0 {
 		b.WriteString(AddIndent4ln(fmt.Sprintf("fn decode(_buf: &mut Bytes) -> Option<%s> {", structName)))
@@ -131,13 +131,13 @@ func (g RustGenerator) generateStructCode(pkt *model.Packet) string {
 		b.WriteString(AddIndent4ln(fmt.Sprintf("fn decode(buf: &mut Bytes) -> Option<%s> {", structName)))
 	}
 	for _, f := range pkt.Fields {
-		b.WriteString(AddIndent4ln(AddIndent4ln(g.DecodeField(structName, f))))
+		b.WriteString(AddIndent4ln(AddIndent4(g.DecodeField(structName, f))))
 	}
-	b.WriteString(AddIndent4ln(AddIndent4ln("Some(Self {")))
+	b.WriteString(AddIndent4ln(AddIndent4("Some(Self {")))
 	for _, f := range pkt.Fields {
-		b.WriteString(AddIndent4ln(AddIndent4ln(AddIndent4ln(GetFieldName(f)))))
+		b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(GetFieldName(f) + ","))))
 	}
-	b.WriteString(AddIndent4ln(AddIndent4ln("})")))
+	b.WriteString(AddIndent4ln(AddIndent4("})")))
 	b.WriteString(AddIndent4ln("}"))
 	b.WriteString("}\n")
 	b.WriteString("\n")
@@ -328,7 +328,7 @@ func (g RustGenerator) generateUnitTestCode(pkt *model.Packet) string {
 	b.WriteString(AddIndent4ln(fmt.Sprintf("fn test_%s_codec() {", strcase.ToSnake(pkt.Name))))
 
 	// new instance
-	b.WriteString(AddIndent4ln(AddIndent4ln(fmt.Sprintf("let original = %s {", strcase.ToCamel(pkt.Name)))))
+	b.WriteString(AddIndent4ln(AddIndent4(fmt.Sprintf("let original = %s {", strcase.ToCamel(pkt.Name)))))
 	for _, f := range pkt.Fields {
 		if pkt.MatchFields[f.Name] != nil {
 			if len(f.MatchPairs) > 0 {
@@ -336,33 +336,33 @@ func (g RustGenerator) generateUnitTestCode(pkt *model.Packet) string {
 				if HasQuotes(key) {
 					key = fmt.Sprintf("%s.to_string()", key)
 				}
-				b.WriteString(AddIndent4ln(AddIndent4ln(AddIndent4ln(fmt.Sprintf("%s: %s,\n", strcase.ToSnake(f.Name), key)))))
-				b.WriteString(AddIndent4ln(AddIndent4ln(AddIndent4ln(fmt.Sprintf("%s: %s,\n", GetFieldName(f), g.TestValue(pkt.Name, f))))))
+				b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", strcase.ToSnake(f.Name), key)))))
+				b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", GetFieldName(f), g.testValue(pkt.Name, f))))))
 			}
 			continue
 		}
-		b.WriteString(AddIndent4ln(AddIndent4ln(AddIndent4ln(fmt.Sprintf("%s: %s,\n", GetFieldName(f), g.TestValue(pkt.Name, f))))))
+		b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", GetFieldName(f), g.testValue(pkt.Name, f))))))
 	}
-	b.WriteString(AddIndent4ln(AddIndent4ln("};\n")))
+	b.WriteString(AddIndent4ln(AddIndent4("};\n")))
 
 	// encoding
-	b.WriteString(AddIndent4ln(AddIndent4ln("let mut buf = BytesMut::new();")))
-	b.WriteString(AddIndent4ln(AddIndent4ln("original.encode(&mut buf);")))
-	b.WriteString(AddIndent4ln(AddIndent4ln("let mut bytes = buf.freeze();\n")))
+	b.WriteString(AddIndent4ln(AddIndent4("let mut buf = BytesMut::new();")))
+	b.WriteString(AddIndent4ln(AddIndent4("original.encode(&mut buf);")))
+	b.WriteString(AddIndent4ln(AddIndent4("let mut bytes = buf.freeze();\n")))
 
 	// decoding
-	b.WriteString(AddIndent4ln(AddIndent4ln(fmt.Sprintf("let decoded = %s::decode(&mut bytes).unwrap();", strcase.ToCamel(pkt.Name)))))
+	b.WriteString(AddIndent4ln(AddIndent4(fmt.Sprintf("let decoded = %s::decode(&mut bytes).unwrap();", strcase.ToCamel(pkt.Name)))))
 
 	// assertion
-	b.WriteString(AddIndent4ln(AddIndent4ln("assert_eq!(original, decoded);")))
+	b.WriteString(AddIndent4ln(AddIndent4("assert_eq!(original, decoded);")))
 	b.WriteString(AddIndent4ln("}"))
 	b.WriteString("}\n")
 
 	return b.String()
 }
 
-// TestValue gen test value for deferent field type
-func (g RustGenerator) TestValue(parentName string, f model.Field) string {
+// testValue gen test value for deferent field type
+func (g RustGenerator) testValue(parentName string, f model.Field) string {
 	if f.IsRepeat {
 		return testValueList(f.GetType())
 	}
@@ -404,7 +404,7 @@ func (g RustGenerator) testValueSingle(parentName string, f model.Field) string 
 		// If it's a nested object, we need to create a default instance
 		var fieldValues []string
 		for _, subField := range f.InerObject.Fields {
-			fieldValues = append(fieldValues, fmt.Sprintf("%s: %s", strcase.ToSnake(subField.Name), g.TestValue(f.InerObject.Name, subField)))
+			fieldValues = append(fieldValues, fmt.Sprintf("%s: %s", strcase.ToSnake(subField.Name), g.testValue(f.InerObject.Name, subField)))
 		}
 		return fmt.Sprintf("%s{\n %s \n}", strcase.ToCamel(f.InerObject.Name), strings.Join(fieldValues, ",\n"))
 	}
@@ -452,7 +452,7 @@ func (g RustGenerator) testMatchValue(parentName string, f model.Field) string {
 	var innerFields []string
 	for _, subField := range subPacket.Fields {
 		innerFields = append(innerFields,
-			fmt.Sprintf("%s: %s", strcase.ToSnake(subField.Name), g.TestValue(parentName, subField)))
+			fmt.Sprintf("%s: %s", strcase.ToSnake(subField.Name), g.testValue(parentName, subField)))
 	}
 	return fmt.Sprintf("%s%sEnum::%s(%s { \n %s \n })",
 		parentName,
