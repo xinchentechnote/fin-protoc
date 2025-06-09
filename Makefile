@@ -73,7 +73,7 @@ run: build
 
 # 运行测试
 test:
-	go test -v -race -coverprofile=coverage.out ./...
+	gotest -v -race -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
 
 # 清理
