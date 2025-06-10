@@ -41,7 +41,14 @@ var formatCmd = &cobra.Command{
 			fmt.Println("Error formatting DSL:", err)
 			os.Exit(1)
 		}
-		fmt.Println(result)
+		if file != "" {
+			err := os.WriteFile(file, []byte(result), 0644)
+			if err != nil {
+				fmt.Println("Error Write formatted DSL:", err)
+			}
+		} else {
+			fmt.Println(result)
+		}
 	},
 }
 

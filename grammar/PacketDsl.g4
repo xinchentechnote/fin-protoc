@@ -115,6 +115,6 @@ IDENTIFIER: [a-zA-Z_][a-zA-Z_0-9]*;
 
 STRING_LITERAL: '`' (~'`' | '\r' | '\n')* '`';
 
-LINE_COMMENT: '//' ~[\r\n]* -> skip;
+LINE_COMMENT: '//' ~[\r\n]* -> channel(HIDDEN);
 // Skip whitespace (spaces, tabs, newlines)
 WS: [ \t\r\n]+ -> skip;
