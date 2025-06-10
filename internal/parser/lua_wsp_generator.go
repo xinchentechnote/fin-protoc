@@ -182,15 +182,7 @@ func (g LuaWspGenerator) generateSubDissector(parentName string, pkt model.Packe
 	if len(pkt.Fields) > 0 {
 		for _, f := range pkt.Fields {
 			if isMatchField(f, pkt) && f.GetType() != "match" {
-				luaType, ok := luaBasicTypeMap[f.GetType()]
-				if !ok {
-					return "-- unsupported numeric type: " + f.GetType() + "\n"
-				}
-				decodeName := luaType.Be
-				if g.config.LittleEndian {
-					decodeName = luaType.Le
-				}
-				b.WriteString(AddIndent4ln(fmt.Sprintf("local %s = buf(offset, %d):%s()", strcase.ToSnake(f.Name), luaType.Size, decodeName)))
+				b.WriteString(AddIndent4ln(g.decodeFieldForLocal(f)))
 			}
 			if f.IsRepeat {
 				b.WriteString(AddIndent4ln(g.decodeList("subtree", pkt, f)))
@@ -221,15 +213,7 @@ func (g LuaWspGenerator) generateMainDissector(rootPacket model.Packet) string {
 	b.WriteString(AddIndent4ln("local offset = 0"))
 	for _, f := range rootPacket.Fields {
 		if isMatchField(f, rootPacket) && f.GetType() != "match" {
-			luaType, ok := luaBasicTypeMap[f.GetType()]
-			if !ok {
-				return "-- unsupported numeric type: " + f.GetType() + "\n"
-			}
-			decodeName := luaType.Be
-			if g.config.LittleEndian {
-				decodeName = luaType.Le
-			}
-			b.WriteString(AddIndent4ln(fmt.Sprintf("local %s = buf(offset, %d):%s()", strcase.ToSnake(f.Name), luaType.Size, decodeName)))
+			b.WriteString(AddIndent4ln(g.decodeFieldForLocal(f)))
 		}
 		if f.IsRepeat {
 			b.WriteString(AddIndent4ln(g.decodeList("tree", rootPacket, f)))
@@ -308,6 +292,39 @@ func (g LuaWspGenerator) decodeStringLen(treeName string, p model.Packet, f mode
 		return code
 	default:
 		return "-- unsupported numeric type: " + f.GetType()
+	}
+}
+
+func (g LuaWspGenerator) decodeFieldForLocal(f model.Field) string {
+	switch f.GetType() {
+	case "i8", "u8", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64", "char":
+		luaType, ok := luaBasicTypeMap[f.GetType()]
+		if !ok {
+			return "-- unsupported numeric type: " + f.GetType() + "\n"
+		}
+		decodeName := luaType.Be
+		if g.config.LittleEndian {
+			decodeName = luaType.Le
+		}
+		return fmt.Sprintf("local %s = buf(offset, %d):%s()", strcase.ToSnake(f.Name), luaType.Size, decodeName)
+	case "string":
+		luaType, ok := luaBasicTypeMap[g.config.StringLenPrefixLenType]
+		if !ok {
+			return "-- unsupported numeric type: " + f.GetType() + "\n"
+		}
+		decodeName := luaType.Be
+		if g.config.LittleEndian {
+			decodeName = luaType.Le
+		}
+		var b strings.Builder
+		b.WriteString(fmt.Sprintf("local _len = buf(offset, %d):%s()", luaType.Size, decodeName) + "\n")
+		b.WriteString(fmt.Sprintf("local %s = buf(offset, _len):string()", strcase.ToSnake(f.Name)))
+		return b.String()
+	default:
+		if size, ok := ParseCharArrayType(f.GetType()); ok {
+			return fmt.Sprintf("local %s = buf(offset, %s):string()", strcase.ToSnake(f.Name), size)
+		}
+		return "-- unsupported type: " + f.GetType() + "\n"
 	}
 }
 
