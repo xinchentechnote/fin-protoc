@@ -10,7 +10,7 @@ import (
 // ParseFile parses a DSL file and returns a slice of Packet models or an error.
 func ParseFile(filename string) (interface{}, error) {
 	// Create a new parser by reading the file
-	parser, err := NewPacketDslParserByFile(filename)
+	parser, _, err := NewPacketDslParserByFile(filename)
 	if err != nil {
 		return nil, err
 	}

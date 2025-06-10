@@ -4,33 +4,36 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/antlr4-go/antlr/v4"
 	gen "github.com/xinchentechnote/fin-protoc/internal/grammar"
 )
 
 // FormatPacketDsl formats the packet DSL string.
 func FormatPacketDsl(dsl string) (string, error) {
 	// 创建一个新的语法分析器
-	parser, err := NewPacketDslParserByContent(dsl)
+	parser, stream, err := NewPacketDslParserByContent(dsl)
 	if err != nil {
 		return "", fmt.Errorf("could not create parser: %v", err)
 	}
 	// 设置语法规则，开始解析
 	tree := parser.Packet()
-	formattor := NewPacketDslFormattor()
+	formattor := NewPacketDslFormattor(stream)
 	formattedDsl := tree.Accept(formattor).(string)
 	return strings.TrimSpace(formattedDsl), nil
 }
 
 // NewPacketDslFormattor creates a new instance of PacketDslFormattor.
-func NewPacketDslFormattor() *PacketDslFormattor {
+func NewPacketDslFormattor(tokenStream *antlr.CommonTokenStream) *PacketDslFormattor {
 	return &PacketDslFormattor{
 		BasePacketDslVisitor: &gen.BasePacketDslVisitor{},
+		tokenStream:          tokenStream,
 	}
 }
 
 // PacketDslFormattor is a visitor for formatting packet DSL.
 type PacketDslFormattor struct {
 	*gen.BasePacketDslVisitor
+	tokenStream *antlr.CommonTokenStream
 }
 
 // VisitPacket overrides the default implementation for protocol definitions.
