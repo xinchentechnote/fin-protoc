@@ -55,12 +55,12 @@ func TestVisitMetaDataDeclaration(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			p, err := parser.NewPacketDslParserByContent(tc.input)
+			p, stream, err := parser.NewPacketDslParserByContent(tc.input)
 			if err != nil {
 				t.Fatalf("构造 MetaDataDeclarationContext 失败: %v", err)
 			}
 
-			formatter := parser.NewPacketDslFormattor()
+			formatter := parser.NewPacketDslFormattor(stream)
 			got := formatter.VisitMetaDataDeclaration(p.MetaDataDeclaration().(*gen.MetaDataDeclarationContext)).(string)
 			got = strings.TrimSpace(got)
 			expected := strings.TrimSpace(tc.expected)
@@ -81,12 +81,12 @@ MetaData SampleMeta {
 }
 `
 	// 1. 构造上下文
-	p, err := parser.NewPacketDslParserByContent(input)
+	p, stream, err := parser.NewPacketDslParserByContent(input)
 	if err != nil {
 		t.Fatalf("构造 MetaDataDefinitionContext 时出错: %v", err)
 	}
 
-	formatter := parser.NewPacketDslFormattor()
+	formatter := parser.NewPacketDslFormattor(stream)
 	got := formatter.VisitMetaDataDefinition(p.MetaDataDefinition().(*gen.MetaDataDefinitionContext)).(string)
 
 	expected := `MetaData SampleMeta {
@@ -110,11 +110,11 @@ match category  {
     10 : Val10
 }
 `
-	p, err := parser.NewPacketDslParserByContent(input)
+	p, stream, err := parser.NewPacketDslParserByContent(input)
 	if err != nil {
 		t.Fatalf("构造 MatchFieldContext 失败: %v", err)
 	}
-	formatter := parser.NewPacketDslFormattor()
+	formatter := parser.NewPacketDslFormattor(stream)
 	got := formatter.VisitMatchFieldDeclaration(p.MatchFieldDeclaration().(*gen.MatchFieldDeclarationContext)).(string)
 
 	expected := `match category {

@@ -180,7 +180,7 @@ func TestNewPacketDslParserByFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			parser, err := NewPacketDslParserByFile(tt.filename)
+			parser, _, err := NewPacketDslParserByFile(tt.filename)
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.Nil(t, parser)
@@ -212,7 +212,7 @@ func TestNewPacketDslParserByContent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			parser, err := NewPacketDslParserByContent(tt.content)
+			parser, _, err := NewPacketDslParserByContent(tt.content)
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.Nil(t, parser)

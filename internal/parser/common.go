@@ -38,16 +38,16 @@ func ReadFileToString(filename string) (string, error) {
 }
 
 // NewPacketDslParserByFile creates a new PacketDslParser instance from a file.
-func NewPacketDslParserByFile(filename string) (*gen.PacketDslParser, error) {
+func NewPacketDslParserByFile(filename string) (*gen.PacketDslParser, *antlr.CommonTokenStream, error) {
 	data, err := ReadFileToString(filename)
 	if err != nil {
-		return nil, fmt.Errorf("could not read file: %v", err)
+		return nil, nil, fmt.Errorf("could not read file: %v", err)
 	}
 	return NewPacketDslParserByContent(data)
 }
 
 // NewPacketDslParserByContent creates a new PacketDslParser instance from a string.
-func NewPacketDslParserByContent(data string) (*gen.PacketDslParser, error) {
+func NewPacketDslParserByContent(data string) (*gen.PacketDslParser, *antlr.CommonTokenStream, error) {
 	// 创建一个新的输入流
 	input := antlr.NewInputStream(string(data))
 
@@ -57,7 +57,7 @@ func NewPacketDslParserByContent(data string) (*gen.PacketDslParser, error) {
 
 	// 创建一个新的语法分析器
 	parser := gen.NewPacketDslParser(stream)
-	return parser, nil
+	return parser, stream, nil
 }
 
 // ParseCharArrayType parse char[\d]
