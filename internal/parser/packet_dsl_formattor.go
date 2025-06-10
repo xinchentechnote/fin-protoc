@@ -27,41 +27,90 @@ func NewPacketDslFormattor(tokenStream *antlr.CommonTokenStream) *PacketDslForma
 	return &PacketDslFormattor{
 		BasePacketDslVisitor: &gen.BasePacketDslVisitor{},
 		tokenStream:          tokenStream,
+		lineComments:         make(map[antlr.Token]struct{}),
 	}
 }
 
 // PacketDslFormattor is a visitor for formatting packet DSL.
 type PacketDslFormattor struct {
 	*gen.BasePacketDslVisitor
-	tokenStream *antlr.CommonTokenStream
+	tokenStream  *antlr.CommonTokenStream
+	lineComments map[antlr.Token]struct{}
+}
+
+func (v *PacketDslFormattor) getHiddenLeft(tokenIndex int) string {
+	hidden := v.tokenStream.GetHiddenTokensToLeft(tokenIndex, antlr.TokenHiddenChannel)
+	if hidden == nil {
+		return ""
+	}
+	var sb strings.Builder
+	for _, t := range hidden {
+		if t.GetTokenType() == gen.PacketDslParserLINE_COMMENT {
+			if _, ok := v.lineComments[t]; ok {
+				continue
+			}
+			v.lineComments[t] = struct{}{}
+			sb.WriteString(t.GetText())
+			sb.WriteString("\n")
+		}
+	}
+	return sb.String()
+}
+
+func (v *PacketDslFormattor) getHiddenRight(tokenIndex int) string {
+	hidden := v.tokenStream.GetHiddenTokensToRight(tokenIndex, antlr.TokenHiddenChannel)
+	if hidden == nil {
+		return ""
+	}
+	var sb strings.Builder
+	for _, t := range hidden {
+		if t.GetTokenType() == gen.PacketDslParserLINE_COMMENT {
+			if _, ok := v.lineComments[t]; ok {
+				continue
+			}
+			v.lineComments[t] = struct{}{}
+			sb.WriteString(t.GetText())
+			sb.WriteString("\n")
+		}
+	}
+	return strings.TrimSpace(sb.String())
 }
 
 // VisitPacket overrides the default implementation for protocol definitions.
 func (v *PacketDslFormattor) VisitPacket(ctx *gen.PacketContext) interface{} {
-	formattedDsl := ""
+	var formattedDsl strings.Builder
+	formattedDsl.WriteString(v.getHiddenLeft(ctx.GetStart().GetTokenIndex()))
 	childrens := ctx.GetChildren()
 	if len(childrens) != 0 {
-		for _, children := range childrens {
-			switch c := children.(type) {
+		for idx, child := range childrens {
+			switch c := child.(type) {
 			case *gen.PacketDefinitionContext:
-				formattedDsl += v.VisitPacketDefinition(c).(string)
+				formattedDsl.WriteString(v.VisitPacketDefinition(c).(string))
 			case *gen.MetaDataDefinitionContext:
-				formattedDsl += v.VisitMetaDataDefinition(c).(string)
+				formattedDsl.WriteString(v.VisitMetaDataDefinition(c).(string))
 			case *gen.OptionDefinitionContext:
-				formattedDsl += v.VisitOptionDefinition(c).(string)
+				formattedDsl.WriteString(v.VisitOptionDefinition(c).(string))
 			default:
-				formattedDsl += "error"
+				if termNode, ok := child.(antlr.TerminalNode); ok {
+					formattedDsl.WriteString(v.VisitTerminal(termNode).(string))
+				} else {
+					text := fmt.Sprint(child)
+					formattedDsl.WriteString(text)
+				}
 			}
-			formattedDsl += "\n\n"
+			if idx < len(childrens)-1 {
+				formattedDsl.WriteString("\n\n")
+			}
 		}
 	}
-	return formattedDsl
+	formattedDsl.WriteString(v.getHiddenRight(ctx.GetStop().GetTokenIndex()))
+	return formattedDsl.String()
 }
 
 // VisitPacketDefinition overrides the default implementation for packet definitions.
 func (v *PacketDslFormattor) VisitPacketDefinition(ctx *gen.PacketDefinitionContext) interface{} {
 	var formattedDsl strings.Builder
-
+	formattedDsl.WriteString(v.getHiddenLeft(ctx.GetStart().GetTokenIndex()))
 	// 判断是否有 root 修饰符
 	if ctx.ROOT() != nil {
 		formattedDsl.WriteString("root ")
@@ -78,33 +127,38 @@ func (v *PacketDslFormattor) VisitPacketDefinition(ctx *gen.PacketDefinitionCont
 		formattedDsl.WriteString("    " + formatted + "\n")
 	}
 	formattedDsl.WriteString("}")
+	formattedDsl.WriteString(v.getHiddenRight(ctx.GetStop().GetTokenIndex()))
 	return formattedDsl.String()
 }
 
 // VisitOptionDefinition overrides the default implementation for option definitions.
 func (v *PacketDslFormattor) VisitOptionDefinition(ctx *gen.OptionDefinitionContext) interface{} {
-	var sb strings.Builder
+	var formattedDsl strings.Builder
+	formattedDsl.WriteString(v.getHiddenLeft(ctx.GetStart().GetTokenIndex()))
 	// 处理 option 声明
-	sb.WriteString("options {\n")
+	formattedDsl.WriteString("options {\n")
 	for _, decl := range ctx.AllOptionDeclaration() {
 		if d, ok := decl.(*gen.OptionDeclarationContext); ok {
-			sb.WriteString("\t" + v.VisitOptionDeclaration(d).(string) + "\n")
+			formattedDsl.WriteString("\t" + v.VisitOptionDeclaration(d).(string) + "\n")
 		}
 	}
-	sb.WriteString("}")
-	return sb.String()
+	formattedDsl.WriteString("}")
+	formattedDsl.WriteString(v.getHiddenRight(ctx.GetStop().GetTokenIndex()))
+	return formattedDsl.String()
 }
 
 // VisitOptionDeclaration overrides the default implementation for option declarations.
 func (v *PacketDslFormattor) VisitOptionDeclaration(ctx *gen.OptionDeclarationContext) interface{} {
-	var sb strings.Builder
+	var formattedDsl strings.Builder
+	formattedDsl.WriteString(v.getHiddenLeft(ctx.GetStart().GetTokenIndex()))
 	optionName := ctx.IDENTIFIER().GetText()
 	optionValue := ctx.Value().GetText()
-	sb.WriteString(fmt.Sprintf("%s = %s", optionName, optionValue))
+	formattedDsl.WriteString(fmt.Sprintf("%s = %s", optionName, optionValue))
 	if ctx.SEMICOLON() != nil {
-		sb.WriteString(";")
+		formattedDsl.WriteString(";")
 	}
-	return sb.String()
+	formattedDsl.WriteString(v.getHiddenRight(ctx.GetStop().GetTokenIndex()))
+	return formattedDsl.String()
 }
 
 // VisitFieldDefinition overrides the default implementation for field definitions.
@@ -133,48 +187,51 @@ func (v *PacketDslFormattor) VisitFieldDefinition(ctx interface{}) interface{} {
 
 // VisitInerObjectField overrides the default implementation for inner object fields.
 func (v *PacketDslFormattor) VisitInerObjectField(ctx *gen.InerObjectFieldContext) interface{} {
-	var sb strings.Builder
+	var formattedDsl strings.Builder
+	formattedDsl.WriteString(v.getHiddenLeft(ctx.GetStart().GetTokenIndex()))
 	inerObjectDeclaration := ctx.InerObjectDeclaration()
 	if ctx.REPEAT() != nil {
-		sb.WriteString("repeat ")
+		formattedDsl.WriteString("repeat ")
 	}
 	if nil != inerObjectDeclaration.IDENTIFIER() {
-		sb.WriteString(inerObjectDeclaration.IDENTIFIER().GetText() + " ")
+		formattedDsl.WriteString(inerObjectDeclaration.IDENTIFIER().GetText() + " ")
 	}
-	sb.WriteString("{\n")
+	formattedDsl.WriteString("{\n")
 
 	// 遍历所有字段声明
 	for _, decl := range inerObjectDeclaration.AllFieldDefinition() {
 		result := v.VisitFieldDefinition(decl).(string)
-		sb.WriteString("\t\t" + result + "\n")
+		formattedDsl.WriteString("\t\t" + result + "\n")
 	}
 
-	sb.WriteString("\t}")
-	return sb.String()
+	formattedDsl.WriteString("\t}")
+	formattedDsl.WriteString(v.getHiddenRight(ctx.GetStop().GetTokenIndex()))
+	return formattedDsl.String()
 }
 
 // VisitMetaDataDefinition overrides the default implementation for metadata definitions.
 func (v *PacketDslFormattor) VisitMetaDataDefinition(ctx *gen.MetaDataDefinitionContext) interface{} {
-	var sb strings.Builder
-
-	// 获取 MetaData 名称
+	var formattedDsl strings.Builder
+	formattedDsl.WriteString(v.getHiddenLeft(ctx.GetStart().GetTokenIndex()))
 	metaName := ctx.IDENTIFIER().GetText()
-	sb.WriteString(fmt.Sprintf("MetaData %s {\n", metaName))
+	formattedDsl.WriteString(fmt.Sprintf("MetaData %s {\n", metaName))
 
-	// 遍历所有 metaDataDeclaration 子节点
 	for _, decl := range ctx.AllMetaDataDeclaration() {
 		if d, ok := decl.(*gen.MetaDataDeclarationContext); ok {
 			result := v.VisitMetaDataDeclaration(d).(string)
-			sb.WriteString("\t" + result + "\n")
+			formattedDsl.WriteString("\t" + result + "\n")
 		}
 	}
 
-	sb.WriteString("}")
-	return sb.String()
+	formattedDsl.WriteString("}")
+	formattedDsl.WriteString(v.getHiddenRight(ctx.GetStop().GetTokenIndex()))
+	return formattedDsl.String()
 }
 
 // VisitMetaDataDeclaration for visiting metadata declarations.
 func (v *PacketDslFormattor) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclarationContext) interface{} {
+	var formattedDsl strings.Builder
+	formattedDsl.WriteString(v.getHiddenLeft(ctx.GetStart().GetTokenIndex()))
 	typeName := ""
 	if ctx.Type_() != nil {
 		typeName = ctx.Type_().GetText()
@@ -184,24 +241,20 @@ func (v *PacketDslFormattor) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclarati
 	if ctx.STRING_LITERAL() != nil {
 		description = ctx.STRING_LITERAL().GetText()
 	}
-	formattedDsl := fmt.Sprintf("%s %s %s", typeName, fieldName, description)
+	formattedDsl.WriteString(strings.TrimSpace(fmt.Sprintf("%s %s %s", typeName, fieldName, description)))
 	if ctx.COMMA() != nil {
-		formattedDsl = strings.TrimSpace(formattedDsl) + ","
+		formattedDsl.WriteString(",")
 	}
-	return formattedDsl
-}
-
-// VisitType for visiting type definitions.
-func (v *PacketDslFormattor) VisitType(ctx *gen.TypeContext) interface{} {
-	fmt.Println("Visiting Type")
-	return nil
+	formattedDsl.WriteString(v.getHiddenRight(ctx.GetStop().GetTokenIndex()))
+	return formattedDsl.String()
 }
 
 // VisitMatchFieldDeclaration for visiting match fields.
 func (v *PacketDslFormattor) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDeclarationContext) interface{} {
 	fieldName := ctx.IDENTIFIER().GetText()
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("match %s {\n", fieldName))
+	var formattedDsl strings.Builder
+	formattedDsl.WriteString(v.getHiddenLeft(ctx.GetStart().GetTokenIndex()))
+	formattedDsl.WriteString(fmt.Sprintf("match %s {\n", fieldName))
 	for _, pairCtx := range ctx.AllMatchPair() {
 		key := ""
 		// 处理 STRING / number / list
@@ -225,8 +278,20 @@ func (v *PacketDslFormattor) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDecla
 		if pairCtx.COMMA() != nil {
 			value = strings.TrimSpace(value) + ","
 		}
-		sb.WriteString(fmt.Sprintf("\t\t%s : %s\n", key, value))
+		formattedDsl.WriteString(fmt.Sprintf("\t\t%s : %s\n", key, value))
 	}
-	sb.WriteString("\t}")
-	return sb.String()
+	formattedDsl.WriteString("\t}")
+	formattedDsl.WriteString(v.getHiddenRight(ctx.GetStop().GetTokenIndex()))
+	return formattedDsl.String()
+}
+
+// VisitTerminal Visit Terminal
+func (v *PacketDslFormattor) VisitTerminal(node antlr.TerminalNode) interface{} {
+	token := node.GetSymbol()
+	switch token.GetTokenType() {
+	case gen.PacketDslParserLINE_COMMENT:
+		return token.GetText()
+	default:
+		return token.GetText()
+	}
 }
