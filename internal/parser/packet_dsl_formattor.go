@@ -74,7 +74,7 @@ func (v *PacketDslFormattor) getHiddenRight(token antlr.Token) string {
 			sb.WriteString("\n")
 		}
 	}
-	return sb.String()
+	return strings.TrimRight(sb.String(), "\n")
 }
 
 // VisitPacket overrides the default implementation for protocol definitions.
@@ -250,7 +250,10 @@ func (v *PacketDslFormattor) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclarati
 	if ctx.COMMA() != nil {
 		formattedDsl.WriteString(",")
 	}
-	formattedDsl.WriteString(v.getHiddenRight(ctx.GetStop()))
+	lineComment := v.getHiddenRight(ctx.GetStop())
+	if lineComment != "" {
+		formattedDsl.WriteString("\n" + lineComment)
+	}
 	return formattedDsl.String()
 }
 
