@@ -50,9 +50,6 @@ func (v *PacketDslFormattor) getHiddenLeft(token antlr.Token) string {
 				continue
 			}
 			v.lineComments[t] = struct{}{}
-			if token.GetLine() != t.GetLine() {
-				sb.WriteString("\n")
-			}
 			sb.WriteString(t.GetText())
 			sb.WriteString("\n")
 		}
@@ -72,14 +69,12 @@ func (v *PacketDslFormattor) getHiddenRight(token antlr.Token) string {
 				continue
 			}
 			v.lineComments[t] = struct{}{}
-			if token.GetLine() != t.GetLine() {
-				sb.WriteString("\n")
-			}
+
 			sb.WriteString(t.GetText())
 			sb.WriteString("\n")
 		}
 	}
-	return strings.TrimSpace(sb.String())
+	return sb.String()
 }
 
 // VisitPacket overrides the default implementation for protocol definitions.
@@ -266,7 +261,10 @@ func (v *PacketDslFormattor) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDecla
 	formattedDsl.WriteString(v.getHiddenLeft(ctx.GetStart()))
 	formattedDsl.WriteString(fmt.Sprintf("match %s {\n", fieldName))
 	for _, pairCtx := range ctx.AllMatchPair() {
-		// formattedDsl.WriteString(AddIndent4(v.getHiddenLeft(pairCtx.GetStart())))
+		lineComment := strings.TrimRight(v.getHiddenLeft(pairCtx.GetStart()), "\n")
+		if lineComment != "" {
+			formattedDsl.WriteString(AddIndent4ln(lineComment))
+		}
 		key := ""
 		// 处理 STRING / number / list
 		switch {
@@ -290,7 +288,10 @@ func (v *PacketDslFormattor) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDecla
 			value = strings.TrimSpace(value) + ","
 		}
 		formattedDsl.WriteString(AddIndent4ln(fmt.Sprintf("%s : %s", key, value)))
-		// formattedDsl.WriteString(AddIndent4(v.getHiddenRight(pairCtx.GetStop())))
+		lineComment = strings.TrimRight(v.getHiddenRight(pairCtx.GetStop()), "\n")
+		if lineComment != "" {
+			formattedDsl.WriteString(AddIndent4ln(lineComment))
+		}
 	}
 	formattedDsl.WriteString("}")
 	formattedDsl.WriteString(v.getHiddenRight(ctx.GetStop()))
