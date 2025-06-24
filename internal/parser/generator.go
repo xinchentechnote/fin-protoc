@@ -15,6 +15,8 @@ type Generator interface {
 type GeneratorConfig struct {
 	ListLenPrefixLenType   string //default u16
 	StringLenPrefixLenType string //default u16
+	JavaPackage            string //default empty
+	GoPackage              string //default empty
 	LittleEndian           bool   //default false
 }
 
@@ -24,6 +26,8 @@ func NewGeneratorConfig(options map[string]string) *GeneratorConfig {
 		// Set defaults first
 		ListLenPrefixLenType:   "u16",
 		StringLenPrefixLenType: "u16",
+		JavaPackage:            "",
+		GoPackage:              "",
 		LittleEndian:           false,
 	}
 
@@ -33,6 +37,12 @@ func NewGeneratorConfig(options map[string]string) *GeneratorConfig {
 	}
 	if val, ok := options["StringPreFixLenType"]; ok {
 		config.StringLenPrefixLenType = val
+	}
+	if val, ok := options["JavaPackage"]; ok {
+		config.JavaPackage = val
+	}
+	if val, ok := options["GoPackage"]; ok {
+		config.GoPackage = val
 	}
 	if val, ok := options["LittleEndian"]; ok {
 		config.LittleEndian = strings.ToLower(val) == "true"

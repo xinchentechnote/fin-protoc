@@ -29,13 +29,6 @@ func FormatPacketDslExport(dsl *C.char) *C.char {
 	return C.CString(formatted)
 }
 
-// CompilePacketDslExport export for c
-//
-//export CompilePacketDslExport
-func CompilePacketDslExport(imput *C.char) {
-	Compile(C.GoString(imput), C.GoString(imput), C.GoString(imput))
-}
-
 func main() {
 	Execute()
 }

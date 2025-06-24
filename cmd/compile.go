@@ -10,9 +10,13 @@ import (
 
 var luaOutput string
 var rsOutput string
+var goOutput string
+var javaOutput string
+var pyOutput string
+var cppOutput string
 
 // Compile DSL to rust, lua base wireshark plugin and so on.
-func Compile(input string, luaPath string, rsPath string) {
+func Compile(input string, luaPath string, rsPath string, goOutput string, javaOutput string, pyOutput string, cppOutput string) {
 	// parse DSL file
 	result, _ := parser.ParseFile(file)
 	binModel := result.(*model.BinaryModel)
@@ -35,19 +39,32 @@ func Compile(input string, luaPath string, rsPath string) {
 		}
 		parser.WriteCodeToFile(rsPath, codeMap)
 	}
+	if javaOutput != "" {
+		// generate code for java
+		javaGen := parser.NewJavaGenerator(config, binModel)
+		codeMap, err := javaGen.Generate(binModel)
+		if nil != err {
+			fmt.Println("gen java code err.")
+		}
+		parser.WriteCodeToFile(javaOutput, codeMap)
+	}
 }
 
 var compileCmd = &cobra.Command{
 	Use:   "compile",
 	Short: "Compile DSL into Rust code",
 	Run: func(cmd *cobra.Command, args []string) {
-		Compile(file, luaOutput, rsOutput)
+		Compile(file, luaOutput, rsOutput, goOutput, javaOutput, pyOutput, cppOutput)
 	},
 }
 
 func init() {
 	compileCmd.Flags().StringVarP(&file, "file", "f", "", "Path to the DSL file")
-	compileCmd.Flags().StringVarP(&rsOutput, "rs_output", "r", "", "output path")
-	compileCmd.Flags().StringVarP(&luaOutput, "lua_output", "l", "", "output path")
+	compileCmd.Flags().StringVarP(&rsOutput, "rs_output", "r", "", "rust output path")
+	compileCmd.Flags().StringVarP(&luaOutput, "lua_output", "l", "", "lua output path")
+	compileCmd.Flags().StringVarP(&javaOutput, "java_output", "j", "", "java output path")
+	compileCmd.Flags().StringVarP(&goOutput, "go_output", "g", "", "go output path")
+	compileCmd.Flags().StringVarP(&cppOutput, "cpp_output", "c", "", "cpp output path")
+	compileCmd.Flags().StringVarP(&pyOutput, "py_output", "p", "", "python output path")
 	rootCmd.AddCommand(compileCmd)
 }

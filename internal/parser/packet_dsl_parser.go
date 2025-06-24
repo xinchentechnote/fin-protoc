@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"strings"
 
 	gen "github.com/xinchentechnote/fin-protoc/internal/grammar"
 	"github.com/xinchentechnote/fin-protoc/internal/model"
@@ -63,6 +64,9 @@ func (v *PacketDslVisitorImpl) VisitPacket(ctx *gen.PacketContext) interface{} {
 		for _, option := range optionDefinition.AllOptionDeclaration() {
 			name := option.IDENTIFIER().GetText()
 			value := option.Value().GetText()
+			if option.Value().STRING() != nil {
+				value = strings.Trim(value, "\"")
+			}
 			// Store option in the map
 			v.BinModel.AddOption(name, value)
 		}
