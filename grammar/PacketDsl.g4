@@ -92,7 +92,7 @@ FLOAT64 options {
 
 DIGITS: [0-9]+;
 
-STRING: '"' (~["\\\r\n])* '"';
+STRING: '"' ( ~["\\\r\n] | '\\' .)* '"';
 
 // Root and Packet keywords
 ROOT: 'root';

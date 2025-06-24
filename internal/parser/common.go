@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"os"
+	filepathpkg "path/filepath"
 	"regexp"
 	"strings"
 
@@ -87,6 +88,11 @@ func RenderToString(tmpl string, lang string, data interface{}) (string, error) 
 func WriteCodeToFile(path string, codeMap map[string][]byte) {
 	for name, datas := range codeMap {
 		filepath := path + "/" + name
+		dir := filepathpkg.Dir(filepath)
+		err := os.MkdirAll(dir, 0755)
+		if nil != err {
+			fmt.Println("create directory fail:", err)
+		}
 		f, err := os.Create(filepath)
 		if nil != err {
 			fmt.Println("create file fail.")

@@ -94,10 +94,6 @@ extern "C" {
 //
 extern char* FormatPacketDslExport(char* dsl);
 
-// CompilePacketDslExport export for c
-//
-extern void CompilePacketDslExport(char* imput);
-
 #ifdef __cplusplus
 }
 #endif
