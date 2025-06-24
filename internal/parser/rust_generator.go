@@ -103,9 +103,9 @@ func (g RustGenerator) generateStructCode(pkt *model.Packet) string {
 	//struct fields
 	for _, f := range pkt.Fields {
 		if f.IsRepeat {
-			b.WriteString(AddIndent4ln(fmt.Sprintf("pub %s: Vec<%s>,", GetFieldName(f), GetFieldType(structName, f))))
+			b.WriteString(AddIndent4ln(fmt.Sprintf("pub %s: Vec<%s>,", g.GetFieldName(f), g.GetFieldType(structName, f))))
 		} else {
-			b.WriteString(AddIndent4ln(fmt.Sprintf("pub %s: %s,", GetFieldName(f), GetFieldType(structName, f))))
+			b.WriteString(AddIndent4ln(fmt.Sprintf("pub %s: %s,", g.GetFieldName(f), g.GetFieldType(structName, f))))
 		}
 	}
 	b.WriteString("}\n\n")
@@ -135,7 +135,7 @@ func (g RustGenerator) generateStructCode(pkt *model.Packet) string {
 	}
 	b.WriteString(AddIndent4ln(AddIndent4("Some(Self {")))
 	for _, f := range pkt.Fields {
-		b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(GetFieldName(f) + ","))))
+		b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(g.GetFieldName(f) + ","))))
 	}
 	b.WriteString(AddIndent4ln(AddIndent4("})")))
 	b.WriteString(AddIndent4ln("}"))
@@ -147,7 +147,7 @@ func (g RustGenerator) generateStructCode(pkt *model.Packet) string {
 }
 
 // GetFieldType convert field type for rust
-func GetFieldType(parentName string, f model.Field) string {
+func (g RustGenerator) GetFieldType(parentName string, f model.Field) string {
 	switch f.GetType() {
 	case "string":
 		return "String"
@@ -165,7 +165,7 @@ func GetFieldType(parentName string, f model.Field) string {
 }
 
 // GetFieldName returns the field name in snake_case format.
-func GetFieldName(f model.Field) string {
+func (g RustGenerator) GetFieldName(f model.Field) string {
 	switch f.GetType() {
 	case "match":
 		return strcase.ToSnake(f.Name) + "_body"
@@ -221,7 +221,7 @@ func (g RustGenerator) EncodeField(parentName string, f model.Field) string {
 		}
 		return fmt.Sprintf("buf.put_%s(self.%s);", f.GetType(), name)
 	case "match":
-		return EncoderMatchField(parentName, f)
+		return g.EncoderMatchField(parentName, f)
 	default:
 		size, ok := ParseCharArrayType(f.GetType())
 		if ok {
@@ -229,7 +229,7 @@ func (g RustGenerator) EncodeField(parentName string, f model.Field) string {
 		}
 		if f.InerObject != nil {
 			// If it's a nested object, we need to encode it
-			return fmt.Sprintf("self.%s.encode(buf);", GetFieldName(f))
+			return fmt.Sprintf("self.%s.encode(buf);", g.GetFieldName(f))
 
 		}
 		return fmt.Sprintf("// unknown type for encode: %s", f.GetType())
@@ -237,9 +237,9 @@ func (g RustGenerator) EncodeField(parentName string, f model.Field) string {
 }
 
 // EncoderMatchField encodes match field
-func EncoderMatchField(parentName string, f model.Field) string {
+func (g RustGenerator) EncoderMatchField(parentName string, f model.Field) string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("match &self.%s {\n", GetFieldName(f)))
+	b.WriteString(fmt.Sprintf("match &self.%s {\n", g.GetFieldName(f)))
 	pairs := make(map[string]struct{})
 	for _, pair := range f.MatchPairs {
 		if _, exists := pairs[pair.Value]; exists {
@@ -297,7 +297,7 @@ func (g RustGenerator) DecodeField(parentName string, f model.Field) string {
 		}
 		return fmt.Sprintf("let %s = buf.get_%s();", name, f.GetType())
 	case "match":
-		return DecodeMatchField(parentName, f)
+		return g.DecodeMatchField(parentName, f)
 	default:
 		pattern := `^char\[(\d+)\]$`
 		re := regexp.MustCompile(pattern)
@@ -308,14 +308,14 @@ func (g RustGenerator) DecodeField(parentName string, f model.Field) string {
 		}
 		if f.InerObject != nil {
 			// If it's a nested object, we need to decode it
-			return fmt.Sprintf("let %s = %s::decode(buf)?;", GetFieldName(f), f.InerObject.Name)
+			return fmt.Sprintf("let %s = %s::decode(buf)?;", g.GetFieldName(f), f.InerObject.Name)
 		}
 		return fmt.Sprintf("// unknown type for decode: %s", f.GetType())
 	}
 }
 
 // HasQuotes is string literal
-func HasQuotes(s string) bool {
+func (g RustGenerator) HasQuotes(s string) bool {
 	if len(s) < 2 {
 		return false
 	}
@@ -324,10 +324,10 @@ func HasQuotes(s string) bool {
 }
 
 // DecodeMatchField decodes match field
-func DecodeMatchField(parentName string, f model.Field) string {
+func (g RustGenerator) DecodeMatchField(parentName string, f model.Field) string {
 	var b strings.Builder
 	matchName := strcase.ToSnake(f.Name)
-	if HasQuotes(f.MatchPairs[0].Key) {
+	if g.HasQuotes(f.MatchPairs[0].Key) {
 		matchName += ".as_str()"
 	}
 	b.WriteString(fmt.Sprintf("let %s_body = match %s {\n", strcase.ToSnake(f.Name), matchName))
@@ -384,15 +384,15 @@ func (g RustGenerator) generateUnitTestCode(pkt *model.Packet) string {
 		if pkt.MatchFields[f.Name] != nil {
 			if len(f.MatchPairs) > 0 {
 				key := f.MatchPairs[0].Key
-				if HasQuotes(key) {
+				if g.HasQuotes(key) {
 					key = fmt.Sprintf("%s.to_string()", key)
 				}
 				b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", strcase.ToSnake(f.Name), key)))))
-				b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", GetFieldName(f), g.testValue(pkt.Name, f))))))
+				b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", g.GetFieldName(f), g.testValue(pkt.Name, f))))))
 			}
 			continue
 		}
-		b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", GetFieldName(f), g.testValue(pkt.Name, f))))))
+		b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", g.GetFieldName(f), g.testValue(pkt.Name, f))))))
 	}
 	b.WriteString(AddIndent4ln(AddIndent4("};\n")))
 
@@ -415,14 +415,14 @@ func (g RustGenerator) generateUnitTestCode(pkt *model.Packet) string {
 // testValue gen test value for deferent field type
 func (g RustGenerator) testValue(parentName string, f model.Field) string {
 	if f.IsRepeat {
-		return testValueList(f.GetType())
+		return g.testValueList(f.GetType())
 	}
 
 	return g.testValueSingle(parentName, f)
 }
 
-func testValueList(typ string) string {
-	if val, ok := primitiveListValues()[typ]; ok {
+func (g RustGenerator) testValueList(typ string) string {
+	if val, ok := g.primitiveListValues()[typ]; ok {
 		return val
 	}
 	size, ok := ParseCharArrayType(typ)
@@ -447,7 +447,7 @@ func (g RustGenerator) testValueSingle(parentName string, f model.Field) string 
 	}
 
 	// handle primitive
-	if val, ok := primitiveSingleValues()[typ]; ok {
+	if val, ok := g.primitiveSingleValues()[typ]; ok {
 		return val
 	}
 
@@ -463,7 +463,7 @@ func (g RustGenerator) testValueSingle(parentName string, f model.Field) string 
 	return "Default::default()"
 }
 
-func primitiveListValues() map[string]string {
+func (g RustGenerator) primitiveListValues() map[string]string {
 	return map[string]string{
 		"string": `vec!["example".to_string(), "test".to_string()]`,
 		"char":   `vec!['a','b']`,
@@ -478,7 +478,7 @@ func primitiveListValues() map[string]string {
 	}
 }
 
-func primitiveSingleValues() map[string]string {
+func (g RustGenerator) primitiveSingleValues() map[string]string {
 	return map[string]string{
 		"string": `"example".to_string()`,
 		"char":   `'a'`,
