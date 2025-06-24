@@ -200,10 +200,10 @@ func TestGetFieldType(t *testing.T) {
 			expected: "u32",
 		},
 	}
-
+	g := NewRustGenerator(nil, nil)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := GetFieldType(tt.parent, tt.field)
+			result := g.GetFieldType(tt.parent, tt.field)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -226,10 +226,10 @@ func TestGetFieldName(t *testing.T) {
 			expected: "regular_field",
 		},
 	}
-
+	g := NewRustGenerator(nil, nil)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := GetFieldName(tt.field)
+			result := g.GetFieldName(tt.field)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -501,10 +501,10 @@ func TestHasQuotes(t *testing.T) {
 		{`"`, false},
 		{``, false},
 	}
-
+	g := NewRustGenerator(nil, nil)
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			result := HasQuotes(tt.input)
+			result := g.HasQuotes(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
