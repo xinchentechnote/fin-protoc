@@ -26,7 +26,8 @@ metaDataDefinition:
 	METADATA IDENTIFIER '{' metaDataDeclaration* '}';
 
 // Metadata declaration with type and description
-metaDataDeclaration: type? IDENTIFIER STRING_LITERAL? COMMA?;
+metaDataDeclaration:
+	type? name = IDENTIFIER ('=' 'lenghtof(' from = IDENTIFIER ')')? STRING_LITERAL? COMMA?;
 
 value: type | STRING | DIGITS;
 
@@ -48,7 +49,8 @@ type:
 	| 'char[' DIGITS? ']';
 
 // Match field rule for defining match criteria
-matchFieldDeclaration: MATCH IDENTIFIER '{' matchPair+ '}';
+matchFieldDeclaration:
+	MATCH matchKey = IDENTIFIER 'as' matchName = IDENTIFIER '{' matchPair+ '}';
 
 matchPair: (DIGITS | STRING | list) COLON IDENTIFIER COMMA?;
 

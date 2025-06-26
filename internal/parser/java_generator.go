@@ -42,11 +42,14 @@ func (g JavaGenerator) GenerateJavaClassFileForPacket(packet *model.Packet, isIn
 		b.WriteString(fmt.Sprintf("package %s;\n", g.config.JavaPackage))
 		//import
 		b.WriteString(`import java.nio.charset.StandardCharsets;
-
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Supplier;
 import com.finproto.codec.BinaryCodec;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.util.internal.StringUtil;`)
+import io.netty.util.internal.StringUtil;
+`)
 		b.WriteString("\n")
 		b.WriteString("\n")
 	}
@@ -75,7 +78,11 @@ import io.netty.util.internal.StringUtil;`)
 	b.WriteString(AddIndent4ln(g.GenerateDecode(packet)))
 
 	//create
-	b.WriteString(AddIndent4ln(g.GenerateCreateMethod(packet)))
+	for _, f := range packet.Fields {
+		if f.Type == "match" {
+			b.WriteString(AddIndent4ln(g.GenerateCreateMethod(&f)))
+		}
+	}
 
 	b.WriteString("\n")
 	//hashcode and equals
@@ -99,21 +106,29 @@ import io.netty.util.internal.StringUtil;`)
 }
 
 // GenerateCreateMethod gen create method
-func (g JavaGenerator) GenerateCreateMethod(packet *model.Packet) string {
+func (g JavaGenerator) GenerateCreateMethod(f *model.Field) string {
 	var b strings.Builder
-	b.WriteString("private BinaryCodec createMsgTypeBody(short msgType) {\n")
-	b.WriteString("    return null;\n")
+	b.WriteString(fmt.Sprintf("private static final Map<Short, Supplier<BinaryCodec>> %sMap = new HashMap<>();", g.GetFieldNameLower(f)))
+	b.WriteString("\n")
+	b.WriteString("static {\n")
+	for _, pair := range f.MatchPairs {
+		b.WriteString(fmt.Sprintf("    %sMap.put((short) %s, %s::new);\n", g.GetFieldNameLower(f), pair.Key, pair.Value))
+	}
+	b.WriteString("}\n")
+	b.WriteString("\n")
+	b.WriteString(fmt.Sprintf("private BinaryCodec create%s(short %s) {\n", g.GetFieldName(f), strcase.ToLowerCamel(f.MatchKey)))
+	b.WriteString(fmt.Sprintf("    Supplier<BinaryCodec> supplier = %sMap.get(%s);\n", g.GetFieldNameLower(f), strcase.ToLowerCamel(f.MatchKey)))
+	b.WriteString("    if (null == supplier) {\n")
+	b.WriteString(fmt.Sprintf("        throw new IllegalArgumentException(\"Unsupported %s:\" + %s);\n", f.MatchKey, strcase.ToLowerCamel(f.MatchKey)))
+	b.WriteString("    }\n")
+	b.WriteString("    return supplier.get();\n")
 	b.WriteString("}")
 	return b.String()
 }
 
 // GetFieldName get CamelName
 func (g JavaGenerator) GetFieldName(f *model.Field) string {
-	postFix := ""
-	if f.Type == "match" {
-		postFix = "Body"
-	}
-	return strcase.ToCamel(f.Name) + postFix
+	return strcase.ToCamel(f.Name)
 }
 
 // GetFieldNameLower get lower CamelName
@@ -249,7 +264,7 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 
 		if f.Type == "match" {
 			var b strings.Builder
-			b.WriteString(fmt.Sprintf("this.%s = create%s(this.%s);\n", g.GetFieldNameLower(f), g.GetFieldName(f), strcase.ToLowerCamel(f.MatchType)))
+			b.WriteString(fmt.Sprintf("this.%s = create%s(this.%s);\n", g.GetFieldNameLower(f), g.GetFieldName(f), strcase.ToLowerCamel(f.MatchKey)))
 			b.WriteString(fmt.Sprintf("this.%s.decode(byteBuf);", g.GetFieldNameLower(f)))
 			return b.String()
 		}

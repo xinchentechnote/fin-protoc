@@ -66,7 +66,7 @@ packet Parent {
 	nestedChild {
 		childField
 	}
-	match MsgType {
+	match MsgType as body {
 		0:OptionA,
 		1:OptionB
 	}
@@ -106,8 +106,8 @@ packet Parent {
 	}
 	// Verify matchType
 	matchField := pkt.Fields[2]
-	if matchField.Name != "MsgType" {
-		t.Errorf("expected second field 'matchType', got '%s'", matchField.Name)
+	if matchField.Name != "body" {
+		t.Errorf("expected second field 'matchName', got '%s'", matchField.Name)
 	}
 	if len(matchField.MatchPairs) != 2 {
 		t.Errorf("expected 2 match pairs, got %d", len(matchField.MatchPairs))

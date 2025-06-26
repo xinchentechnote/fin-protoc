@@ -184,7 +184,7 @@ func TestGetFieldType(t *testing.T) {
 		{
 			name:     "match type",
 			parent:   "Parent",
-			field:    model.Field{Type: "match", MatchType: "Match"},
+			field:    model.Field{Type: "match", MatchKey: "Match"},
 			expected: "ParentMatchEnum",
 		},
 		{
@@ -278,9 +278,9 @@ func TestRustEncodeField(t *testing.T) {
 			name:   "match field",
 			parent: "Parent",
 			field: model.Field{
-				Name:      "matchField",
-				Type:      "match",
-				MatchType: "Type",
+				Name:     "matchField",
+				Type:     "match",
+				MatchKey: "Type",
 				MatchPairs: []model.MatchPair{
 					{Value: "Value"},
 				},
@@ -341,9 +341,9 @@ func TestRustDecodeField(t *testing.T) {
 			name:   "match field",
 			parent: "Parent",
 			field: model.Field{
-				Name:      "matchField",
-				Type:      "match",
-				MatchType: "matchField",
+				Name:     "matchField",
+				Type:     "match",
+				MatchKey: "matchField",
 				MatchPairs: []model.MatchPair{
 					{Key: "\"1\"", Value: "Value"},
 				},
@@ -373,9 +373,9 @@ func TestGenerateMatchFieldEnumCode(t *testing.T) {
 		Name: "TestPacket",
 		Fields: []model.Field{
 			{
-				Name:      "matchField",
-				Type:      "match",
-				MatchType: "Type",
+				Name:     "matchField",
+				Type:     "match",
+				MatchKey: "Type",
 				MatchPairs: []model.MatchPair{
 					{
 						Key:   "1",

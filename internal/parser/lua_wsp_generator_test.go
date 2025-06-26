@@ -177,9 +177,9 @@ offset = offset + test_packet_test_field_len`,
 			name:   "match field",
 			packet: model.Packet{Name: "TestPacket"},
 			field: model.Field{
-				Name:      "testField",
-				Type:      "match",
-				MatchType: "msgType",
+				Name:     "testField",
+				Type:     "match",
+				MatchKey: "msgType",
 				MatchPairs: []model.MatchPair{
 					{Key: "1", Value: "Message1"},
 				},
@@ -405,9 +405,9 @@ func TestIsMatchField(t *testing.T) {
 			rootPacket: model.Packet{
 				Fields: []model.Field{
 					{
-						Name:      "testField",
-						Type:      "match",
-						MatchType: "msgType",
+						Name:     "testField",
+						Type:     "match",
+						MatchKey: "msgType",
 					},
 				},
 			},
@@ -421,9 +421,9 @@ func TestIsMatchField(t *testing.T) {
 			rootPacket: model.Packet{
 				Fields: []model.Field{
 					{
-						Name:      "testField",
-						Type:      "match",
-						MatchType: "msgType",
+						Name:     "testField",
+						Type:     "match",
+						MatchKey: "msgType",
 					},
 				},
 			},

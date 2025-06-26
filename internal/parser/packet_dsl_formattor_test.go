@@ -104,7 +104,7 @@ MetaData SampleMeta {
 func TestVisitMatchField(t *testing.T) {
 	// 单个 matchPair
 	input := `
-match category  {
+match category  as  body {
     "A" : ValA,
     10 : Val10
 }
@@ -116,7 +116,7 @@ match category  {
 	formatter := NewPacketDslFormattor(stream)
 	got := formatter.VisitMatchFieldDeclaration(p.MatchFieldDeclaration().(*gen.MatchFieldDeclarationContext)).(string)
 
-	expected := `match category {
+	expected := `match category as body {
     "A" : ValA,
     10 : Val10
 }`
