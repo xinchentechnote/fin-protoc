@@ -152,7 +152,7 @@ func (g RustGenerator) GetFieldType(parentName string, f model.Field) string {
 	case "string":
 		return "String"
 	case "match":
-		return parentName + f.MatchKey + "Enum"
+		return parentName + f.Name + "Enum"
 	default:
 		pattern := `^char\[(\d+)\]$`
 		re := regexp.MustCompile(pattern)
@@ -166,13 +166,7 @@ func (g RustGenerator) GetFieldType(parentName string, f model.Field) string {
 
 // GetFieldName returns the field name in snake_case format.
 func (g RustGenerator) GetFieldName(f model.Field) string {
-	switch f.GetType() {
-	case "match":
-		return strcase.ToSnake(f.Name) + "_body"
-	default:
-		return strcase.ToSnake(f.Name)
-
-	}
+	return strcase.ToSnake(f.Name)
 }
 
 // EncodeField encoding field
@@ -246,7 +240,7 @@ func (g RustGenerator) EncoderMatchField(parentName string, f model.Field) strin
 			continue
 		}
 		pairs[pair.Value] = struct{}{}
-		b.WriteString(AddIndent4ln(fmt.Sprintf("%s%sEnum::%s(msg) => msg.encode(buf),", parentName, f.MatchKey, pair.Value)))
+		b.WriteString(AddIndent4ln(fmt.Sprintf("%s%sEnum::%s(msg) => msg.encode(buf),", parentName, f.Name, pair.Value)))
 	}
 	b.WriteString("}")
 	return b.String()
@@ -326,11 +320,11 @@ func (g RustGenerator) HasQuotes(s string) bool {
 // DecodeMatchField decodes match field
 func (g RustGenerator) DecodeMatchField(parentName string, f model.Field) string {
 	var b strings.Builder
-	matchName := strcase.ToSnake(f.Name)
+	matchKey := strcase.ToSnake(f.MatchKey)
 	if g.HasQuotes(f.MatchPairs[0].Key) {
-		matchName += ".as_str()"
+		matchKey += ".as_str()"
 	}
-	b.WriteString(fmt.Sprintf("let %s_body = match %s {\n", strcase.ToSnake(f.Name), matchName))
+	b.WriteString(fmt.Sprintf("let %s = match %s {\n", strcase.ToSnake(f.Name), matchKey))
 	var pairs = make(map[string]struct{})
 	for _, pair := range f.MatchPairs {
 		key := pair.Key
@@ -338,7 +332,7 @@ func (g RustGenerator) DecodeMatchField(parentName string, f model.Field) string
 			continue
 		}
 		pairs[key] = struct{}{}
-		b.WriteString(AddIndent4ln(fmt.Sprintf("%s => %s%sEnum::%s(%s::decode(buf)?),", key, parentName, f.MatchKey, pair.Value, pair.Value)))
+		b.WriteString(AddIndent4ln(fmt.Sprintf("%s => %s%sEnum::%s(%s::decode(buf)?),", key, parentName, f.Name, pair.Value, pair.Value)))
 	}
 	b.WriteString(AddIndent4ln("_ => return None,"))
 	b.WriteString("};")
@@ -351,7 +345,7 @@ func (g RustGenerator) generateMatchFieldEnumCode(packet *model.Packet) string {
 	for _, f := range packet.Fields {
 		if f.GetType() == "match" {
 			b.WriteString("#[derive(Debug, Clone, PartialEq)]")
-			b.WriteString(fmt.Sprintf("pub enum %s%sEnum {\n", packet.Name, f.MatchKey))
+			b.WriteString(fmt.Sprintf("pub enum %s%sEnum {\n", packet.Name, f.Name))
 			matchValus := make(map[string]struct{})
 			for _, pair := range f.MatchPairs {
 				if _, exists := matchValus[pair.Value]; exists {
@@ -381,15 +375,18 @@ func (g RustGenerator) generateUnitTestCode(pkt *model.Packet) string {
 	// new instance
 	b.WriteString(AddIndent4ln(AddIndent4(fmt.Sprintf("let original = %s {", strcase.ToCamel(pkt.Name)))))
 	for _, f := range pkt.Fields {
-		if pkt.MatchFields[f.Name] != nil {
+		if pkt.MatchFields[f.MatchKey] != nil {
 			if len(f.MatchPairs) > 0 {
 				key := f.MatchPairs[0].Key
 				if g.HasQuotes(key) {
 					key = fmt.Sprintf("%s.to_string()", key)
 				}
-				b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", strcase.ToSnake(f.Name), key)))))
+				b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", strcase.ToSnake(f.MatchKey), key)))))
 				b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", g.GetFieldName(f), g.testValue(pkt.Name, f))))))
 			}
+			continue
+		}
+		if pkt.MatchFields[f.Name] != nil {
 			continue
 		}
 		b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", g.GetFieldName(f), g.testValue(pkt.Name, f))))))
@@ -507,7 +504,7 @@ func (g RustGenerator) testMatchValue(parentName string, f model.Field) string {
 	}
 	return fmt.Sprintf("%s%sEnum::%s(%s { \n %s \n })",
 		parentName,
-		f.MatchKey,
+		f.Name,
 		matchName,
 		matchName,
 		strings.Join(innerFields, ", \n "),

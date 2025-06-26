@@ -185,7 +185,7 @@ func TestGetFieldType(t *testing.T) {
 			name:     "match type",
 			parent:   "Parent",
 			field:    model.Field{Type: "match", MatchKey: "Match"},
-			expected: "ParentMatchEnum",
+			expected: "ParentEnum",
 		},
 		{
 			name:     "char array",
@@ -218,7 +218,7 @@ func TestGetFieldName(t *testing.T) {
 		{
 			name:     "match field",
 			field:    model.Field{Name: "MatchField", Type: "match"},
-			expected: "match_field_body",
+			expected: "match_field",
 		},
 		{
 			name:     "regular field",
@@ -285,7 +285,7 @@ func TestRustEncodeField(t *testing.T) {
 					{Value: "Value"},
 				},
 			},
-			expected: "match &self.match_field_body {\n    ParentTypeEnum::Value(msg) => msg.encode(buf),\n}",
+			expected: "match &self.match_field {\n    ParentmatchFieldEnum::Value(msg) => msg.encode(buf),\n}",
 		},
 	}
 
@@ -348,7 +348,7 @@ func TestRustDecodeField(t *testing.T) {
 					{Key: "\"1\"", Value: "Value"},
 				},
 			},
-			expected: `let match_field_body = match match_field.as_str() {
+			expected: `let match_field = match match_field.as_str() {
     "1" => ParentmatchFieldEnum::Value(Value::decode(buf)?),
     _ => return None,
 };`,
@@ -373,7 +373,7 @@ func TestGenerateMatchFieldEnumCode(t *testing.T) {
 		Name: "TestPacket",
 		Fields: []model.Field{
 			{
-				Name:     "matchField",
+				Name:     "Body",
 				Type:     "match",
 				MatchKey: "Type",
 				MatchPairs: []model.MatchPair{
@@ -398,7 +398,7 @@ func TestGenerateMatchFieldEnumCode(t *testing.T) {
 	generator := NewRustGenerator(config, binModel)
 	code := generator.generateMatchFieldEnumCode(&packet)
 
-	assert.Contains(t, code, "pub enum TestPacketTypeEnum")
+	assert.Contains(t, code, "pub enum TestPacketBodyEnum")
 	assert.Contains(t, code, "FirstValue(FirstValue)")
 	assert.Contains(t, code, "SecondValue(SecondValue)")
 }

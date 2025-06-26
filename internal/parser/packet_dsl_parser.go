@@ -95,7 +95,7 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 		fld := v.VisitFieldDefinition(fctx).(model.Field)
 		fields = append(fields, fld)
 		if fld.Type == "match" {
-			matchFields[fld.Name] = fld.MatchPairs
+			matchFields[fld.MatchKey] = fld.MatchPairs
 		}
 	}
 
