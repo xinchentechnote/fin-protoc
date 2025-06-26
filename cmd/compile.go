@@ -28,7 +28,7 @@ func Compile(input string, luaPath string, rsPath string, goOutput string, javaO
 		if nil != err {
 			fmt.Println("gen lua code err.")
 		}
-		parser.WriteCodeToFile(rsPath, codeMap)
+		parser.WriteCodeToFile(luaPath, codeMap)
 	}
 	if rsPath != "" {
 		// initialize generator
