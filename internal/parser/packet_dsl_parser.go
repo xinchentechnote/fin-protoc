@@ -45,7 +45,7 @@ func (v *PacketDslVisitorImpl) VisitPacket(ctx *gen.PacketContext) interface{} {
 	// MetaData map
 	for _, metaDataDifinition := range ctx.AllMetaDataDefinition() {
 		for _, metaDataDeclaration := range metaDataDifinition.AllMetaDataDeclaration() {
-			name := metaDataDeclaration.IDENTIFIER().GetText()
+			name := metaDataDeclaration.GetName().GetText()
 			typ := metaDataDeclaration.Type_().GetText()
 			basicType := metaDataDeclaration.Type_().GetText()
 			// Store metadata in the map
@@ -173,7 +173,7 @@ func (v *PacketDslVisitorImpl) VisitInerObjectField(ctx *gen.InerObjectFieldCont
 // VisitMetaDataDeclaration handles a metadata declaration of the form: type? IDENTIFIER `doc`?
 func (v *PacketDslVisitorImpl) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclarationContext) interface{} {
 	// Field name
-	name := ctx.IDENTIFIER().GetText()
+	name := ctx.GetName().GetText()
 	// Determine type if present
 	var typ string
 	if ctx.Type_() != nil {
@@ -185,6 +185,10 @@ func (v *PacketDslVisitorImpl) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclara
 	if meta, exists := v.BinModel.MetaDataMap[typ]; exists {
 		typ = meta.BasicType
 	}
+	var lenghtOfField string
+	if ctx.GetFrom() != nil {
+		lenghtOfField = ctx.GetFrom().GetText()
+	}
 	// Extract documentation string if present, by removing backticks
 	var doc string
 	if ctx.STRING_LITERAL() != nil {
@@ -192,25 +196,27 @@ func (v *PacketDslVisitorImpl) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclara
 		doc = raw[1 : len(raw)-1]
 	}
 	return model.Field{
-		Name:     name,
-		Type:     typ,
-		IsRepeat: false,
-		Doc:      doc,
+		Name:          name,
+		Type:          typ,
+		LenghtOfField: lenghtOfField,
+		IsRepeat:      false,
+		Doc:           doc,
 	}
 }
 
 // VisitMatchFieldDeclaration handles match fields: match IDENTIFIER '{' matchPair+ '}'.
 func (v *PacketDslVisitorImpl) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDeclarationContext) interface{} {
-	name := ctx.IDENTIFIER().GetText()
+	matchKey := ctx.GetMatchKey().GetText()
+	matchName := ctx.GetMatchName().GetText()
 	var pairs []model.MatchPair
 	for _, pairCtx := range ctx.AllMatchPair() {
 		mp := pairCtx.Accept(v).([]model.MatchPair)
 		pairs = append(pairs, mp...)
 	}
 	return model.Field{
-		Name:       name,
+		Name:       matchName,
 		Type:       "match",
-		MatchType:  name, // Use the match field name as the type
+		MatchKey:   matchKey,
 		IsRepeat:   false,
 		MatchPairs: pairs,
 	}

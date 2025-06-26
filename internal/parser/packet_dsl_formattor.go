@@ -241,11 +241,15 @@ func (v *PacketDslFormattor) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclarati
 	if ctx.Type_() != nil {
 		typeName = ctx.Type_().GetText()
 	}
-	fieldName := ctx.IDENTIFIER().GetText()
+	fieldName := ctx.GetName().GetText()
+	if ctx.GetFrom() != nil {
+		fieldName += " = " + "lenghtof(" + ctx.GetFrom().GetText() + ")"
+	}
 	description := ""
 	if ctx.STRING_LITERAL() != nil {
 		description = ctx.STRING_LITERAL().GetText()
 	}
+
 	formattedDsl.WriteString(strings.TrimSpace(fmt.Sprintf("%s %s %s", typeName, fieldName, description)))
 	if ctx.COMMA() != nil {
 		formattedDsl.WriteString(",")
@@ -259,10 +263,11 @@ func (v *PacketDslFormattor) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclarati
 
 // VisitMatchFieldDeclaration for visiting match fields.
 func (v *PacketDslFormattor) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDeclarationContext) interface{} {
-	fieldName := ctx.IDENTIFIER().GetText()
+	matchKey := ctx.GetMatchKey().GetText()
+	matchName := ctx.GetMatchName().GetText()
 	var formattedDsl strings.Builder
 	formattedDsl.WriteString(v.getHiddenLeft(ctx.GetStart()))
-	formattedDsl.WriteString(fmt.Sprintf("match %s {\n", fieldName))
+	formattedDsl.WriteString(fmt.Sprintf("match %s as %s {\n", matchKey, matchName))
 	for _, pairCtx := range ctx.AllMatchPair() {
 		lineComment := strings.TrimRight(v.getHiddenLeft(pairCtx.GetStart()), "\n")
 		if lineComment != "" {

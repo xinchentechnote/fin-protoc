@@ -152,7 +152,7 @@ func (g RustGenerator) GetFieldType(parentName string, f model.Field) string {
 	case "string":
 		return "String"
 	case "match":
-		return parentName + f.MatchType + "Enum"
+		return parentName + f.MatchKey + "Enum"
 	default:
 		pattern := `^char\[(\d+)\]$`
 		re := regexp.MustCompile(pattern)
@@ -246,7 +246,7 @@ func (g RustGenerator) EncoderMatchField(parentName string, f model.Field) strin
 			continue
 		}
 		pairs[pair.Value] = struct{}{}
-		b.WriteString(AddIndent4ln(fmt.Sprintf("%s%sEnum::%s(msg) => msg.encode(buf),", parentName, f.MatchType, pair.Value)))
+		b.WriteString(AddIndent4ln(fmt.Sprintf("%s%sEnum::%s(msg) => msg.encode(buf),", parentName, f.MatchKey, pair.Value)))
 	}
 	b.WriteString("}")
 	return b.String()
@@ -338,7 +338,7 @@ func (g RustGenerator) DecodeMatchField(parentName string, f model.Field) string
 			continue
 		}
 		pairs[key] = struct{}{}
-		b.WriteString(AddIndent4ln(fmt.Sprintf("%s => %s%sEnum::%s(%s::decode(buf)?),", key, parentName, f.MatchType, pair.Value, pair.Value)))
+		b.WriteString(AddIndent4ln(fmt.Sprintf("%s => %s%sEnum::%s(%s::decode(buf)?),", key, parentName, f.MatchKey, pair.Value, pair.Value)))
 	}
 	b.WriteString(AddIndent4ln("_ => return None,"))
 	b.WriteString("};")
@@ -351,7 +351,7 @@ func (g RustGenerator) generateMatchFieldEnumCode(packet *model.Packet) string {
 	for _, f := range packet.Fields {
 		if f.GetType() == "match" {
 			b.WriteString("#[derive(Debug, Clone, PartialEq)]")
-			b.WriteString(fmt.Sprintf("pub enum %s%sEnum {\n", packet.Name, f.MatchType))
+			b.WriteString(fmt.Sprintf("pub enum %s%sEnum {\n", packet.Name, f.MatchKey))
 			matchValus := make(map[string]struct{})
 			for _, pair := range f.MatchPairs {
 				if _, exists := matchValus[pair.Value]; exists {
@@ -495,7 +495,7 @@ func (g RustGenerator) primitiveSingleValues() map[string]string {
 
 func (g RustGenerator) testMatchValue(parentName string, f model.Field) string {
 	if len(f.MatchPairs) == 0 {
-		return fmt.Sprintf("%s%s::default()", parentName, f.MatchType)
+		return fmt.Sprintf("%s%s::default()", parentName, f.MatchKey)
 	}
 
 	matchName := f.MatchPairs[0].Value
@@ -507,7 +507,7 @@ func (g RustGenerator) testMatchValue(parentName string, f model.Field) string {
 	}
 	return fmt.Sprintf("%s%sEnum::%s(%s { \n %s \n })",
 		parentName,
-		f.MatchType,
+		f.MatchKey,
 		matchName,
 		matchName,
 		strings.Join(innerFields, ", \n "),

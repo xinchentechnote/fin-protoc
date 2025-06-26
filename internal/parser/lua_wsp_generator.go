@@ -241,7 +241,7 @@ func (g LuaWspGenerator) decodeList(treeName string, p model.Packet, f model.Fie
 
 func isMatchField(f model.Field, rootPacket model.Packet) bool {
 	for _, field := range rootPacket.Fields {
-		if field.GetType() == "match" && f.Name == field.MatchType {
+		if field.GetType() == "match" && f.Name == field.MatchKey {
 			return true
 		}
 	}
@@ -359,7 +359,7 @@ func (g LuaWspGenerator) decodeField(treeName string, p model.Packet, f model.Fi
 			if i != 0 {
 				b.WriteString("else")
 			}
-			b.WriteString(fmt.Sprintf("if %s == %s then -- %s\n", strcase.ToSnake(f.MatchType), pair.Key, pair.Value))
+			b.WriteString(fmt.Sprintf("if %s == %s then -- %s\n", strcase.ToSnake(f.MatchKey), pair.Key, pair.Value))
 			b.WriteString(AddIndent4ln(fmt.Sprintf("dissect_%s(buf, pinfo, tree, offset)", strcase.ToSnake(pair.Value))))
 			b.WriteString(AddIndent4ln(fmt.Sprintf("pinfo.cols.info:set(\"%s\")", pair.Value)))
 		}
