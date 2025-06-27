@@ -5,7 +5,7 @@ options {
 
 packet SampleBinary {
     uint16 MsgType `消息类型`,
-    u16 BodyLenght  = lenghtof(Body)   `消息体长度`,
+    u16 BodyLenght  = lengthof(Body)   `消息体长度`,
     match MsgType  as  Body {
 		1 : Logon,
 		2 : Logout,

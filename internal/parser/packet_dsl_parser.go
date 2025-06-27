@@ -90,20 +90,34 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 
 	// Iterate over all fieldDefinition children
 	var fields []model.Field
+	var lengthOfField string
 	var matchFields = make(map[string][]model.MatchPair)
 	for _, fctx := range ctx.AllFieldDefinition() {
 		fld := v.VisitFieldDefinition(fctx).(model.Field)
+
+		if fld.LengthOfField != "" {
+			if !isRoot {
+				panic("LengthOfField can only be declared in the root packet")
+			}
+			if lengthOfField != "" {
+				panic("duplicate LengthOfField declaration")
+			}
+			lengthOfField = fld.LengthOfField
+		}
+
 		fields = append(fields, fld)
+
 		if fld.Type == "match" {
 			matchFields[fld.MatchKey] = fld.MatchPairs
 		}
 	}
 
 	return model.Packet{
-		Name:        name,
-		IsRoot:      isRoot,
-		Fields:      fields,
-		MatchFields: matchFields,
+		Name:          name,
+		IsRoot:        isRoot,
+		LengthOfField: lengthOfField,
+		Fields:        fields,
+		MatchFields:   matchFields,
 	}
 }
 
@@ -185,9 +199,9 @@ func (v *PacketDslVisitorImpl) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclara
 	if meta, exists := v.BinModel.MetaDataMap[typ]; exists {
 		typ = meta.BasicType
 	}
-	var lenghtOfField string
+	var lengthOfField string
 	if ctx.GetFrom() != nil {
-		lenghtOfField = ctx.GetFrom().GetText()
+		lengthOfField = ctx.GetFrom().GetText()
 	}
 	// Extract documentation string if present, by removing backticks
 	var doc string
@@ -198,7 +212,7 @@ func (v *PacketDslVisitorImpl) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclara
 	return model.Field{
 		Name:          name,
 		Type:          typ,
-		LenghtOfField: lenghtOfField,
+		LengthOfField: lengthOfField,
 		IsRepeat:      false,
 		Doc:           doc,
 	}

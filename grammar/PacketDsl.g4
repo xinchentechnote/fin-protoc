@@ -27,7 +27,7 @@ metaDataDefinition:
 
 // Metadata declaration with type and description
 metaDataDeclaration:
-	type? name = IDENTIFIER ('=' 'lenghtof(' from = IDENTIFIER ')')? STRING_LITERAL? COMMA?;
+	type? name = IDENTIFIER ('=' 'lengthof(' from = IDENTIFIER ')')? STRING_LITERAL? COMMA?;
 
 value: type | STRING | DIGITS;
 
