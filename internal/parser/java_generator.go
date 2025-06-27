@@ -44,6 +44,7 @@ func (g JavaGenerator) GenerateJavaClassFileForPacket(packet *model.Packet, isIn
 		b.WriteString(`import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Supplier;
 import com.finproto.codec.BinaryCodec;
 
@@ -188,7 +189,15 @@ func (g JavaGenerator) GenerateToString(packet *model.Packet) string {
 	var b strings.Builder
 	b.WriteString("@Override\n")
 	b.WriteString("public String toString() {\n")
-	b.WriteString(AddIndent4ln("return \"\";"))
+	b.WriteString(AddIndent4(fmt.Sprintf("return \"%s [\"", packet.Name)))
+	for idx, f := range packet.Fields {
+		if idx == 0 {
+			b.WriteString(fmt.Sprintf(" + \"%s=\" + this.%s", g.GetFieldNameLower(&f), g.GetFieldNameLower(&f)))
+		} else {
+			b.WriteString(fmt.Sprintf(" + \", %s=\" + this.%s", g.GetFieldNameLower(&f), g.GetFieldNameLower(&f)))
+		}
+	}
+	b.WriteString(" + \"]\";\n")
 	b.WriteString("}\n")
 	return b.String()
 }
@@ -198,7 +207,20 @@ func (g JavaGenerator) GenerateEquals(packet *model.Packet) string {
 	var b strings.Builder
 	b.WriteString("@Override\n")
 	b.WriteString("public boolean equals(Object obj) {\n")
-	b.WriteString(AddIndent4ln("return true;"))
+	b.WriteString(AddIndent4ln("if(this == obj) {"))
+	b.WriteString(AddIndent4ln(AddIndent4("return true;")))
+	b.WriteString(AddIndent4ln("}"))
+	b.WriteString(AddIndent4ln("if(null == obj || getClass() != obj.getClass()) {"))
+	b.WriteString(AddIndent4ln(AddIndent4("return false;")))
+	b.WriteString(AddIndent4ln("}"))
+	b.WriteString(AddIndent4ln(fmt.Sprintf("%s %s = (%s) obj;", packet.Name, strcase.ToLowerCamel(packet.Name), packet.Name)))
+	equals := make([]string, 0, len(packet.Fields))
+	for _, f := range packet.Fields {
+		equal := fmt.Sprintf("Objects.equals(%s, %s.%s)",
+			strcase.ToLowerCamel(f.Name), strcase.ToLowerCamel(packet.Name), strcase.ToLowerCamel(f.Name))
+		equals = append(equals, equal)
+	}
+	b.WriteString(AddIndent4ln(fmt.Sprintf("return %s;", strings.Join(equals, " && "))))
 	b.WriteString("}\n")
 	return b.String()
 }
@@ -208,7 +230,11 @@ func (g JavaGenerator) GenerateHashCode(packet *model.Packet) string {
 	var b strings.Builder
 	b.WriteString("@Override\n")
 	b.WriteString("public int hashCode() {\n")
-	b.WriteString(AddIndent4ln("return 0;"))
+	names := make([]string, 0, len(packet.Fields))
+	for _, f := range packet.Fields {
+		names = append(names, strcase.ToLowerCamel(f.Name))
+	}
+	b.WriteString(AddIndent4ln(fmt.Sprintf("return Objects.hash(%s);", strings.Join(names, ", "))))
 	b.WriteString("}\n")
 	return b.String()
 }
