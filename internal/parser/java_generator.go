@@ -8,6 +8,101 @@ import (
 	"github.com/xinchentechnote/fin-protoc/internal/model"
 )
 
+// JavaType java basic type
+type JavaType struct {
+	Name     string
+	JavaType string
+	Be       string
+	Le       string
+	Size     uint32
+}
+
+// javaBasicTypeMap dsl basic type to java type
+var javaBasicTypeMap = map[string]JavaType{
+	// 无符号整数类型
+	"u8": {
+		Name:     "u8",
+		JavaType: "byte",
+		Be:       "byte",
+		Le:       "byte",
+		Size:     1,
+	},
+	"char": {
+		Name:     "char",
+		JavaType: "byte",
+		Be:       "byte",
+		Le:       "byte",
+		Size:     1,
+	},
+	"u16": {
+		Name:     "u16",
+		JavaType: "short",
+		Be:       "short",
+		Le:       "shortLe",
+		Size:     2,
+	},
+	"u32": {
+		Name:     "u32",
+		JavaType: "int",
+		Be:       "int",
+		Le:       "intLe",
+		Size:     4,
+	},
+	"u64": {
+		Name:     "u64",
+		JavaType: "long",
+		Be:       "long",
+		Le:       "longLe",
+		Size:     8,
+	},
+
+	// 有符号整数类型
+	"i8": {
+		Name:     "i8",
+		JavaType: "byte",
+		Be:       "byte",
+		Le:       "byte",
+		Size:     1,
+	},
+	"i16": {
+		Name:     "i16",
+		JavaType: "short",
+		Be:       "short",
+		Le:       "shortLe",
+		Size:     2,
+	},
+	"i32": {
+		Name:     "i32",
+		JavaType: "int",
+		Be:       "int",
+		Le:       "intLe",
+		Size:     4,
+	},
+	"i64": {
+		Name:     "i64",
+		JavaType: "long",
+		Be:       "long",
+		Le:       "longLe",
+		Size:     8,
+	},
+
+	// 浮点类型
+	"f32": {
+		Name:     "f32",
+		JavaType: "float",
+		Be:       "float",
+		Le:       "floatLe",
+		Size:     4,
+	},
+	"f64": {
+		Name:     "f64",
+		JavaType: "double",
+		Be:       "double",
+		Le:       "doubleLe",
+		Size:     8,
+	},
+}
+
 // JavaGenerator a java code generator
 type JavaGenerator struct {
 	config   *GeneratorConfig
@@ -49,6 +144,7 @@ import java.util.function.Supplier;
 import com.finproto.codec.BinaryCodec;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.util.internal.StringUtil;
 `)
 		b.WriteString("\n")
@@ -139,21 +235,11 @@ func (g JavaGenerator) GetFieldNameLower(f *model.Field) string {
 
 // GetFieldType get java type
 func (g JavaGenerator) GetFieldType(f *model.Field) string {
-	switch f.Type {
+	switch f.GetType() {
 	case "string":
 		return "String"
-	case "i8", "u8", "char":
-		return "byte"
-	case "i16", "u16", "int16", "uint16":
-		return "short"
-	case "i32", "u32", "int32", "uint32":
-		return "int"
-	case "i64", "u64", "int64", "uint64":
-		return "long"
-	case "f32":
-		return "float"
-	case "f64":
-		return "double"
+	case "i8", "u8", "char", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64":
+		return javaBasicTypeMap[f.GetType()].JavaType
 	default:
 		_, ok := ParseCharArrayType(f.Type)
 		if ok {
@@ -262,19 +348,22 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 		b.WriteString(AddIndent4ln(fmt.Sprintf("this.%s = byteBuf.readCharSequence(%s, StandardCharsets.UTF_8).toString();", g.GetFieldNameLower(f), fieldLen)))
 		b.WriteString("}")
 		return b.String()
-	case "i8", "u8", "char":
-		return fmt.Sprintf("this.%s = byteBuf.readByte();", g.GetFieldNameLower(f))
-	case "i16", "u16", "int16", "uint16":
-		return fmt.Sprintf("this.%s = byteBuf.readShort();", g.GetFieldNameLower(f))
-	case "i32", "u32", "int32", "uint32":
-		return fmt.Sprintf("this.%s = byteBuf.readInt();", g.GetFieldNameLower(f))
-	case "i64", "u64", "int64", "uint64":
-		return fmt.Sprintf("this.%s = byteBuf.readLong();", g.GetFieldNameLower(f))
-	case "f32":
-		return fmt.Sprintf("this.%s = byteBuf.readFloat();", g.GetFieldNameLower(f))
-	case "f64":
-		return fmt.Sprintf("this.%s = byteBuf.readDouble();", g.GetFieldNameLower(f))
+	// case "i8", "u8", "char":
+	// 	return fmt.Sprintf("this.%s = byteBuf.readByte();", g.GetFieldNameLower(f))
+	// case "i16", "u16", "int16", "uint16":
+	// 	return fmt.Sprintf("this.%s = byteBuf.readShort();", g.GetFieldNameLower(f))
+	// case "i32", "u32", "int32", "uint32":
+	// 	return fmt.Sprintf("this.%s = byteBuf.readInt();", g.GetFieldNameLower(f))
+	// case "i64", "u64", "int64", "uint64":
+	// 	return fmt.Sprintf("this.%s = byteBuf.readLong();", g.GetFieldNameLower(f))
+	// case "f32":
+	// 	return fmt.Sprintf("this.%s = byteBuf.readFloat();", g.GetFieldNameLower(f))
+	// case "f64":
+	// 	return fmt.Sprintf("this.%s = byteBuf.readDouble();", g.GetFieldNameLower(f))
 	default:
+		if typ, ok := javaBasicTypeMap[f.GetType()]; ok {
+			return fmt.Sprintf("this.%s = byteBuf.read%s();", g.GetFieldNameLower(f), strcase.ToCamel(typ.JavaType))
+		}
 		len, ok := ParseCharArrayType(f.Type)
 		if ok {
 			return fmt.Sprintf("this.%s = readFixedString(byteBuf, %s);", g.GetFieldNameLower(f), len)
@@ -304,15 +393,31 @@ func (g JavaGenerator) GenerateEncode(packet *model.Packet) string {
 	b.WriteString("@Override\n")
 	b.WriteString("public void encode(ByteBuf byteBuf) {\n")
 	for _, f := range packet.Fields {
-		b.WriteString(AddIndent4ln(g.GenerateEncodeField(&f)))
+		b.WriteString(AddIndent4ln(g.GenerateEncodeField(packet, &f)))
 	}
 	b.WriteString("}\n")
 	return b.String()
 }
 
 // GenerateEncodeField gen encode field
-func (g JavaGenerator) GenerateEncodeField(f *model.Field) string {
-	switch f.Type {
+func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) string {
+	if f.LengthOfField != "" {
+		// auto calculate length field
+		var b strings.Builder
+		b.WriteString(fmt.Sprintf("ByteBuf %sBuf = null;\n", strcase.ToLowerCamel(f.LengthOfField)))
+		b.WriteString(fmt.Sprintf("if (this.%s != null) {\n", strcase.ToLowerCamel(f.LengthOfField)))
+		b.WriteString(fmt.Sprintf("%sBuf = Unpooled.buffer();\n", strcase.ToLowerCamel(f.LengthOfField)))
+		b.WriteString(fmt.Sprintf("this.%s.encode(%sBuf);\n", strcase.ToLowerCamel(f.LengthOfField), strcase.ToLowerCamel(f.LengthOfField)))
+		b.WriteString(fmt.Sprintf("this.%s = (short) %sBuf.readableBytes();\n", strcase.ToLowerCamel(f.Name), strcase.ToLowerCamel(f.LengthOfField)))
+		b.WriteString("} else {\n")
+		b.WriteString(fmt.Sprintf("this.%s = 0;\n", strcase.ToLowerCamel(f.Name)))
+		b.WriteString("}\n")
+
+		b.WriteString(fmt.Sprintf("byteBuf.write%s(this.%s);\n", strcase.ToCamel(javaBasicTypeMap[f.GetType()].JavaType), strcase.ToLowerCamel(f.Name)))
+
+		return b.String()
+	}
+	switch f.GetType() {
 	case "string":
 		var b strings.Builder
 		b.WriteString(fmt.Sprintf("if (StringUtil.isNullOrEmpty(this.%s)) {\n", g.GetFieldNameLower(f)))
@@ -323,23 +428,36 @@ func (g JavaGenerator) GenerateEncodeField(f *model.Field) string {
 		b.WriteString(AddIndent4ln("byteBuf.writeBytes(bytes);"))
 		b.WriteString("}\n")
 		return b.String()
-	case "i8", "u8", "char":
-		return fmt.Sprintf("byteBuf.writeByte(this.%s);", g.GetFieldNameLower(f))
-	case "i16", "u16", "int16", "uint16":
-		return fmt.Sprintf("byteBuf.writeShort(this.%s);", g.GetFieldNameLower(f))
-	case "i32", "u32", "int32", "uint32":
-		return fmt.Sprintf("byteBuf.writeInt(this.%s);", g.GetFieldNameLower(f))
-	case "i64", "u64", "int64", "uint64":
-		return fmt.Sprintf("byteBuf.writeLong(this.%s);", g.GetFieldNameLower(f))
-	case "f32":
-		return fmt.Sprintf("byteBuf.writeFloat(this.%s);", g.GetFieldNameLower(f))
-	case "f64":
-		return fmt.Sprintf("byteBuf.writeDouble(this.%s);", g.GetFieldNameLower(f))
+	// case "i8", "u8", "char":
+	// 	return fmt.Sprintf("byteBuf.writeByte(this.%s);", g.GetFieldNameLower(f))
+	// case "i16", "u16", "int16", "uint16":
+	// 	return fmt.Sprintf("byteBuf.writeShort(this.%s);", g.GetFieldNameLower(f))
+	// case "i32", "u32", "int32", "uint32":
+	// 	return fmt.Sprintf("byteBuf.writeInt(this.%s);", g.GetFieldNameLower(f))
+	// case "i64", "u64", "int64", "uint64":
+	// 	return fmt.Sprintf("byteBuf.writeLong(this.%s);", g.GetFieldNameLower(f))
+	// case "f32":
+	// 	return fmt.Sprintf("byteBuf.writeFloat(this.%s);", g.GetFieldNameLower(f))
+	// case "f64":
+	// 	return fmt.Sprintf("byteBuf.writeDouble(this.%s);", g.GetFieldNameLower(f))
 	default:
+		if typ, ok := javaBasicTypeMap[f.GetType()]; ok {
+			return fmt.Sprintf("byteBuf.write%s(this.%s);", strcase.ToCamel(typ.JavaType), g.GetFieldNameLower(f))
+		}
 		len, ok := ParseCharArrayType(f.Type)
 		if ok {
 			return fmt.Sprintf("writeFixedString(byteBuf, this.%s, %s);", g.GetFieldNameLower(f), len)
 		}
+
+		if f.Name == p.LengthOfField {
+			var b strings.Builder
+			b.WriteString(fmt.Sprintf("if (%sBuf != null) {\n", strcase.ToLowerCamel(f.Name)))
+			b.WriteString(fmt.Sprintf("byteBuf.writeBytes(%sBuf);\n", strcase.ToLowerCamel(f.Name)))
+			b.WriteString(fmt.Sprintf("%sBuf.release();\n", strcase.ToLowerCamel(f.Name)))
+			b.WriteString("}\n")
+			return b.String()
+		}
+
 		if f.InerObject != nil {
 			var b strings.Builder
 			b.WriteString(fmt.Sprintf("if (null == this.%s) {\n", strcase.ToLowerCamel(f.InerObject.Name)))

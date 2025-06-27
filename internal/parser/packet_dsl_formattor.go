@@ -243,7 +243,7 @@ func (v *PacketDslFormattor) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclarati
 	}
 	fieldName := ctx.GetName().GetText()
 	if ctx.GetFrom() != nil {
-		fieldName += " = " + "lenghtof(" + ctx.GetFrom().GetText() + ")"
+		fieldName += " = " + "lengthof(" + ctx.GetFrom().GetText() + ")"
 	}
 	description := ""
 	if ctx.STRING_LITERAL() != nil {

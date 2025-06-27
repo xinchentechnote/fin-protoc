@@ -32,7 +32,7 @@ var PacketDslParserStaticData struct {
 func packetdslParserInit() {
 	staticData := &PacketDslParserStaticData
 	staticData.LiteralNames = []string{
-		"", "'options'", "'{'", "'}'", "'='", "'lenghtof('", "')'", "'string'",
+		"", "'options'", "'{'", "'}'", "'='", "'lengthof('", "')'", "'string'",
 		"'char'", "'char['", "']'", "'as'", "'['", "", "", "", "", "", "", "",
 		"", "", "", "", "", "'root'", "'packet'", "'repeat'", "'MetaData'",
 		"'match'", "':'", "','", "';'",
