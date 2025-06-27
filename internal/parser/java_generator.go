@@ -343,7 +343,8 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 	case "string":
 		var b strings.Builder
 		fieldLen := g.GetFieldNameLower(f) + "Len"
-		b.WriteString(fmt.Sprintf("short %s = byteBuf.readShort();\n", fieldLen))
+		lenTyp := javaBasicTypeMap[g.config.StringLenPrefixLenType].JavaType
+		b.WriteString(fmt.Sprintf("%s %s = byteBuf.read%s();\n", lenTyp, fieldLen, strcase.ToCamel(lenTyp)))
 		b.WriteString(fmt.Sprintf("if (%s > 0) {\n", fieldLen))
 		b.WriteString(AddIndent4ln(fmt.Sprintf("this.%s = byteBuf.readCharSequence(%s, StandardCharsets.UTF_8).toString();", g.GetFieldNameLower(f), fieldLen)))
 		b.WriteString("}")
@@ -424,7 +425,8 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 		b.WriteString(AddIndent4ln("byteBuf.writeShort(0);"))
 		b.WriteString("} else {\n")
 		b.WriteString(AddIndent4ln(fmt.Sprintf("byte[] bytes = this.%s.getBytes(StandardCharsets.UTF_8);", g.GetFieldNameLower(f))))
-		b.WriteString(AddIndent4ln("byteBuf.writeShort(bytes.length);"))
+		lenTyp := javaBasicTypeMap[g.config.StringLenPrefixLenType].JavaType
+		b.WriteString(AddIndent4ln(fmt.Sprintf("byteBuf.write%s(bytes.length);", strcase.ToCamel(lenTyp))))
 		b.WriteString(AddIndent4ln("byteBuf.writeBytes(bytes);"))
 		b.WriteString("}\n")
 		return b.String()
