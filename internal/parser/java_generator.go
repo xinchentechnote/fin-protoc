@@ -25,40 +25,40 @@ var javaBasicTypeMap = map[string]JavaType{
 	"u8": {
 		Name:      "u8",
 		JavaType:  "byte",
-		Be:        "byte",
-		Le:        "byte",
+		Be:        "Byte",
+		Le:        "Byte",
 		Size:      1,
 		TestValue: "(byte)1",
 	},
 	"char": {
 		Name:      "char",
 		JavaType:  "byte",
-		Be:        "byte",
-		Le:        "byte",
+		Be:        "Byte",
+		Le:        "Byte",
 		Size:      1,
 		TestValue: "(byte)1",
 	},
 	"u16": {
 		Name:      "u16",
 		JavaType:  "short",
-		Be:        "short",
-		Le:        "shortLe",
+		Be:        "Short",
+		Le:        "ShortLE",
 		Size:      2,
 		TestValue: "(short)2",
 	},
 	"u32": {
 		Name:      "u32",
 		JavaType:  "int",
-		Be:        "int",
-		Le:        "intLe",
+		Be:        "Int",
+		Le:        "IntLE",
 		Size:      4,
 		TestValue: "4",
 	},
 	"u64": {
 		Name:      "u64",
 		JavaType:  "long",
-		Be:        "long",
-		Le:        "longLe",
+		Be:        "Long",
+		Le:        "LongLE",
 		Size:      8,
 		TestValue: "8L",
 	},
@@ -67,32 +67,32 @@ var javaBasicTypeMap = map[string]JavaType{
 	"i8": {
 		Name:      "i8",
 		JavaType:  "byte",
-		Be:        "byte",
-		Le:        "byte",
+		Be:        "Byte",
+		Le:        "Byte",
 		Size:      1,
 		TestValue: "(byte)1",
 	},
 	"i16": {
 		Name:      "i16",
 		JavaType:  "short",
-		Be:        "short",
-		Le:        "shortLe",
+		Be:        "Short",
+		Le:        "ShortLE",
 		Size:      2,
 		TestValue: "(short)2",
 	},
 	"i32": {
 		Name:      "i32",
 		JavaType:  "int",
-		Be:        "int",
-		Le:        "intLe",
+		Be:        "Int",
+		Le:        "IntLE",
 		Size:      4,
 		TestValue: "4",
 	},
 	"i64": {
 		Name:      "i64",
 		JavaType:  "long",
-		Be:        "long",
-		Le:        "longLe",
+		Be:        "Long",
+		Le:        "LongLE",
 		Size:      8,
 		TestValue: "8L",
 	},
@@ -101,16 +101,16 @@ var javaBasicTypeMap = map[string]JavaType{
 	"f32": {
 		Name:      "f32",
 		JavaType:  "float",
-		Be:        "float",
-		Le:        "floatLe",
+		Be:        "Float",
+		Le:        "FloatLE",
 		Size:      4,
 		TestValue: "4",
 	},
 	"f64": {
 		Name:      "f64",
 		JavaType:  "double",
-		Be:        "double",
-		Le:        "doubleLe",
+		Be:        "Double",
+		Le:        "DoubleLE",
 		Size:      8,
 		TestValue: "8",
 	},
@@ -361,11 +361,11 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 	case "string":
 		var b strings.Builder
 		fieldLen := g.GetFieldNameLower(f) + "Len"
-		lenTyp := javaBasicTypeMap[g.config.StringLenPrefixLenType].JavaType
+		lenTyp := javaBasicTypeMap[g.config.StringLenPrefixLenType]
 		if g.config.LittleEndian {
-			b.WriteString(fmt.Sprintf("%s %s = byteBuf.read%s();\n", lenTyp, fieldLen, strcase.ToCamel(lenTyp)))
+			b.WriteString(fmt.Sprintf("%s %s = byteBuf.read%s();\n", lenTyp.JavaType, fieldLen, lenTyp.Le))
 		} else {
-			b.WriteString(fmt.Sprintf("%s %s = byteBuf.read%sLe();\n", lenTyp, fieldLen, strcase.ToCamel(lenTyp)))
+			b.WriteString(fmt.Sprintf("%s %s = byteBuf.read%s();\n", lenTyp.JavaType, fieldLen, lenTyp.Be))
 		}
 		b.WriteString(fmt.Sprintf("if (%s > 0) {\n", fieldLen))
 		b.WriteString(AddIndent4ln(fmt.Sprintf("this.%s = byteBuf.readCharSequence(%s, StandardCharsets.UTF_8).toString();", g.GetFieldNameLower(f), fieldLen)))
@@ -373,7 +373,10 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 		return b.String()
 	default:
 		if typ, ok := javaBasicTypeMap[f.GetType()]; ok {
-			return fmt.Sprintf("this.%s = byteBuf.read%s();", g.GetFieldNameLower(f), strcase.ToCamel(typ.JavaType))
+			if g.config.LittleEndian {
+				return fmt.Sprintf("this.%s = byteBuf.read%s();", g.GetFieldNameLower(f), typ.Le)
+			}
+			return fmt.Sprintf("this.%s = byteBuf.read%s();", g.GetFieldNameLower(f), typ.Be)
 		}
 		len, ok := ParseCharArrayType(f.Type)
 		if ok {
@@ -419,12 +422,17 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 		b.WriteString(fmt.Sprintf("if (this.%s != null) {\n", strcase.ToLowerCamel(f.LengthOfField)))
 		b.WriteString(fmt.Sprintf("%sBuf = Unpooled.buffer();\n", strcase.ToLowerCamel(f.LengthOfField)))
 		b.WriteString(fmt.Sprintf("this.%s.encode(%sBuf);\n", strcase.ToLowerCamel(f.LengthOfField), strcase.ToLowerCamel(f.LengthOfField)))
-		b.WriteString(fmt.Sprintf("this.%s = (short) %sBuf.readableBytes();\n", strcase.ToLowerCamel(f.Name), strcase.ToLowerCamel(f.LengthOfField)))
+		lenTyp := javaBasicTypeMap[f.GetType()]
+		b.WriteString(fmt.Sprintf("this.%s = (%s) %sBuf.readableBytes();\n", strcase.ToLowerCamel(f.Name), lenTyp.JavaType, strcase.ToLowerCamel(f.LengthOfField)))
 		b.WriteString("} else {\n")
 		b.WriteString(fmt.Sprintf("this.%s = 0;\n", strcase.ToLowerCamel(f.Name)))
 		b.WriteString("}\n")
 
-		b.WriteString(fmt.Sprintf("byteBuf.write%s(this.%s);\n", strcase.ToCamel(javaBasicTypeMap[f.GetType()].JavaType), strcase.ToLowerCamel(f.Name)))
+		if g.config.LittleEndian {
+			b.WriteString(fmt.Sprintf("byteBuf.write%s(this.%s);\n", lenTyp.Le, strcase.ToLowerCamel(f.Name)))
+		} else {
+			b.WriteString(fmt.Sprintf("byteBuf.write%s(this.%s);\n", lenTyp.Be, strcase.ToLowerCamel(f.Name)))
+		}
 
 		return b.String()
 	}
@@ -435,14 +443,21 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 		b.WriteString(AddIndent4ln("byteBuf.writeShort(0);"))
 		b.WriteString("} else {\n")
 		b.WriteString(AddIndent4ln(fmt.Sprintf("byte[] bytes = this.%s.getBytes(StandardCharsets.UTF_8);", g.GetFieldNameLower(f))))
-		lenTyp := javaBasicTypeMap[g.config.StringLenPrefixLenType].JavaType
-		b.WriteString(AddIndent4ln(fmt.Sprintf("byteBuf.write%s(bytes.length);", strcase.ToCamel(lenTyp))))
+		lenTyp := javaBasicTypeMap[g.config.StringLenPrefixLenType]
+		if g.config.LittleEndian {
+			b.WriteString(AddIndent4ln(fmt.Sprintf("byteBuf.write%s(bytes.length);", lenTyp.Le)))
+		} else {
+			b.WriteString(AddIndent4ln(fmt.Sprintf("byteBuf.write%s(bytes.length);", lenTyp.Be)))
+		}
 		b.WriteString(AddIndent4ln("byteBuf.writeBytes(bytes);"))
 		b.WriteString("}\n")
 		return b.String()
 	default:
 		if typ, ok := javaBasicTypeMap[f.GetType()]; ok {
-			return fmt.Sprintf("byteBuf.write%s(this.%s);", strcase.ToCamel(typ.JavaType), g.GetFieldNameLower(f))
+			if g.config.LittleEndian {
+				return fmt.Sprintf("byteBuf.write%s(this.%s);", typ.Le, g.GetFieldNameLower(f))
+			}
+			return fmt.Sprintf("byteBuf.write%s(this.%s);", typ.Be, g.GetFieldNameLower(f))
 		}
 		len, ok := ParseCharArrayType(f.Type)
 		if ok {
