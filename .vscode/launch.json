@@ -44,6 +44,20 @@
                 "-j", 
                 "/home/s0596/workspace/fin-proto-java/sse-bin/src/"
             ]
+        },
+        {
+            "name": "Launch Package - compile szse",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/",
+            "args": [
+                "compile",
+                "-f",
+                "/home/s0596/workspace/fin-proto-java/szse-bin/proto/szse_bin_v1.29.pdsl",
+                "-j", 
+                "/home/s0596/workspace/fin-proto-java/szse-bin/src/"
+            ]
         }
     ]
 }
