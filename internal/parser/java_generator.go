@@ -223,16 +223,25 @@ import io.netty.util.internal.StringUtil;
 func (g JavaGenerator) GenerateCreateMethod(p *model.Packet, f *model.Field) string {
 	var b strings.Builder
 	typ := p.FieldMap[f.MatchKey].GetType()
-	matchKeyTyp := javaBasicTypeMap[typ]
-	b.WriteString(fmt.Sprintf("private static final Map<%s, Supplier<BinaryCodec>> %sMap = new HashMap<>();", matchKeyTyp.BoxType, g.GetFieldNameLower(f)))
+	matchKeyTyp, ok := javaBasicTypeMap[typ]
+	cast := ""
+	if ok {
+		typ = matchKeyTyp.BoxType
+		cast = fmt.Sprintf("(%s) ", matchKeyTyp.BasicType)
+	}
+	_, ok = ParseCharArrayType(typ)
+	if ok {
+		typ = "String"
+	}
+	b.WriteString(fmt.Sprintf("private static final Map<%s, Supplier<BinaryCodec>> %sMap = new HashMap<>();", typ, g.GetFieldNameLower(f)))
 	b.WriteString("\n")
 	b.WriteString("static {\n")
 	for _, pair := range f.MatchPairs {
-		b.WriteString(fmt.Sprintf("    %sMap.put((%s) %s, %s::new);\n", g.GetFieldNameLower(f), matchKeyTyp.BasicType, pair.Key, pair.Value))
+		b.WriteString(fmt.Sprintf("    %sMap.put(%s%s, %s::new);\n", g.GetFieldNameLower(f), cast, pair.Key, pair.Value))
 	}
 	b.WriteString("}\n")
 	b.WriteString("\n")
-	b.WriteString(fmt.Sprintf("private BinaryCodec create%s(%s %s) {\n", g.GetFieldName(f), matchKeyTyp.BasicType, strcase.ToLowerCamel(f.MatchKey)))
+	b.WriteString(fmt.Sprintf("private BinaryCodec create%s(%s %s) {\n", g.GetFieldName(f), typ, strcase.ToLowerCamel(f.MatchKey)))
 	b.WriteString(fmt.Sprintf("    Supplier<BinaryCodec> supplier = %sMap.get(%s);\n", g.GetFieldNameLower(f), strcase.ToLowerCamel(f.MatchKey)))
 	b.WriteString("    if (null == supplier) {\n")
 	b.WriteString(fmt.Sprintf("        throw new IllegalArgumentException(\"Unsupported %s:\" + %s);\n", f.MatchKey, strcase.ToLowerCamel(f.MatchKey)))
@@ -372,7 +381,7 @@ func (g JavaGenerator) GenerateDecode(packet *model.Packet) string {
 // GenerateDecodeField den decode field
 func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 	switch f.Type {
-	case "string":
+	case "string", "char[]":
 		var b strings.Builder
 		fieldLen := g.GetFieldNameLower(f) + "Len"
 		lenTyp := javaBasicTypeMap[g.config.StringLenPrefixLenType]
@@ -409,6 +418,14 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 			var b strings.Builder
 			b.WriteString(fmt.Sprintf("this.%s = create%s(this.%s);\n", g.GetFieldNameLower(f), g.GetFieldName(f), strcase.ToLowerCamel(f.MatchKey)))
 			b.WriteString(fmt.Sprintf("this.%s.decode(byteBuf);", g.GetFieldNameLower(f)))
+			return b.String()
+		}
+		if _, ok := g.binModel.PacketsMap[f.Name]; ok {
+			var b strings.Builder
+			b.WriteString(fmt.Sprintf("if (null == this.%s) {\n", strcase.ToLowerCamel(f.Name)))
+			b.WriteString(AddIndent4ln(fmt.Sprintf("this.%s = new %s();", strcase.ToLowerCamel(f.Name), f.Name)))
+			b.WriteString("}\n")
+			b.WriteString(fmt.Sprintf("this.%s.decode(byteBuf);", strcase.ToLowerCamel(f.Name)))
 			return b.String()
 		}
 		return "--" + f.Type
@@ -451,7 +468,7 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 		return b.String()
 	}
 	switch f.GetType() {
-	case "string":
+	case "string", "char[]":
 		var b strings.Builder
 		b.WriteString(fmt.Sprintf("if (StringUtil.isNullOrEmpty(this.%s)) {\n", g.GetFieldNameLower(f)))
 		b.WriteString(AddIndent4ln("byteBuf.writeShort(0);"))
@@ -501,6 +518,14 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 			b.WriteString(fmt.Sprintf("if (null != this.%s) {\n", g.GetFieldNameLower(f)))
 			b.WriteString(fmt.Sprintf("this.%s.encode(byteBuf);", g.GetFieldNameLower(f)))
 			b.WriteString("}")
+			return b.String()
+		}
+		if _, ok := g.binModel.PacketsMap[f.Name]; ok {
+			var b strings.Builder
+			b.WriteString(fmt.Sprintf("if (null == this.%s) {\n", strcase.ToLowerCamel(f.Name)))
+			b.WriteString(AddIndent4ln(fmt.Sprintf("this.%s = new %s();", strcase.ToLowerCamel(f.Name), f.Name)))
+			b.WriteString("}\n")
+			b.WriteString(fmt.Sprintf("this.%s.encode(byteBuf);", strcase.ToLowerCamel(f.Name)))
 			return b.String()
 		}
 		return "//" + f.Type
@@ -579,7 +604,13 @@ func (g JavaGenerator) GenerateNewInstance(instanceName string, parent string, p
 				b.WriteString(fmt.Sprintf("%s.set%s(%s);\n", instanceName, strcase.ToCamel(f.Name), inerObjName))
 			}
 		} else {
-			b.WriteString("--" + f.GetType())
+			if p, ok := g.binModel.PacketsMap[f.Name]; ok {
+				inerObjName := strcase.ToLowerCamel(p.Name)
+				b.WriteString(g.GenerateNewInstance(inerObjName, "", &p))
+				b.WriteString(fmt.Sprintf("%s.set%s(%s);\n", instanceName, strcase.ToCamel(f.Name), inerObjName))
+			} else {
+				b.WriteString("--" + f.GetType())
+			}
 		}
 
 	}
