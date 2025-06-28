@@ -12,9 +12,9 @@ import (
 // JavaType java basic type
 type JavaType struct {
 	Name      string
-	JavaType  string
+	BasicType string
+	BoxType   string
 	TestValue string
-	Be        string
 	Le        string
 	Size      uint32
 }
@@ -24,40 +24,40 @@ var javaBasicTypeMap = map[string]JavaType{
 	// 无符号整数类型
 	"u8": {
 		Name:      "u8",
-		JavaType:  "byte",
-		Be:        "Byte",
+		BasicType: "byte",
+		BoxType:   "Byte",
 		Le:        "Byte",
 		Size:      1,
 		TestValue: "(byte)1",
 	},
 	"char": {
 		Name:      "char",
-		JavaType:  "byte",
-		Be:        "Byte",
+		BasicType: "byte",
+		BoxType:   "Byte",
 		Le:        "Byte",
 		Size:      1,
 		TestValue: "(byte)1",
 	},
 	"u16": {
 		Name:      "u16",
-		JavaType:  "short",
-		Be:        "Short",
+		BasicType: "short",
+		BoxType:   "Short",
 		Le:        "ShortLE",
 		Size:      2,
 		TestValue: "(short)2",
 	},
 	"u32": {
 		Name:      "u32",
-		JavaType:  "int",
-		Be:        "Int",
+		BasicType: "int",
+		BoxType:   "Integer",
 		Le:        "IntLE",
 		Size:      4,
 		TestValue: "4",
 	},
 	"u64": {
 		Name:      "u64",
-		JavaType:  "long",
-		Be:        "Long",
+		BasicType: "long",
+		BoxType:   "Long",
 		Le:        "LongLE",
 		Size:      8,
 		TestValue: "8L",
@@ -66,32 +66,32 @@ var javaBasicTypeMap = map[string]JavaType{
 	// 有符号整数类型
 	"i8": {
 		Name:      "i8",
-		JavaType:  "byte",
-		Be:        "Byte",
+		BasicType: "byte",
+		BoxType:   "Byte",
 		Le:        "Byte",
 		Size:      1,
 		TestValue: "(byte)1",
 	},
 	"i16": {
 		Name:      "i16",
-		JavaType:  "short",
-		Be:        "Short",
+		BasicType: "short",
+		BoxType:   "Short",
 		Le:        "ShortLE",
 		Size:      2,
 		TestValue: "(short)2",
 	},
 	"i32": {
 		Name:      "i32",
-		JavaType:  "int",
-		Be:        "Int",
+		BasicType: "int",
+		BoxType:   "Integer",
 		Le:        "IntLE",
 		Size:      4,
 		TestValue: "4",
 	},
 	"i64": {
 		Name:      "i64",
-		JavaType:  "long",
-		Be:        "Long",
+		BasicType: "long",
+		BoxType:   "Long",
 		Le:        "LongLE",
 		Size:      8,
 		TestValue: "8L",
@@ -100,16 +100,16 @@ var javaBasicTypeMap = map[string]JavaType{
 	// 浮点类型
 	"f32": {
 		Name:      "f32",
-		JavaType:  "float",
-		Be:        "Float",
+		BasicType: "float",
+		BoxType:   "Float",
 		Le:        "FloatLE",
 		Size:      4,
 		TestValue: "4",
 	},
 	"f64": {
 		Name:      "f64",
-		JavaType:  "double",
-		Be:        "Double",
+		BasicType: "double",
+		BoxType:   "Double",
 		Le:        "DoubleLE",
 		Size:      8,
 		TestValue: "8",
@@ -195,7 +195,7 @@ import io.netty.util.internal.StringUtil;
 	//create
 	for _, f := range packet.Fields {
 		if f.Type == "match" {
-			b.WriteString(AddIndent4ln(g.GenerateCreateMethod(&f)))
+			b.WriteString(AddIndent4ln(g.GenerateCreateMethod(packet, &f)))
 		}
 	}
 
@@ -207,7 +207,6 @@ import io.netty.util.internal.StringUtil;
 	b.WriteString("\n")
 	//tostring
 	b.WriteString(AddIndent4ln(g.GenerateToString(packet)))
-
 	//inerClass
 	for _, f := range packet.Fields {
 		if f.InerObject != nil {
@@ -221,17 +220,19 @@ import io.netty.util.internal.StringUtil;
 }
 
 // GenerateCreateMethod gen create method
-func (g JavaGenerator) GenerateCreateMethod(f *model.Field) string {
+func (g JavaGenerator) GenerateCreateMethod(p *model.Packet, f *model.Field) string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("private static final Map<Short, Supplier<BinaryCodec>> %sMap = new HashMap<>();", g.GetFieldNameLower(f)))
+	typ := p.FieldMap[f.MatchKey].GetType()
+	matchKeyTyp := javaBasicTypeMap[typ]
+	b.WriteString(fmt.Sprintf("private static final Map<%s, Supplier<BinaryCodec>> %sMap = new HashMap<>();", matchKeyTyp.BoxType, g.GetFieldNameLower(f)))
 	b.WriteString("\n")
 	b.WriteString("static {\n")
 	for _, pair := range f.MatchPairs {
-		b.WriteString(fmt.Sprintf("    %sMap.put((short) %s, %s::new);\n", g.GetFieldNameLower(f), pair.Key, pair.Value))
+		b.WriteString(fmt.Sprintf("    %sMap.put((%s) %s, %s::new);\n", g.GetFieldNameLower(f), matchKeyTyp.BasicType, pair.Key, pair.Value))
 	}
 	b.WriteString("}\n")
 	b.WriteString("\n")
-	b.WriteString(fmt.Sprintf("private BinaryCodec create%s(short %s) {\n", g.GetFieldName(f), strcase.ToLowerCamel(f.MatchKey)))
+	b.WriteString(fmt.Sprintf("private BinaryCodec create%s(%s %s) {\n", g.GetFieldName(f), matchKeyTyp.BasicType, strcase.ToLowerCamel(f.MatchKey)))
 	b.WriteString(fmt.Sprintf("    Supplier<BinaryCodec> supplier = %sMap.get(%s);\n", g.GetFieldNameLower(f), strcase.ToLowerCamel(f.MatchKey)))
 	b.WriteString("    if (null == supplier) {\n")
 	b.WriteString(fmt.Sprintf("        throw new IllegalArgumentException(\"Unsupported %s:\" + %s);\n", f.MatchKey, strcase.ToLowerCamel(f.MatchKey)))
@@ -257,7 +258,7 @@ func (g JavaGenerator) GetFieldType(f *model.Field) string {
 	case "string":
 		return "String"
 	case "i8", "u8", "char", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64":
-		return javaBasicTypeMap[f.GetType()].JavaType
+		return javaBasicTypeMap[f.GetType()].BasicType
 	default:
 		_, ok := ParseCharArrayType(f.Type)
 		if ok {
@@ -293,15 +294,19 @@ func (g JavaGenerator) GenerateToString(packet *model.Packet) string {
 	var b strings.Builder
 	b.WriteString("@Override\n")
 	b.WriteString("public String toString() {\n")
-	b.WriteString(AddIndent4(fmt.Sprintf("return \"%s [\"", packet.Name)))
-	for idx, f := range packet.Fields {
-		if idx == 0 {
-			b.WriteString(fmt.Sprintf(" + \"%s=\" + this.%s", g.GetFieldNameLower(&f), g.GetFieldNameLower(&f)))
-		} else {
-			b.WriteString(fmt.Sprintf(" + \", %s=\" + this.%s", g.GetFieldNameLower(&f), g.GetFieldNameLower(&f)))
+	if len(packet.Fields) > 0 {
+		b.WriteString(AddIndent4(fmt.Sprintf("return \"%s [\"", packet.Name)))
+		for idx, f := range packet.Fields {
+			if idx == 0 {
+				b.WriteString(fmt.Sprintf(" + \"%s=\" + this.%s", g.GetFieldNameLower(&f), g.GetFieldNameLower(&f)))
+			} else {
+				b.WriteString(fmt.Sprintf(" + \", %s=\" + this.%s", g.GetFieldNameLower(&f), g.GetFieldNameLower(&f)))
+			}
 		}
+		b.WriteString(" + \"]\";\n")
+	} else {
+		b.WriteString(AddIndent4(fmt.Sprintf("return \"%s []\";", packet.Name)))
 	}
-	b.WriteString(" + \"]\";\n")
 	b.WriteString("}\n")
 	return b.String()
 }
@@ -317,14 +322,18 @@ func (g JavaGenerator) GenerateEquals(packet *model.Packet) string {
 	b.WriteString(AddIndent4ln("if(null == obj || getClass() != obj.getClass()) {"))
 	b.WriteString(AddIndent4ln(AddIndent4("return false;")))
 	b.WriteString(AddIndent4ln("}"))
-	b.WriteString(AddIndent4ln(fmt.Sprintf("%s %s = (%s) obj;", packet.Name, strcase.ToLowerCamel(packet.Name), packet.Name)))
-	equals := make([]string, 0, len(packet.Fields))
-	for _, f := range packet.Fields {
-		equal := fmt.Sprintf("Objects.equals(%s, %s.%s)",
-			strcase.ToLowerCamel(f.Name), strcase.ToLowerCamel(packet.Name), strcase.ToLowerCamel(f.Name))
-		equals = append(equals, equal)
+	if len(packet.Fields) > 0 {
+		b.WriteString(AddIndent4ln(fmt.Sprintf("%s orther_ = (%s) obj;", packet.Name, packet.Name)))
+		equals := make([]string, 0, len(packet.Fields))
+		for _, f := range packet.Fields {
+			equal := fmt.Sprintf("Objects.equals(%s, orther_.%s)",
+				strcase.ToLowerCamel(f.Name), strcase.ToLowerCamel(f.Name))
+			equals = append(equals, equal)
+		}
+		b.WriteString(AddIndent4ln(fmt.Sprintf("return %s;", strings.Join(equals, " && "))))
+	} else {
+		b.WriteString(AddIndent4ln("return true;"))
 	}
-	b.WriteString(AddIndent4ln(fmt.Sprintf("return %s;", strings.Join(equals, " && "))))
 	b.WriteString("}\n")
 	return b.String()
 }
@@ -334,11 +343,16 @@ func (g JavaGenerator) GenerateHashCode(packet *model.Packet) string {
 	var b strings.Builder
 	b.WriteString("@Override\n")
 	b.WriteString("public int hashCode() {\n")
-	names := make([]string, 0, len(packet.Fields))
-	for _, f := range packet.Fields {
-		names = append(names, strcase.ToLowerCamel(f.Name))
+	if len(packet.Fields) > 0 {
+		names := make([]string, 0, len(packet.Fields))
+		for _, f := range packet.Fields {
+			names = append(names, strcase.ToLowerCamel(f.Name))
+		}
+		b.WriteString(AddIndent4ln(fmt.Sprintf("return Objects.hash(%s);", strings.Join(names, ", "))))
+	} else {
+		b.WriteString(AddIndent4ln("return this.hashCode();"))
 	}
-	b.WriteString(AddIndent4ln(fmt.Sprintf("return Objects.hash(%s);", strings.Join(names, ", "))))
+
 	b.WriteString("}\n")
 	return b.String()
 }
@@ -363,9 +377,9 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 		fieldLen := g.GetFieldNameLower(f) + "Len"
 		lenTyp := javaBasicTypeMap[g.config.StringLenPrefixLenType]
 		if g.config.LittleEndian {
-			b.WriteString(fmt.Sprintf("%s %s = byteBuf.read%s();\n", lenTyp.JavaType, fieldLen, lenTyp.Le))
+			b.WriteString(fmt.Sprintf("%s %s = byteBuf.read%s();\n", lenTyp.BasicType, fieldLen, lenTyp.Le))
 		} else {
-			b.WriteString(fmt.Sprintf("%s %s = byteBuf.read%s();\n", lenTyp.JavaType, fieldLen, lenTyp.Be))
+			b.WriteString(fmt.Sprintf("%s %s = byteBuf.read%s();\n", lenTyp.BasicType, fieldLen, strcase.ToCamel(lenTyp.BasicType)))
 		}
 		b.WriteString(fmt.Sprintf("if (%s > 0) {\n", fieldLen))
 		b.WriteString(AddIndent4ln(fmt.Sprintf("this.%s = byteBuf.readCharSequence(%s, StandardCharsets.UTF_8).toString();", g.GetFieldNameLower(f), fieldLen)))
@@ -376,7 +390,7 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 			if g.config.LittleEndian {
 				return fmt.Sprintf("this.%s = byteBuf.read%s();", g.GetFieldNameLower(f), typ.Le)
 			}
-			return fmt.Sprintf("this.%s = byteBuf.read%s();", g.GetFieldNameLower(f), typ.Be)
+			return fmt.Sprintf("this.%s = byteBuf.read%s();", g.GetFieldNameLower(f), strcase.ToCamel(typ.BasicType))
 		}
 		len, ok := ParseCharArrayType(f.Type)
 		if ok {
@@ -423,7 +437,7 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 		b.WriteString(fmt.Sprintf("%sBuf = Unpooled.buffer();\n", strcase.ToLowerCamel(f.LengthOfField)))
 		b.WriteString(fmt.Sprintf("this.%s.encode(%sBuf);\n", strcase.ToLowerCamel(f.LengthOfField), strcase.ToLowerCamel(f.LengthOfField)))
 		lenTyp := javaBasicTypeMap[f.GetType()]
-		b.WriteString(fmt.Sprintf("this.%s = (%s) %sBuf.readableBytes();\n", strcase.ToLowerCamel(f.Name), lenTyp.JavaType, strcase.ToLowerCamel(f.LengthOfField)))
+		b.WriteString(fmt.Sprintf("this.%s = (%s) %sBuf.readableBytes();\n", strcase.ToLowerCamel(f.Name), lenTyp.BasicType, strcase.ToLowerCamel(f.LengthOfField)))
 		b.WriteString("} else {\n")
 		b.WriteString(fmt.Sprintf("this.%s = 0;\n", strcase.ToLowerCamel(f.Name)))
 		b.WriteString("}\n")
@@ -431,7 +445,7 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 		if g.config.LittleEndian {
 			b.WriteString(fmt.Sprintf("byteBuf.write%s(this.%s);\n", lenTyp.Le, strcase.ToLowerCamel(f.Name)))
 		} else {
-			b.WriteString(fmt.Sprintf("byteBuf.write%s(this.%s);\n", lenTyp.Be, strcase.ToLowerCamel(f.Name)))
+			b.WriteString(fmt.Sprintf("byteBuf.write%s(this.%s);\n", strcase.ToCamel(lenTyp.BasicType), strcase.ToLowerCamel(f.Name)))
 		}
 
 		return b.String()
@@ -447,7 +461,7 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 		if g.config.LittleEndian {
 			b.WriteString(AddIndent4ln(fmt.Sprintf("byteBuf.write%s(bytes.length);", lenTyp.Le)))
 		} else {
-			b.WriteString(AddIndent4ln(fmt.Sprintf("byteBuf.write%s(bytes.length);", lenTyp.Be)))
+			b.WriteString(AddIndent4ln(fmt.Sprintf("byteBuf.write%s(bytes.length);", strcase.ToCamel(lenTyp.BasicType))))
 		}
 		b.WriteString(AddIndent4ln("byteBuf.writeBytes(bytes);"))
 		b.WriteString("}\n")
@@ -457,7 +471,7 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 			if g.config.LittleEndian {
 				return fmt.Sprintf("byteBuf.write%s(this.%s);", typ.Le, g.GetFieldNameLower(f))
 			}
-			return fmt.Sprintf("byteBuf.write%s(this.%s);", typ.Be, g.GetFieldNameLower(f))
+			return fmt.Sprintf("byteBuf.write%s(this.%s);", strcase.ToCamel(typ.BasicType), g.GetFieldNameLower(f))
 		}
 		len, ok := ParseCharArrayType(f.Type)
 		if ok {
@@ -556,7 +570,7 @@ func (g JavaGenerator) GenerateNewInstance(instanceName string, parent string, p
 			key := f.MatchPairs[0].Key
 			value := f.MatchPairs[0].Value
 			if typ, ok := javaBasicTypeMap[packet.FieldMap[f.MatchKey].GetType()]; ok {
-				key = fmt.Sprintf("(%s)%s", typ.JavaType, key)
+				key = fmt.Sprintf("(%s)%s", typ.BasicType, key)
 			}
 			b.WriteString(fmt.Sprintf("%s.set%s(%s);\n", instanceName, strcase.ToCamel(f.MatchKey), key))
 			if p, ok := g.binModel.PacketsMap[value]; ok {
