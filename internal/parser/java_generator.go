@@ -367,18 +367,6 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 		b.WriteString(AddIndent4ln(fmt.Sprintf("this.%s = byteBuf.readCharSequence(%s, StandardCharsets.UTF_8).toString();", g.GetFieldNameLower(f), fieldLen)))
 		b.WriteString("}")
 		return b.String()
-	// case "i8", "u8", "char":
-	// 	return fmt.Sprintf("this.%s = byteBuf.readByte();", g.GetFieldNameLower(f))
-	// case "i16", "u16", "int16", "uint16":
-	// 	return fmt.Sprintf("this.%s = byteBuf.readShort();", g.GetFieldNameLower(f))
-	// case "i32", "u32", "int32", "uint32":
-	// 	return fmt.Sprintf("this.%s = byteBuf.readInt();", g.GetFieldNameLower(f))
-	// case "i64", "u64", "int64", "uint64":
-	// 	return fmt.Sprintf("this.%s = byteBuf.readLong();", g.GetFieldNameLower(f))
-	// case "f32":
-	// 	return fmt.Sprintf("this.%s = byteBuf.readFloat();", g.GetFieldNameLower(f))
-	// case "f64":
-	// 	return fmt.Sprintf("this.%s = byteBuf.readDouble();", g.GetFieldNameLower(f))
 	default:
 		if typ, ok := javaBasicTypeMap[f.GetType()]; ok {
 			return fmt.Sprintf("this.%s = byteBuf.read%s();", g.GetFieldNameLower(f), strcase.ToCamel(typ.JavaType))
@@ -448,18 +436,6 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 		b.WriteString(AddIndent4ln("byteBuf.writeBytes(bytes);"))
 		b.WriteString("}\n")
 		return b.String()
-	// case "i8", "u8", "char":
-	// 	return fmt.Sprintf("byteBuf.writeByte(this.%s);", g.GetFieldNameLower(f))
-	// case "i16", "u16", "int16", "uint16":
-	// 	return fmt.Sprintf("byteBuf.writeShort(this.%s);", g.GetFieldNameLower(f))
-	// case "i32", "u32", "int32", "uint32":
-	// 	return fmt.Sprintf("byteBuf.writeInt(this.%s);", g.GetFieldNameLower(f))
-	// case "i64", "u64", "int64", "uint64":
-	// 	return fmt.Sprintf("byteBuf.writeLong(this.%s);", g.GetFieldNameLower(f))
-	// case "f32":
-	// 	return fmt.Sprintf("byteBuf.writeFloat(this.%s);", g.GetFieldNameLower(f))
-	// case "f64":
-	// 	return fmt.Sprintf("byteBuf.writeDouble(this.%s);", g.GetFieldNameLower(f))
 	default:
 		if typ, ok := javaBasicTypeMap[f.GetType()]; ok {
 			return fmt.Sprintf("byteBuf.write%s(this.%s);", strcase.ToCamel(typ.JavaType), g.GetFieldNameLower(f))
