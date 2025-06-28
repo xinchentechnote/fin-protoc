@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/iancoleman/strcase"
@@ -10,96 +11,108 @@ import (
 
 // JavaType java basic type
 type JavaType struct {
-	Name     string
-	JavaType string
-	Be       string
-	Le       string
-	Size     uint32
+	Name      string
+	JavaType  string
+	TestValue string
+	Be        string
+	Le        string
+	Size      uint32
 }
 
 // javaBasicTypeMap dsl basic type to java type
 var javaBasicTypeMap = map[string]JavaType{
 	// 无符号整数类型
 	"u8": {
-		Name:     "u8",
-		JavaType: "byte",
-		Be:       "byte",
-		Le:       "byte",
-		Size:     1,
+		Name:      "u8",
+		JavaType:  "byte",
+		Be:        "byte",
+		Le:        "byte",
+		Size:      1,
+		TestValue: "(byte)1",
 	},
 	"char": {
-		Name:     "char",
-		JavaType: "byte",
-		Be:       "byte",
-		Le:       "byte",
-		Size:     1,
+		Name:      "char",
+		JavaType:  "byte",
+		Be:        "byte",
+		Le:        "byte",
+		Size:      1,
+		TestValue: "(byte)1",
 	},
 	"u16": {
-		Name:     "u16",
-		JavaType: "short",
-		Be:       "short",
-		Le:       "shortLe",
-		Size:     2,
+		Name:      "u16",
+		JavaType:  "short",
+		Be:        "short",
+		Le:        "shortLe",
+		Size:      2,
+		TestValue: "(short)2",
 	},
 	"u32": {
-		Name:     "u32",
-		JavaType: "int",
-		Be:       "int",
-		Le:       "intLe",
-		Size:     4,
+		Name:      "u32",
+		JavaType:  "int",
+		Be:        "int",
+		Le:        "intLe",
+		Size:      4,
+		TestValue: "4",
 	},
 	"u64": {
-		Name:     "u64",
-		JavaType: "long",
-		Be:       "long",
-		Le:       "longLe",
-		Size:     8,
+		Name:      "u64",
+		JavaType:  "long",
+		Be:        "long",
+		Le:        "longLe",
+		Size:      8,
+		TestValue: "8L",
 	},
 
 	// 有符号整数类型
 	"i8": {
-		Name:     "i8",
-		JavaType: "byte",
-		Be:       "byte",
-		Le:       "byte",
-		Size:     1,
+		Name:      "i8",
+		JavaType:  "byte",
+		Be:        "byte",
+		Le:        "byte",
+		Size:      1,
+		TestValue: "(byte)1",
 	},
 	"i16": {
-		Name:     "i16",
-		JavaType: "short",
-		Be:       "short",
-		Le:       "shortLe",
-		Size:     2,
+		Name:      "i16",
+		JavaType:  "short",
+		Be:        "short",
+		Le:        "shortLe",
+		Size:      2,
+		TestValue: "(short)2",
 	},
 	"i32": {
-		Name:     "i32",
-		JavaType: "int",
-		Be:       "int",
-		Le:       "intLe",
-		Size:     4,
+		Name:      "i32",
+		JavaType:  "int",
+		Be:        "int",
+		Le:        "intLe",
+		Size:      4,
+		TestValue: "4",
 	},
 	"i64": {
-		Name:     "i64",
-		JavaType: "long",
-		Be:       "long",
-		Le:       "longLe",
-		Size:     8,
+		Name:      "i64",
+		JavaType:  "long",
+		Be:        "long",
+		Le:        "longLe",
+		Size:      8,
+		TestValue: "8L",
 	},
 
 	// 浮点类型
 	"f32": {
-		Name:     "f32",
-		JavaType: "float",
-		Be:       "float",
-		Le:       "floatLe",
-		Size:     4,
+		Name:      "f32",
+		JavaType:  "float",
+		Be:        "float",
+		Le:        "floatLe",
+		Size:      4,
+		TestValue: "4",
 	},
 	"f64": {
-		Name:     "f64",
-		JavaType: "double",
-		Be:       "double",
-		Le:       "doubleLe",
-		Size:     8,
+		Name:      "f64",
+		JavaType:  "double",
+		Be:        "double",
+		Le:        "doubleLe",
+		Size:      8,
+		TestValue: "8",
 	},
 }
 
@@ -122,8 +135,13 @@ func (g JavaGenerator) Generate(binModel *model.BinaryModel) (map[string][]byte,
 	output := make(map[string][]byte)
 	packagePath := strings.ReplaceAll(g.config.JavaPackage, ".", "/")
 	for _, pkg := range binModel.PacketsMap {
+		//gen message class
 		code := g.GenerateJavaClassFileForPacket(&pkg, false)
-		filePath := "main/java/" + packagePath + "/" + pkg.Name + ".java"
+		filePath := fmt.Sprintf("main/java/%s/%s.java", packagePath, pkg.Name)
+		output[filePath] = []byte(code)
+		//gen unit test class
+		code = g.GenerateJavaTestClassFileForPacket(&pkg)
+		filePath = fmt.Sprintf("test/java/%s/%sTest.java", packagePath, pkg.Name)
 		output[filePath] = []byte(code)
 	}
 	return output, nil
@@ -478,4 +496,83 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 		}
 		return "//" + f.Type
 	}
+}
+
+// GenerateJavaTestClassFileForPacket gen test class
+func (g JavaGenerator) GenerateJavaTestClassFileForPacket(packet *model.Packet) string {
+	var b strings.Builder
+	//package
+	b.WriteString(fmt.Sprintf("package %s;\n", g.config.JavaPackage))
+	//import
+	b.WriteString(`import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import org.junit.Test;
+
+import static org.junit.Assert.*;
+`)
+	b.WriteString("\n")
+	b.WriteString("\n")
+
+	b.WriteString(fmt.Sprintf("public class %sTest {\n", packet.Name))
+
+	b.WriteString(AddIndent4ln(g.GenerateTestMethod(packet)))
+	b.WriteString("}\n")
+
+	return b.String()
+}
+
+// GenerateTestMethod gen test method
+func (g JavaGenerator) GenerateTestMethod(packet *model.Packet) string {
+	var b strings.Builder
+	b.WriteString("@Test\n")
+	b.WriteString("public void testEncodeDecode() {\n")
+	b.WriteString(AddIndent4ln(g.GenerateNewInstance("original", "", packet)))
+	b.WriteString(AddIndent4ln("ByteBuf buffer = Unpooled.buffer();"))
+	b.WriteString(AddIndent4ln("original.encode(buffer);"))
+	b.WriteString(AddIndent4ln(fmt.Sprintf("%s decoded = new %s();", packet.Name, packet.Name)))
+	b.WriteString(AddIndent4ln("decoded.decode(buffer);"))
+	b.WriteString(AddIndent4ln("assertEquals(original, decoded);"))
+	b.WriteString("}")
+	return b.String()
+}
+
+// GenerateNewInstance new instance for unitest
+func (g JavaGenerator) GenerateNewInstance(instanceName string, parent string, packet *model.Packet) string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("%s%s %s = new %s%s();\n", parent, packet.Name, instanceName, parent, packet.Name))
+	for _, f := range packet.Fields {
+		if f.LengthOfField != "" {
+			continue
+		} else if _, ok := packet.MatchFields[f.Name]; ok {
+			continue
+		} else if typ, ok := javaBasicTypeMap[f.GetType()]; ok {
+			b.WriteString(fmt.Sprintf("%s.set%s(%s);\n", instanceName, strcase.ToCamel(f.Name), typ.TestValue))
+		} else if len, ok := ParseCharArrayType(f.GetType()); ok {
+			l, _ := strconv.Atoi(len)
+			b.WriteString(fmt.Sprintf("%s.set%s(\"%s\");\n", instanceName, strcase.ToCamel(f.Name), strings.Repeat("1", l)))
+		} else if f.GetType() == "string" {
+			b.WriteString(fmt.Sprintf("%s.set%s(\"example\");\n", instanceName, strcase.ToCamel(f.Name)))
+		} else if f.InerObject != nil {
+			inerObjName := strcase.ToLowerCamel(f.InerObject.Name)
+			b.WriteString(g.GenerateNewInstance(inerObjName, packet.Name+".", f.InerObject))
+			b.WriteString(fmt.Sprintf("%s.set%s(%s);\n", instanceName, strcase.ToCamel(f.Name), inerObjName))
+		} else if f.GetType() == "match" {
+			//
+			key := f.MatchPairs[0].Key
+			value := f.MatchPairs[0].Value
+			if typ, ok := javaBasicTypeMap[packet.FieldMap[f.MatchKey].GetType()]; ok {
+				key = fmt.Sprintf("(%s)%s", typ.JavaType, key)
+			}
+			b.WriteString(fmt.Sprintf("%s.set%s(%s);\n", instanceName, strcase.ToCamel(f.MatchKey), key))
+			if p, ok := g.binModel.PacketsMap[value]; ok {
+				inerObjName := strcase.ToLowerCamel(p.Name)
+				b.WriteString(g.GenerateNewInstance(inerObjName, "", &p))
+				b.WriteString(fmt.Sprintf("%s.set%s(%s);\n", instanceName, strcase.ToCamel(f.Name), inerObjName))
+			}
+		} else {
+			b.WriteString("--" + f.GetType())
+		}
+
+	}
+	return b.String()
 }
