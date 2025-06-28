@@ -362,7 +362,11 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 		var b strings.Builder
 		fieldLen := g.GetFieldNameLower(f) + "Len"
 		lenTyp := javaBasicTypeMap[g.config.StringLenPrefixLenType].JavaType
-		b.WriteString(fmt.Sprintf("%s %s = byteBuf.read%s();\n", lenTyp, fieldLen, strcase.ToCamel(lenTyp)))
+		if g.config.LittleEndian {
+			b.WriteString(fmt.Sprintf("%s %s = byteBuf.read%s();\n", lenTyp, fieldLen, strcase.ToCamel(lenTyp)))
+		} else {
+			b.WriteString(fmt.Sprintf("%s %s = byteBuf.read%sLe();\n", lenTyp, fieldLen, strcase.ToCamel(lenTyp)))
+		}
 		b.WriteString(fmt.Sprintf("if (%s > 0) {\n", fieldLen))
 		b.WriteString(AddIndent4ln(fmt.Sprintf("this.%s = byteBuf.readCharSequence(%s, StandardCharsets.UTF_8).toString();", g.GetFieldNameLower(f), fieldLen)))
 		b.WriteString("}")
