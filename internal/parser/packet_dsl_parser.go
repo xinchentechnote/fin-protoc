@@ -90,6 +90,7 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 
 	// Iterate over all fieldDefinition children
 	var fields []model.Field
+	var fieldMap = make(map[string]model.Field)
 	var lengthOfField string
 	var matchFields = make(map[string][]model.MatchPair)
 	for _, fctx := range ctx.AllFieldDefinition() {
@@ -106,6 +107,7 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 		}
 
 		fields = append(fields, fld)
+		fieldMap[fld.Name] = fld
 
 		if fld.Type == "match" {
 			matchFields[fld.MatchKey] = fld.MatchPairs
@@ -117,6 +119,7 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 		IsRoot:        isRoot,
 		LengthOfField: lengthOfField,
 		Fields:        fields,
+		FieldMap:      fieldMap,
 		MatchFields:   matchFields,
 	}
 }

@@ -56,6 +56,7 @@ type Packet struct {
 	IsRoot        bool                   // True if the packet declaration included the 'root' keyword
 	LengthOfField string                 // Length field name for root packet (only one allowed and only applies to root packet)
 	Fields        []Field                // List of fields belonging to this packet
+	FieldMap      map[string]Field       // Map of fields belonging to this packet
 	MatchFields   map[string][]MatchPair // Map of match field names to their key-value pairs
 }
 
