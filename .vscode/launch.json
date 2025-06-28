@@ -30,5 +30,20 @@
                 "/home/s0596/workspace/fin-proto-java/sample-bin/src/"
             ]
         }
+        ,
+        {
+            "name": "Launch Package - compile sse",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/",
+            "args": [
+                "compile",
+                "-f",
+                "/home/s0596/workspace/fin-proto-java/sse-bin/proto/sse_bin_v0.57.dsl",
+                "-j", 
+                "/home/s0596/workspace/fin-proto-java/sse-bin/src/"
+            ]
+        }
     ]
 }
