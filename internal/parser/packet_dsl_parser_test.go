@@ -64,12 +64,12 @@ func TestParseNestedAndMatchField(t *testing.T) {
 packet Parent {
 	u16 MsgType,
 	nestedChild {
-		childField
-	}
+		childField,
+	},
 	match MsgType as body {
 		0:OptionA,
-		1:OptionB
-	}
+		1:OptionB,
+	},
 }`
 	path := writeTempFile(t, dsl)
 	defer os.Remove(path)

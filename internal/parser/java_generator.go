@@ -104,7 +104,7 @@ var javaBasicTypeMap = map[string]JavaType{
 		BoxType:   "Float",
 		Le:        "FloatLE",
 		Size:      4,
-		TestValue: "4",
+		TestValue: "4F",
 	},
 	"f64": {
 		Name:      "f64",
@@ -112,7 +112,7 @@ var javaBasicTypeMap = map[string]JavaType{
 		BoxType:   "Double",
 		Le:        "DoubleLE",
 		Size:      8,
-		TestValue: "8",
+		TestValue: "8D",
 	},
 }
 
@@ -482,7 +482,7 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 			b.WriteString(fmt.Sprintf("this.%s.decode(byteBuf);", g.GetFieldNameLower(f)))
 			return b.String()
 		}
-		if _, ok := g.binModel.PacketsMap[f.Name]; ok {
+		if _, ok := g.binModel.PacketsMap[f.Type]; ok {
 			//ref object
 			var b strings.Builder
 			if f.IsRepeat {
@@ -618,7 +618,7 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 			b.WriteString("}")
 			return b.String()
 		}
-		if _, ok := g.binModel.PacketsMap[f.Name]; ok {
+		if _, ok := g.binModel.PacketsMap[f.Type]; ok {
 			var b strings.Builder
 			//b.WriteString(fmt.Sprintf("if (null == this.%s) {\n", fieldName))
 			//b.WriteString(AddIndent4ln(fmt.Sprintf("this.%s = new %s();", fieldName, f.Name)))
@@ -720,8 +720,8 @@ func (g JavaGenerator) GenerateNewInstance(instanceName string, parent string, p
 				b.WriteString(fmt.Sprintf("%s.set%s(%s);\n", instanceName, strcase.ToCamel(f.Name), inerObjName))
 			}
 		} else {
-			if p, ok := g.binModel.PacketsMap[f.Name]; ok {
-				inerObjName := strcase.ToLowerCamel(p.Name)
+			if p, ok := g.binModel.PacketsMap[f.Type]; ok {
+				inerObjName := strcase.ToLowerCamel(f.Name) + "0"
 				b.WriteString(g.GenerateNewInstance(inerObjName, "", &p))
 				if f.IsRepeat {
 					b.WriteString(fmt.Sprintf("%s.set%s(Arrays.asList(%s));\n", instanceName, strcase.ToCamel(f.Name), inerObjName))

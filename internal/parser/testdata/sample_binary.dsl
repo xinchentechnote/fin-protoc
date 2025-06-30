@@ -5,14 +5,14 @@ options {
 
 packet SampleBinary {
     uint16 MsgType `消息类型`,
-    u16 BodyLenght  = lengthof(Body)   `消息体长度`,
-    match MsgType  as  Body {
-		1 : Logon,
-		2 : Logout,
-		3 : Heartbeat,
-		4 : RiskControlRequest,
-		5 : RiskControlResponse,
-	}
+    u16 BodyLenght = lengthof(Body) `消息体长度`,
+    match MsgType as Body {
+        1 : Logon,
+        2 : Logout,
+        3 : Heartbeat,
+        4 : RiskControlRequest,
+        5 : RiskControlResponse,
+    },
 }
 
 packet Logon {
@@ -41,10 +41,10 @@ packet RiskControlRequest {
     u32 Qty `数量`,
     repeat string ExtraInfo `附加信息`,
     repeat SubOrder {
-        char[16] ClOrdID `子订单号`,
-        u64 Price `子订单价格`,
-        u32 Qty `子订单数量`,
-    }
+    		char[16] ClOrdID `子订单号`,
+    		u64 Price `子订单价格`,
+    		u32 Qty `子订单数量`,
+    	}
 }
 
 packet RiskControlResponse {
@@ -55,6 +55,6 @@ packet RiskControlResponse {
 }
 
 packet Detail {
-		string RuleName `规则名称`,
-		u16 Code `原因代码`,
-	}
+    string RuleName `规则名称`,
+    u16 Code `原因代码`,
+}
