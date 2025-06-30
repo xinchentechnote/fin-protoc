@@ -209,7 +209,7 @@ func (v *PacketDslFormattor) VisitInerObjectField(ctx *gen.InerObjectFieldContex
 		formattedDsl.WriteString("\t\t" + result + "\n")
 	}
 
-	formattedDsl.WriteString("\t}")
+	formattedDsl.WriteString("\t},")
 	formattedDsl.WriteString(v.getHiddenRight(ctx.GetStop()))
 	return formattedDsl.String()
 }

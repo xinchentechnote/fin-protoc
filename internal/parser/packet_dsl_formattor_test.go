@@ -32,13 +32,13 @@ func TestVisitMetaDataDeclaration(t *testing.T) {
 	}{
 		{
 			name:     "只要类型+名字",
-			input:    "Int32  count ",
-			expected: "Int32 count",
+			input:    "Int32  count ,",
+			expected: "Int32 count,",
 		},
 		{
 			name:     "带 String 描述",
-			input:    "string  fieldX   `some description`",
-			expected: "string fieldX `some description`",
+			input:    "string  fieldX   `some description`,",
+			expected: "string fieldX `some description`,",
 		},
 		{
 			name:     "带描述并且逗号",
@@ -90,7 +90,7 @@ MetaData SampleMeta {
 
 	expected := `MetaData SampleMeta {
 	string key ` + "`" + `a description` + "`" + `,
-	Int32 value ` + "`" + `another desc` + "`" + `
+	Int32 value ` + "`" + `another desc` + "`" + `,
 }`
 
 	// 4. 去掉首尾空行并比较

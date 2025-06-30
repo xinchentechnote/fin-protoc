@@ -16,10 +16,10 @@ packetDefinition:
 
 // Field definitions are either identifiers, metadata declarations, or match fields
 fieldDefinition:
-	REPEAT? inerObjectDeclaration COMMA?	# InerObjectField
-	| REPEAT? metaDataDeclaration			# MetaField
-	| REPEAT? IDENTIFIER COMMA?				# ObjectField
-	| matchFieldDeclaration COMMA?			# MatchField;
+	REPEAT? inerObjectDeclaration COMMA	# InerObjectField
+	| REPEAT? metaDataDeclaration		# MetaField
+	| REPEAT? IDENTIFIER COMMA			# ObjectField
+	| matchFieldDeclaration COMMA		# MatchField;
 
 // MetaData rule with declarations inside curly braces
 metaDataDefinition:
@@ -27,7 +27,9 @@ metaDataDefinition:
 
 // Metadata declaration with type and description
 metaDataDeclaration:
-	type? name = IDENTIFIER ('=' 'lengthof(' from = IDENTIFIER ')')? STRING_LITERAL? COMMA?;
+	type? name = IDENTIFIER (
+		'=' 'lengthof(' from = IDENTIFIER ')'
+	)? STRING_LITERAL? COMMA;
 
 value: type | STRING | DIGITS;
 
