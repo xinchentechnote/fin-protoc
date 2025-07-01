@@ -186,7 +186,7 @@ func (g RustGenerator) EncodeField(parentName string, f model.Field) string {
 			return fmt.Sprintf("put_object_list::<%s,%s>(buf, &self.%s);", f.GetType(), g.config.ListLenPrefixLenType, name)
 
 		}
-		if _, ok := g.binModel.PacketsMap[f.Name]; ok {
+		if _, ok := g.binModel.PacketsMap[f.Type]; ok {
 			if g.config.LittleEndian {
 				return fmt.Sprintf("put_object_list_le::<%s,%s>(buf, &self.%s);", f.GetType(), g.config.ListLenPrefixLenType, name)
 			}
@@ -195,6 +195,9 @@ func (g RustGenerator) EncodeField(parentName string, f model.Field) string {
 		size, ok := ParseCharArrayType(f.GetType())
 		if ok {
 			return fmt.Sprintf("put_fixed_string_list::<%s>(buf, &self.%s, %s);", g.config.ListLenPrefixLenType, name, size)
+		}
+		if f.GetType() == "char" {
+			return fmt.Sprintf("put_char_list::<%s>(buf, &self.%s);", g.config.ListLenPrefixLenType, name)
 		}
 		if g.config.LittleEndian {
 			return fmt.Sprintf("put_list_le::<%s,%s>(buf, &self.%s);", f.GetType(), g.config.ListLenPrefixLenType, name)
@@ -209,7 +212,9 @@ func (g RustGenerator) EncodeField(parentName string, f model.Field) string {
 		return fmt.Sprintf("put_%s::<%s>(buf, &self.%s);", f.GetType(), g.config.StringLenPrefixLenType, name)
 	case "char":
 		return fmt.Sprintf("put_%s(buf, self.%s);", f.GetType(), name)
-	case "u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64":
+	case "u8", "i8":
+		return fmt.Sprintf("buf.put_%s(self.%s);", f.GetType(), name)
+	case "u16", "u32", "u64", "i16", "i32", "i64", "f32", "f64":
 		if g.config.LittleEndian {
 			return fmt.Sprintf("buf.put_%s_le(self.%s);", f.GetType(), name)
 		}
@@ -225,6 +230,9 @@ func (g RustGenerator) EncodeField(parentName string, f model.Field) string {
 			// If it's a nested object, we need to encode it
 			return fmt.Sprintf("self.%s.encode(buf);", g.GetFieldName(f))
 
+		}
+		if _, ok := g.binModel.PacketsMap[f.Type]; ok {
+			return fmt.Sprintf("self.%s.encode(buf);", g.GetFieldName(f))
 		}
 		return fmt.Sprintf("// unknown type for encode: %s", f.GetType())
 	}
@@ -262,7 +270,7 @@ func (g RustGenerator) DecodeField(parentName string, f model.Field) string {
 			}
 			return fmt.Sprintf("let %s = get_object_list::<%s,%s>(buf)?;", name, f.GetType(), g.config.ListLenPrefixLenType)
 		}
-		if _, ok := g.binModel.PacketsMap[f.Name]; ok {
+		if _, ok := g.binModel.PacketsMap[f.Type]; ok {
 			if g.config.LittleEndian {
 				return fmt.Sprintf("let %s = get_object_list_le::<%s,%s>(buf)?;", name, f.GetType(), g.config.ListLenPrefixLenType)
 			}
@@ -272,9 +280,13 @@ func (g RustGenerator) DecodeField(parentName string, f model.Field) string {
 		if ok {
 			return fmt.Sprintf("let %s = get_fixed_string_list::<%s>(buf, %s)?;", name, g.config.ListLenPrefixLenType, size)
 		}
+		if f.GetType() == "char" {
+			return fmt.Sprintf("let %s = get_char_list::<%s>(buf)?;", name, g.config.ListLenPrefixLenType)
+		}
 		if g.config.LittleEndian {
 			return fmt.Sprintf("let %s = get_list_le::<%s,%s>(buf)?;", name, f.GetType(), g.config.ListLenPrefixLenType)
 		}
+
 		return fmt.Sprintf("let %s = get_list::<%s,%s>(buf)?;", name, f.GetType(), g.config.ListLenPrefixLenType)
 	}
 	switch f.GetType() {
@@ -285,7 +297,9 @@ func (g RustGenerator) DecodeField(parentName string, f model.Field) string {
 		return fmt.Sprintf("let %s = get_%s::<%s>(buf)?;", name, f.GetType(), g.config.StringLenPrefixLenType)
 	case "char":
 		return fmt.Sprintf("let %s = get_%s(buf)?;", name, f.GetType())
-	case "u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64":
+	case "u8", "i8":
+		return fmt.Sprintf("let %s = buf.get_%s();", name, f.GetType())
+	case "u16", "u32", "u64", "i16", "i32", "i64", "f32", "f64":
 		if g.config.LittleEndian {
 			return fmt.Sprintf("let %s = buf.get_%s_le();", name, f.GetType())
 		}
@@ -303,6 +317,10 @@ func (g RustGenerator) DecodeField(parentName string, f model.Field) string {
 		if f.InerObject != nil {
 			// If it's a nested object, we need to decode it
 			return fmt.Sprintf("let %s = %s::decode(buf)?;", g.GetFieldName(f), f.InerObject.Name)
+		}
+		if _, ok := g.binModel.PacketsMap[f.Type]; ok {
+			// If it's a nested object, we need to decode it
+			return fmt.Sprintf("let %s = %s::decode(buf)?;", g.GetFieldName(f), f.Type)
 		}
 		return fmt.Sprintf("// unknown type for decode: %s", f.GetType())
 	}
@@ -455,6 +473,15 @@ func (g RustGenerator) testValueSingle(parentName string, f model.Field) string 
 			fieldValues = append(fieldValues, fmt.Sprintf("%s: %s", strcase.ToSnake(subField.Name), g.testValue(f.InerObject.Name, subField)))
 		}
 		return fmt.Sprintf("%s{\n %s \n}", strcase.ToCamel(f.InerObject.Name), strings.Join(fieldValues, ",\n"))
+	}
+
+	if p, ok := g.binModel.PacketsMap[f.GetType()]; ok {
+		// If it's a nested object, we need to create a default instance
+		var fieldValues []string
+		for _, subField := range p.Fields {
+			fieldValues = append(fieldValues, fmt.Sprintf("%s: %s", strcase.ToSnake(subField.Name), g.testValue(p.Name, subField)))
+		}
+		return fmt.Sprintf("%s{\n %s \n}", strcase.ToCamel(p.Name), strings.Join(fieldValues, ",\n"))
 	}
 
 	return "Default::default()"
