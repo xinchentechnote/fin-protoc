@@ -385,6 +385,15 @@ func (g LuaWspGenerator) decodeField(treeName string, p model.Packet, f model.Fi
 				b.WriteString(fmt.Sprintf("pinfo.cols.info:set(\"%s\")", f.Name))
 			}
 			return b.String()
+		} else {
+			if _, ok := g.binModel.PacketsMap[f.Type]; ok {
+				b.WriteString(fmt.Sprintf("dissect_%s(buf, pinfo, subtree, offset)", strcase.ToSnake(f.Type)))
+				if !f.IsRepeat {
+					b.WriteString("\n")
+					b.WriteString(fmt.Sprintf("pinfo.cols.info:set(\"%s\")", f.Name))
+				}
+				return b.String()
+			}
 		}
 		return "-- unsupported type: " + f.GetType() + "\n"
 	}
