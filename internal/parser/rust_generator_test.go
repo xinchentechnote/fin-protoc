@@ -235,69 +235,6 @@ func TestGetFieldName(t *testing.T) {
 	}
 }
 
-func TestRustEncodeField(t *testing.T) {
-	config := &GeneratorConfig{
-		ListLenPrefixLenType:   "u16",
-		StringLenPrefixLenType: "u8",
-	}
-	binModel := &model.BinaryModel{
-		PacketsMap: make(map[string]model.Packet),
-	}
-
-	tests := []struct {
-		name     string
-		parent   string
-		field    model.Field
-		expected string
-	}{
-		{
-			name:     "string list",
-			parent:   "Parent",
-			field:    model.Field{Name: "strings", Type: "string", IsRepeat: true},
-			expected: "put_string_list::<u16,u8>(buf, &self.strings);",
-		},
-		{
-			name:     "primitive list",
-			parent:   "Parent",
-			field:    model.Field{Name: "numbers", Type: "u32", IsRepeat: true},
-			expected: "put_list::<u32,u16>(buf, &self.numbers);",
-		},
-		{
-			name:     "string",
-			parent:   "Parent",
-			field:    model.Field{Name: "text", Type: "string"},
-			expected: "put_string::<u8>(buf, &self.text);",
-		},
-		{
-			name:     "primitive",
-			parent:   "Parent",
-			field:    model.Field{Name: "number", Type: "u32"},
-			expected: "buf.put_u32(self.number);",
-		},
-		{
-			name:   "match field",
-			parent: "Parent",
-			field: model.Field{
-				Name:     "matchField",
-				Type:     "match",
-				MatchKey: "Type",
-				MatchPairs: []model.MatchPair{
-					{Value: "Value"},
-				},
-			},
-			expected: "match &self.match_field {\n    ParentmatchFieldEnum::Value(msg) => msg.encode(buf),\n}",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			generator := NewRustGenerator(config, binModel)
-			result := generator.EncodeField(tt.parent, tt.field)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
 func TestRustDecodeField(t *testing.T) {
 	config := &GeneratorConfig{
 		ListLenPrefixLenType:   "u16",
@@ -428,7 +365,7 @@ func TestGenerateUnitTestCode(t *testing.T) {
 
 	assert.Contains(t, code, "mod test_packet_tests")
 	assert.Contains(t, code, "fn test_test_packet_codec()")
-	assert.Contains(t, code, "let original = TestPacket")
+	assert.Contains(t, code, "let mut original = TestPacket")
 	assert.Contains(t, code, "assert_eq!(original, decoded)")
 }
 

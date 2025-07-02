@@ -120,7 +120,7 @@ func (g RustGenerator) generateStructCode(pkt *model.Packet) string {
 		b.WriteString(AddIndent4ln("fn encode(&self, buf: &mut BytesMut) {"))
 	}
 	for _, f := range pkt.Fields {
-		b.WriteString(AddIndent4ln(AddIndent4(g.EncodeField(structName, f))))
+		b.WriteString(AddIndent4ln(AddIndent4(g.EncodeField(pkt, f))))
 	}
 	b.WriteString(AddIndent4ln("}"))
 	b.WriteString("\n")
@@ -170,7 +170,27 @@ func (g RustGenerator) GetFieldName(f model.Field) string {
 }
 
 // EncodeField encoding field
-func (g RustGenerator) EncodeField(parentName string, f model.Field) string {
+func (g RustGenerator) EncodeField(p *model.Packet, f model.Field) string {
+	parentName := strcase.ToCamel(p.Name)
+	if f.LengthOfField != "" {
+		// auto calculate length field
+		var b strings.Builder
+		b.WriteString(fmt.Sprintf("let mut %s_buf = BytesMut::new();\n", strcase.ToLowerCamel(f.LengthOfField)))
+		for _, field := range p.Fields {
+			if field.Name == f.LengthOfField {
+				b.WriteString(g.EncoderMatchField(parentName, "&mut "+strcase.ToLowerCamel(f.LengthOfField)+"_buf", field))
+				b.WriteString("\n")
+				break
+			}
+		}
+		if g.config.LittleEndian {
+			b.WriteString(fmt.Sprintf("buf.put_%s_le(%s_buf.len() as %s);\n", f.GetType(), strcase.ToLowerCamel(f.LengthOfField), f.GetType()))
+		} else {
+			b.WriteString(fmt.Sprintf("buf.put_%s(%s_buf.len() as %s);\n", f.GetType(), strcase.ToLowerCamel(f.LengthOfField), f.GetType()))
+		}
+
+		return b.String()
+	}
 	name := strcase.ToSnake(f.Name)
 	if f.IsRepeat {
 		if f.GetType() == "string" {
@@ -204,6 +224,11 @@ func (g RustGenerator) EncodeField(parentName string, f model.Field) string {
 		}
 		return fmt.Sprintf("put_list::<%s,%s>(buf, &self.%s);", f.GetType(), g.config.ListLenPrefixLenType, name)
 	}
+	if f.Name == p.LengthOfField {
+		var b strings.Builder
+		b.WriteString(fmt.Sprintf("buf.extend_from_slice(&%s_buf);\n", strcase.ToLowerCamel(f.Name)))
+		return b.String()
+	}
 	switch f.GetType() {
 	case "string":
 		if g.config.LittleEndian {
@@ -220,7 +245,7 @@ func (g RustGenerator) EncodeField(parentName string, f model.Field) string {
 		}
 		return fmt.Sprintf("buf.put_%s(self.%s);", f.GetType(), name)
 	case "match":
-		return g.EncoderMatchField(parentName, f)
+		return g.EncoderMatchField(parentName, "buf", f)
 	default:
 		size, ok := ParseCharArrayType(f.GetType())
 		if ok {
@@ -239,7 +264,7 @@ func (g RustGenerator) EncodeField(parentName string, f model.Field) string {
 }
 
 // EncoderMatchField encodes match field
-func (g RustGenerator) EncoderMatchField(parentName string, f model.Field) string {
+func (g RustGenerator) EncoderMatchField(parentName string, bufName string, f model.Field) string {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("match &self.%s {\n", g.GetFieldName(f)))
 	pairs := make(map[string]struct{})
@@ -248,7 +273,7 @@ func (g RustGenerator) EncoderMatchField(parentName string, f model.Field) strin
 			continue
 		}
 		pairs[pair.Value] = struct{}{}
-		b.WriteString(AddIndent4ln(fmt.Sprintf("%s%sEnum::%s(msg) => msg.encode(buf),", parentName, f.Name, pair.Value)))
+		b.WriteString(AddIndent4ln(fmt.Sprintf("%s%sEnum::%s(msg) => msg.encode(%s),", parentName, f.Name, pair.Value, bufName)))
 	}
 	b.WriteString("}")
 	return b.String()
@@ -391,7 +416,7 @@ func (g RustGenerator) generateUnitTestCode(pkt *model.Packet) string {
 	b.WriteString(AddIndent4ln(fmt.Sprintf("fn test_%s_codec() {", strcase.ToSnake(pkt.Name))))
 
 	// new instance
-	b.WriteString(AddIndent4ln(AddIndent4(fmt.Sprintf("let original = %s {", strcase.ToCamel(pkt.Name)))))
+	b.WriteString(AddIndent4ln(AddIndent4(fmt.Sprintf("let mut original = %s {", strcase.ToCamel(pkt.Name)))))
 	for _, f := range pkt.Fields {
 		if pkt.MatchFields[f.MatchKey] != nil {
 			if len(f.MatchPairs) > 0 {
@@ -418,7 +443,11 @@ func (g RustGenerator) generateUnitTestCode(pkt *model.Packet) string {
 
 	// decoding
 	b.WriteString(AddIndent4ln(AddIndent4(fmt.Sprintf("let decoded = %s::decode(&mut bytes).unwrap();", strcase.ToCamel(pkt.Name)))))
-
+	for _, f := range pkt.Fields {
+		if f.LengthOfField != "" {
+			b.WriteString(AddIndent4ln(AddIndent4(fmt.Sprintf("original.%s = decoded.%s;", strcase.ToSnake(f.Name), strcase.ToSnake(f.Name)))))
+		}
+	}
 	// assertion
 	b.WriteString(AddIndent4ln(AddIndent4("assert_eq!(original, decoded);")))
 	b.WriteString(AddIndent4ln("}"))
@@ -449,7 +478,9 @@ func (g RustGenerator) testValueList(typ string) string {
 
 func (g RustGenerator) testValueSingle(parentName string, f model.Field) string {
 	typ := f.GetType()
-
+	if f.LengthOfField != "" {
+		return "0"
+	}
 	// handle match
 	if typ == "match" {
 		return g.testMatchValue(parentName, f)
