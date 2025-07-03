@@ -60,39 +60,19 @@ inerObjectDeclaration: IDENTIFIER ('{' fieldDefinition+ '}');
 
 list: '[' (DIGITS | STRING) (COMMA (DIGITS | STRING))* ']';
 
-UINT8 options {
-	caseInsensitive = true;
-}: 'uint8' | 'u8';
-UINT16 options {
-	caseInsensitive = true;
-}: 'uint16' | 'u16';
-UINT32 options {
-	caseInsensitive = true;
-}: 'uint32' | 'u32';
-UINT64 options {
-	caseInsensitive = true;
-}: 'uint64' | 'u64';
+UINT8 : 'uint8' | 'u8';
+UINT16 : 'uint16' | 'u16';
+UINT32 : 'uint32' | 'u32';
+UINT64 : 'uint64' | 'u64';
 
-INT8 options {
-	caseInsensitive = true;
-}: 'int8' | 'i8';
-INT16 options {
-	caseInsensitive = true;
-}: 'int16' | 'i16';
-INT32 options {
-	caseInsensitive = true;
-}: 'int32' | 'i32';
-INT64 options {
-	caseInsensitive = true;
-}: 'int64' | 'i64';
+INT8 : 'int8' | 'i8';
+INT16 : 'int16' | 'i16';
+INT32 : 'int32' | 'i32';
+INT64 : 'int64' | 'i64';
 
-FLOAT32 options {
-	caseInsensitive = true;
-}: 'float32' | 'f32';
+FLOAT32 : 'float32' | 'f32';
 
-FLOAT64 options {
-	caseInsensitive = true;
-}: 'float64' | 'f64';
+FLOAT64 : 'float64' | 'f64';
 
 DIGITS: [0-9]+;
 
