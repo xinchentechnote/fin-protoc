@@ -8,63 +8,87 @@ import (
 	"github.com/xinchentechnote/fin-protoc/internal/parser"
 )
 
-var luaOutput string
-var rsOutput string
-var goOutput string
-var javaOutput string
-var pyOutput string
-var cppOutput string
+var (
+	luaOutput  string
+	rsOutput   string
+	goOutput   string
+	javaOutput string
+	pyOutput   string
+	cppOutput  string
+)
 
-// Compile DSL to rust, lua base wireshark plugin and so on.
-func Compile(input string, luaPath string, rsPath string, goOutput string, javaOutput string, pyOutput string, cppOutput string) {
-	// parse DSL file
-	result, _ := parser.ParseFile(file)
+// Compile DSL to code in various target languages
+func Compile(input string, outputs map[string]string) {
+	result, err := parser.ParseFile(input)
+	if err != nil {
+		fmt.Printf("Failed to parse DSL file: %v\n", err)
+		return
+	}
+
 	binModel := result.(*model.BinaryModel)
 	config := parser.NewGeneratorConfig(binModel.Options)
-	if luaPath != "" {
-		// generate code for lua base wireshatk plugin
-		luaGen := parser.NewLuaWspGenerator(config, binModel)
-		codeMap, err := luaGen.Generate(binModel)
-		if nil != err {
-			fmt.Println("gen lua code err.")
-		}
-		parser.WriteCodeToFile(luaPath, codeMap)
+
+	generators := []struct {
+		lang string
+		path string
+		gen  func() (map[string][]byte, error)
+	}{
+		{"Lua", outputs["lua"], func() (map[string][]byte, error) {
+			return parser.NewLuaWspGenerator(config, binModel).Generate(binModel)
+		}},
+		{"Rust", outputs["rust"], func() (map[string][]byte, error) {
+			return parser.NewRustGenerator(config, binModel).Generate(binModel)
+		}},
+		{"Go", outputs["go"], func() (map[string][]byte, error) {
+			return parser.NewGoGenerator(config, binModel).Generate(binModel)
+		}},
+		{"Java", outputs["java"], func() (map[string][]byte, error) {
+			return parser.NewJavaGenerator(config, binModel).Generate(binModel)
+		}},
+		{"Python", outputs["python"], func() (map[string][]byte, error) {
+			return parser.NewPythonGenerator(config, binModel).Generate(binModel)
+		}},
+		{"C++", outputs["cpp"], func() (map[string][]byte, error) {
+			return parser.NewCppGenerator(config, binModel).Generate(binModel)
+		}},
 	}
-	if rsPath != "" {
-		// initialize generator
-		rustGen := parser.NewRustGenerator(config, binModel)
-		codeMap, err := rustGen.Generate(binModel)
-		if nil != err {
-			fmt.Println("gen rust code err.")
+
+	for _, g := range generators {
+		if g.path == "" {
+			continue
 		}
-		parser.WriteCodeToFile(rsPath, codeMap)
-	}
-	if javaOutput != "" {
-		// generate code for java
-		javaGen := parser.NewJavaGenerator(config, binModel)
-		codeMap, err := javaGen.Generate(binModel)
-		if nil != err {
-			fmt.Println("gen java code err.")
+		codeMap, err := g.gen()
+		if err != nil {
+			fmt.Printf("Failed to generate %s code: %v\n", g.lang, err)
+			continue
 		}
-		parser.WriteCodeToFile(javaOutput, codeMap)
+		parser.WriteCodeToFile(g.path, codeMap)
 	}
 }
 
 var compileCmd = &cobra.Command{
 	Use:   "compile",
-	Short: "Compile DSL into Rust code",
+	Short: "Compile DSL into multiple target languages",
 	Run: func(cmd *cobra.Command, args []string) {
-		Compile(file, luaOutput, rsOutput, goOutput, javaOutput, pyOutput, cppOutput)
+		outputs := map[string]string{
+			"lua":    luaOutput,
+			"rust":   rsOutput,
+			"go":     goOutput,
+			"java":   javaOutput,
+			"python": pyOutput,
+			"cpp":    cppOutput,
+		}
+		Compile(file, outputs)
 	},
 }
 
 func init() {
 	compileCmd.Flags().StringVarP(&file, "file", "f", "", "Path to the DSL file")
-	compileCmd.Flags().StringVarP(&rsOutput, "rs_output", "r", "", "rust output path")
-	compileCmd.Flags().StringVarP(&luaOutput, "lua_output", "l", "", "lua output path")
-	compileCmd.Flags().StringVarP(&javaOutput, "java_output", "j", "", "java output path")
-	compileCmd.Flags().StringVarP(&goOutput, "go_output", "g", "", "go output path")
-	compileCmd.Flags().StringVarP(&cppOutput, "cpp_output", "c", "", "cpp output path")
-	compileCmd.Flags().StringVarP(&pyOutput, "py_output", "p", "", "python output path")
+	compileCmd.Flags().StringVarP(&rsOutput, "rs_output", "r", "", "Rust output path")
+	compileCmd.Flags().StringVarP(&luaOutput, "lua_output", "l", "", "Lua output path")
+	compileCmd.Flags().StringVarP(&javaOutput, "java_output", "j", "", "Java output path")
+	compileCmd.Flags().StringVarP(&goOutput, "go_output", "g", "", "Go output path")
+	compileCmd.Flags().StringVarP(&cppOutput, "cpp_output", "c", "", "C++ output path")
+	compileCmd.Flags().StringVarP(&pyOutput, "py_output", "p", "", "Python output path")
 	rootCmd.AddCommand(compileCmd)
 }
