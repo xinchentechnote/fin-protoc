@@ -109,7 +109,13 @@ func (g GoGenerator) generateStructCode(p *model.Packet) string {
 	b.WriteString("type " + p.Name + " struct {\n")
 	for _, field := range p.Fields {
 		if field.IsRepeat {
-			b.WriteString(fmt.Sprintf("    %s []%s `json:\"%s\"`\n", strcase.ToCamel(field.Name), g.getFieldType(&field), field.Name))
+			typ := g.getFieldType(&field)
+			if field.InerObject != nil {
+				typ = "*" + typ
+			} else if _, ok := g.binModel.PacketsMap[field.Type]; ok {
+				typ = "*" + typ
+			}
+			b.WriteString(fmt.Sprintf("    %s []%s `json:\"%s\"`\n", strcase.ToCamel(field.Name), typ, field.Name))
 		} else {
 			b.WriteString(fmt.Sprintf("    %s %s `json:\"%s\"`\n", strcase.ToCamel(field.Name), g.getFieldType(&field), field.Name))
 		}
@@ -145,7 +151,11 @@ func (g GoGenerator) generateDecodingCode(p *model.Packet) string {
 	b.WriteString("// Decode decodes the packet from a byte slice.\n")
 	b.WriteString("func (p *" + p.Name + ") Decode(buf *bytes.Buffer) error {\n")
 	for _, field := range p.Fields {
-		b.WriteString(g.generateDecodingField(&field))
+		if field.IsRepeat {
+			b.WriteString(g.generateDecodingListField(&field))
+		} else {
+			b.WriteString(g.generateDecodingField(&field))
+		}
 	}
 	b.WriteString("    return nil\n")
 	b.WriteString("}\n\n")
@@ -154,11 +164,12 @@ func (g GoGenerator) generateDecodingCode(p *model.Packet) string {
 
 func (g GoGenerator) generateDecodingField(field *model.Field) string {
 	var b strings.Builder
-	if _, ok := goBasicTypeMap[field.Type]; ok {
-		b.WriteString(fmt.Sprintf("    if err := binary.Read(buf, %s, &p.%s); err != nil {\n", goBasicTypeMap[field.Type].Le, strcase.ToCamel(field.Name)))
-		b.WriteString("        return fmt.Errorf(\"failed to decode %s: %w\", \"" + field.Name + "\", err)\n")
+	if bt, ok := goBasicTypeMap[field.Type]; ok {
+		b.WriteString(fmt.Sprintf("    if val, err := codec.GetBasicType[%s](buf); err != nil {\n", bt.BasicType))
+		b.WriteString("        return err\n")
+		b.WriteString("    }  else {\n")
+		b.WriteString(fmt.Sprintf("        p.%s = val\n", strcase.ToCamel(field.Name)))
 		b.WriteString("    }\n")
-
 	} else if l, ok := ParseCharArrayType(field.Type); ok {
 		// fixed string
 		b.WriteString(fmt.Sprintf("    if val,err := codec.GetFixedString(buf, %s); err != nil {\n", l))
@@ -207,13 +218,59 @@ func (g GoGenerator) generateDecodingField(field *model.Field) string {
 	return b.String()
 }
 
+func (g GoGenerator) generateDecodingListField(field *model.Field) string {
+	var b strings.Builder
+	listLenType := goBasicTypeMap[g.config.ListLenPrefixLenType]
+	if bt, ok := goBasicTypeMap[field.Type]; ok {
+		b.WriteString(fmt.Sprintf("    if val, err := codec.GetBasicTypeList[%s,%s](buf); err != nil {\n", listLenType.BasicType, bt.BasicType))
+		b.WriteString("        return err\n")
+		b.WriteString("    }  else {\n")
+		b.WriteString(fmt.Sprintf("        p.%s = val\n", strcase.ToCamel(field.Name)))
+		b.WriteString("    }\n")
+	} else if l, ok := ParseCharArrayType(field.Type); ok {
+		// fixed string
+		b.WriteString(fmt.Sprintf("    if val,err := codec.GetFixedStringList[%s](buf, %s); err != nil {\n", listLenType.BasicType, l))
+		b.WriteString("        return err\n")
+		b.WriteString("    }  else {\n")
+		b.WriteString(fmt.Sprintf("        p.%s = val\n", strcase.ToCamel(field.Name)))
+		b.WriteString("    }\n")
+	} else if field.InerObject != nil {
+		b.WriteString(fmt.Sprintf("    if val, err := codec.GetObjectList[%s](buf,  func() *%s { return &%s{} }); err != nil {\n", listLenType.BasicType, strcase.ToCamel(field.Type), strcase.ToCamel(field.Type)))
+		b.WriteString("        return err\n")
+		b.WriteString("    } else {\n")
+		b.WriteString(fmt.Sprintf("        p.%s = val\n", strcase.ToCamel(field.Name)))
+		b.WriteString("    }\n")
+	} else if _, ok := g.binModel.PacketsMap[field.Type]; ok {
+		b.WriteString(fmt.Sprintf("    if val, err := codec.GetObjectList[%s](buf,  func() *%s { return &%s{} }); err != nil {\n", listLenType.BasicType, strcase.ToCamel(field.Type), strcase.ToCamel(field.Type)))
+		b.WriteString("        return err\n")
+		b.WriteString("    } else {\n")
+		b.WriteString(fmt.Sprintf("        p.%s = val\n", strcase.ToCamel(field.Name)))
+		b.WriteString("    }\n")
+	} else if field.Type == "string" || field.Type == "char[]" {
+		//dynamic string
+		strLenType := goBasicTypeMap[g.config.StringLenPrefixLenType]
+		b.WriteString(fmt.Sprintf("    if val, err := codec.GetStringList[%s,%s](buf); err != nil {\n", listLenType.BasicType, strLenType.BasicType))
+		b.WriteString("        return err\n")
+		b.WriteString("    } else {\n")
+		b.WriteString(fmt.Sprintf("        p.%s = val\n", strcase.ToCamel(field.Name)))
+		b.WriteString("    }\n")
+	} else {
+		b.WriteString("--" + field.Type + ":" + field.Name + " is not supported for encoding--\n")
+	}
+	return b.String()
+}
+
 func (g GoGenerator) generateEncodingCode(p *model.Packet) string {
 	var b strings.Builder
 	b.WriteString("// Encode encodes the packet into a byte slice.\n")
 	b.WriteString("func (p *" + p.Name + ") Encode(buf *bytes.Buffer) error {\n")
 	b.WriteString("    // Implement encoding logic here.\n")
 	for _, field := range p.Fields {
-		b.WriteString(g.generateEncodingField(&field))
+		if field.IsRepeat {
+			b.WriteString(g.generateEncodingListField(&field))
+		} else {
+			b.WriteString(g.generateEncodingField(&field))
+		}
 	}
 	b.WriteString("    return nil\n")
 	b.WriteString("}\n\n")
@@ -223,7 +280,7 @@ func (g GoGenerator) generateEncodingCode(p *model.Packet) string {
 func (g GoGenerator) generateEncodingField(field *model.Field) string {
 	var b strings.Builder
 	if _, ok := goBasicTypeMap[field.Type]; ok {
-		b.WriteString(fmt.Sprintf("    if err := binary.Write(buf, %s, p.%s); err != nil {\n", goBasicTypeMap[field.Type].Le, strcase.ToCamel(field.Name)))
+		b.WriteString(fmt.Sprintf("    if err :=codec.PutBasicType(buf, p.%s); err != nil {\n", strcase.ToCamel(field.Name)))
 		b.WriteString("        return fmt.Errorf(\"failed to encode %s: %w\", \"" + field.Name + "\", err)\n")
 		b.WriteString("    }\n")
 	} else if l, ok := ParseCharArrayType(field.Type); ok {
@@ -247,6 +304,38 @@ func (g GoGenerator) generateEncodingField(field *model.Field) string {
 		b.WriteString("    }\n")
 	} else if field.Type == "match" {
 		b.WriteString(fmt.Sprintf("    if err := p.%s.Encode(buf); err != nil {\n", strcase.ToCamel(field.Name)))
+		b.WriteString("        return err\n")
+		b.WriteString("    }\n")
+	} else {
+		b.WriteString("--" + field.Type + ":" + field.Name + " is not supported for encoding--\n")
+	}
+	return b.String()
+}
+
+func (g GoGenerator) generateEncodingListField(field *model.Field) string {
+	var b strings.Builder
+	listLenType := goBasicTypeMap[g.config.ListLenPrefixLenType]
+	if _, ok := goBasicTypeMap[field.Type]; ok {
+		b.WriteString(fmt.Sprintf("    if err := codec.PutBasicTypeList[%s](buf, p.%s); err != nil {\n", listLenType.BasicType, strcase.ToCamel(field.Name)))
+		b.WriteString("        return fmt.Errorf(\"failed to encode %s: %w\", \"" + field.Name + "\", err)\n")
+		b.WriteString("    }\n")
+	} else if l, ok := ParseCharArrayType(field.Type); ok {
+		// fixed string
+		b.WriteString(fmt.Sprintf("    if err := codec.PutFixedStringList[%s](buf, p.%s, %s); err != nil {\n", listLenType.BasicType, strcase.ToCamel(field.Name), l))
+		b.WriteString("        return err\n")
+		b.WriteString("    }\n")
+	} else if field.InerObject != nil {
+		b.WriteString(fmt.Sprintf("    if err := codec.PutObjectList[%s](buf, p.%s, %s); err != nil {\n", listLenType.BasicType, strcase.ToCamel(field.Name), l))
+		b.WriteString("        return err\n")
+		b.WriteString("    }\n")
+	} else if _, ok := g.binModel.PacketsMap[field.Type]; ok {
+		b.WriteString(fmt.Sprintf("    if err := codec.PutObjectList[%s](buf, p.%s, %s); err != nil {\n", listLenType.BasicType, strcase.ToCamel(field.Name), l))
+		b.WriteString("        return err\n")
+		b.WriteString("    }\n")
+	} else if field.Type == "string" || field.Type == "char[]" {
+		//dynamic string
+		strLenType := goBasicTypeMap[g.config.StringLenPrefixLenType]
+		b.WriteString(fmt.Sprintf("    if err := codec.PutStringList[%s,%s](buf, p.%s); err != nil {\n", listLenType.BasicType, strLenType.BasicType, strcase.ToCamel(field.Name)))
 		b.WriteString("        return err\n")
 		b.WriteString("    }\n")
 	} else {
