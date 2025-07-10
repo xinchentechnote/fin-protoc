@@ -191,11 +191,17 @@ func (g GoGenerator) generateDecodingField(field *model.Field) string {
 		b.WriteString(fmt.Sprintf("        p.%s = val\n", strcase.ToCamel(field.Name)))
 		b.WriteString("    }\n")
 	} else if field.InerObject != nil {
+		b.WriteString(fmt.Sprintf("    if p.%s == nil {\n", field.Name))
+		b.WriteString(fmt.Sprintf("        p.%s = &%s{}\n", field.Name, field.Name))
+		b.WriteString("    }\n")
 		b.WriteString(fmt.Sprintf("    if err := p.%s.Decode(buf); err != nil {\n", strcase.ToCamel(field.Name)))
 		b.WriteString("        return err\n")
 		b.WriteString("    }\n")
 
 	} else if _, ok := g.binModel.PacketsMap[field.Type]; ok {
+		b.WriteString(fmt.Sprintf("    if p.%s == nil {\n", field.Type))
+		b.WriteString(fmt.Sprintf("        p.%s = &%s{}\n", field.Type, field.Type))
+		b.WriteString("    }\n")
 		b.WriteString(fmt.Sprintf("    if err := p.%s.Decode(buf); err != nil {\n", strcase.ToCamel(field.Name)))
 		b.WriteString("        return err\n")
 		b.WriteString("    }\n")
@@ -426,8 +432,18 @@ func (g GoGenerator) generateNewInstance(name string, p *model.Packet) string {
 	}
 	b.WriteString(fmt.Sprintf("    %s := &msg.%s{\n", name, strcase.ToCamel(p.Name)))
 	for _, f := range p.Fields {
+		if p.MatchFields[f.MatchKey] != nil {
+			if len(f.MatchPairs) > 0 {
+				key := f.MatchPairs[0].Key
+				b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", strcase.ToCamel(f.MatchKey), key)))))
+				b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", strcase.ToCamel(f.Name), g.generateTestValue(&f))))))
+			}
+			continue
+		}
+		if p.MatchFields[f.Name] != nil {
+			continue
+		}
 		b.WriteString(fmt.Sprintf("    %s : %s,\n", strcase.ToCamel(f.Name), g.generateTestValue(&f)))
-
 	}
 	b.WriteString("}\n")
 	return b.String()
