@@ -278,7 +278,7 @@ func (g GoGenerator) generateEncodingCode(p *model.Packet) string {
 		if field.IsRepeat {
 			b.WriteString(g.generateEncodingListField(&field))
 		} else {
-			b.WriteString(g.generateEncodingField(&field))
+			b.WriteString(g.generateEncodingField(p, &field))
 		}
 	}
 	b.WriteString("    return nil\n")
@@ -286,13 +286,29 @@ func (g GoGenerator) generateEncodingCode(p *model.Packet) string {
 	return b.String()
 }
 
-func (g GoGenerator) generateEncodingField(field *model.Field) string {
+func (g GoGenerator) generateEncodingField(p *model.Packet, field *model.Field) string {
 	var b strings.Builder
+	if field.LengthOfField != "" {
+		b.WriteString(fmt.Sprintf("var %sBuf bytes.Buffer\n", strcase.ToCamel(field.LengthOfField)))
+		b.WriteString(fmt.Sprintf("if err := p.%s.Encode(&%sBuf); err != nil {\n", strcase.ToCamel(field.LengthOfField), strcase.ToCamel(field.LengthOfField)))
+		b.WriteString("    return err\n")
+		b.WriteString("}\n")
+		typ := goBasicTypeMap[field.Type]
+		b.WriteString(fmt.Sprintf("p.%s = %s(%sBuf.Available())\n", strcase.ToCamel(field.Name), typ.BasicType, strcase.ToCamel(field.LengthOfField)))
+	}
 	order := g.getOrder()
 	if _, ok := goBasicTypeMap[field.Type]; ok {
 		b.WriteString(fmt.Sprintf("    if err :=codec.PutBasicType%s(buf, p.%s); err != nil {\n", order, strcase.ToCamel(field.Name)))
 		b.WriteString("        return fmt.Errorf(\"failed to encode %s: %w\", \"" + field.Name + "\", err)\n")
 		b.WriteString("    }\n")
+	} else if field.Name == p.LengthOfField {
+		if g.config.LittleEndian {
+			b.WriteString(fmt.Sprintf("if err := binary.Write(buf, binary.LittleEndian, %sBuf.Bytes()); err != nil {\n", strcase.ToCamel(p.LengthOfField)))
+		} else {
+			b.WriteString(fmt.Sprintf("if err := binary.Write(buf, binary.BigEndian, %sBuf.Bytes()); err != nil {\n", strcase.ToCamel(p.LengthOfField)))
+		}
+		b.WriteString("    return err\n")
+		b.WriteString("}\n")
 	} else if l, ok := ParseCharArrayType(field.Type); ok {
 		// fixed string
 		b.WriteString(fmt.Sprintf("    if err := codec.PutFixedString(buf, p.%s, %s); err != nil {\n", strcase.ToCamel(field.Name), l))
