@@ -217,13 +217,18 @@ func (g GoGenerator) generateDecodingField(field *model.Field) string {
 
 	} else if field.GetType() == "match" {
 		if len(field.MatchPairs) > 0 {
-			b.WriteString(fmt.Sprintf("switch p.%s {\n", field.MatchKey))
+			b.WriteString(fmt.Sprintf("switch p.%s {\n", strcase.ToCamel(field.MatchKey)))
+			pairs := make(map[string]struct{})
 			for _, mp := range field.MatchPairs {
+				if _, ok := pairs[mp.Key]; ok {
+					continue
+				}
+				pairs[mp.Key] = struct{}{}
 				b.WriteString(fmt.Sprintf("case %s: \n", mp.Key))
 				b.WriteString(fmt.Sprintf("    p.%s = &%s{} \n", strcase.ToCamel(field.Name), strcase.ToCamel(mp.Value)))
 			}
 			b.WriteString("default:\n")
-			b.WriteString(fmt.Sprintf("    return fmt.Errorf(\"unsupported %s: %%v\", p.%s)\n", field.MatchKey, field.MatchKey))
+			b.WriteString(fmt.Sprintf("    return fmt.Errorf(\"unsupported %s: %%v\", p.%s)\n", strcase.ToCamel(field.MatchKey), strcase.ToCamel(field.MatchKey)))
 			b.WriteString("}\n")
 		}
 
