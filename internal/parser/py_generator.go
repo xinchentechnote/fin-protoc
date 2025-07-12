@@ -133,7 +133,11 @@ func (g PythonGenerator) generateDecodeMethod(p *model.Packet) string {
 	}
 	for _, f := range p.Fields {
 		if f.IsRepeat {
-			b.WriteString(fmt.Sprintf("    size = get_len(buffer, '%s')\n", g.config.ListLenPrefixLenType))
+			if g.config.LittleEndian {
+				b.WriteString(fmt.Sprintf("    size = get_len_le(buffer, '%s')\n", g.config.ListLenPrefixLenType))
+			} else {
+				b.WriteString(fmt.Sprintf("    size = get_len(buffer, '%s')\n", g.config.ListLenPrefixLenType))
+			}
 			b.WriteString("    for i in range(size):\n")
 			b.WriteString(AddIndent4ln(g.generateDecodeField(&f)))
 		} else {
@@ -146,10 +150,14 @@ func (g PythonGenerator) generateDecodeMethod(p *model.Packet) string {
 func (g PythonGenerator) generateDecodeField(f *model.Field) string {
 	var b strings.Builder
 	if typ, ok := pyBasicTypeMap[f.Type]; ok {
+		read := typ.BasicType
+		if g.config.LittleEndian {
+			read = typ.Le
+		}
 		if f.IsRepeat {
-			b.WriteString(fmt.Sprintf("    self.%s.append(buffer.read_%s())\n", strcase.ToSnake(f.Name), typ.Le))
+			b.WriteString(fmt.Sprintf("    self.%s.append(buffer.read_%s())\n", strcase.ToSnake(f.Name), read))
 		} else {
-			b.WriteString(fmt.Sprintf("    self.%s = buffer.read_%s()\n", strcase.ToSnake(f.Name), typ.Le))
+			b.WriteString(fmt.Sprintf("    self.%s = buffer.read_%s()\n", strcase.ToSnake(f.Name), read))
 		}
 	}
 	if size, ok := ParseCharArrayType(f.Type); ok {
@@ -160,10 +168,14 @@ func (g PythonGenerator) generateDecodeField(f *model.Field) string {
 		}
 	}
 	if f.Type == "string" || f.Type == "char[]" {
+		var le string
+		if g.config.LittleEndian {
+			le = "_le"
+		}
 		if f.IsRepeat {
-			b.WriteString(fmt.Sprintf("    self.%s.append(get_string(buffer,'%s'))\n", strcase.ToSnake(f.Name), g.config.StringLenPrefixLenType))
+			b.WriteString(fmt.Sprintf("    self.%s.append(get_string%s(buffer,'%s'))\n", strcase.ToSnake(f.Name), le, g.config.StringLenPrefixLenType))
 		} else {
-			b.WriteString(fmt.Sprintf("    self.%s = get_string(buffer,'%s')\n", strcase.ToSnake(f.Name), g.config.StringLenPrefixLenType))
+			b.WriteString(fmt.Sprintf("    self.%s = get_string%s(buffer,'%s')\n", strcase.ToSnake(f.Name), le, g.config.StringLenPrefixLenType))
 		}
 	}
 	if f.InerObject != nil {
@@ -211,6 +223,11 @@ func (g PythonGenerator) generateEncodeMethod(p *model.Packet) string {
 		if f.IsRepeat {
 			typ := pyBasicTypeMap[g.config.ListLenPrefixLenType]
 			b.WriteString(fmt.Sprintf("    size = len(self.%s)\n", strcase.ToSnake(f.Name)))
+			if g.config.LittleEndian {
+				b.WriteString(fmt.Sprintf("    buffer.write_%s(size)\n", typ.Le))
+			} else {
+				b.WriteString(fmt.Sprintf("    buffer.write_%s(size)\n", typ.BasicType))
+			}
 			b.WriteString(fmt.Sprintf("    buffer.write_%s(size)\n", typ.Le))
 			b.WriteString("    for i in range(size):\n")
 			b.WriteString(AddIndent4ln(g.generateEncodeField(&f)))
@@ -227,12 +244,21 @@ func (g PythonGenerator) generateEncodeField(f *model.Field) string {
 	if f.IsRepeat {
 		fieldName += "[i]"
 	}
+
 	if typ, ok := pyBasicTypeMap[f.Type]; ok {
-		b.WriteString(fmt.Sprintf("    buffer.write_%s(self.%s)\n", typ.Le, fieldName))
+		if g.config.LittleEndian {
+			b.WriteString(fmt.Sprintf("    buffer.write_%s(self.%s)\n", typ.Le, fieldName))
+		} else {
+			b.WriteString(fmt.Sprintf("    buffer.write_%s(self.%s)\n", typ.BasicType, fieldName))
+		}
 	} else if size, ok := ParseCharArrayType(f.Type); ok {
 		b.WriteString(fmt.Sprintf("    write_fixed_string(buffer, self.%s, %s)\n", fieldName, size))
 	} else if f.Type == "string" || f.Type == "char[]" {
-		b.WriteString(fmt.Sprintf("    put_string(buffer, self.%s, '%s')\n", fieldName, g.config.StringLenPrefixLenType))
+		if g.config.LittleEndian {
+			b.WriteString(fmt.Sprintf("    put_string_le(buffer, self.%s, '%s')\n", fieldName, g.config.StringLenPrefixLenType))
+		} else {
+			b.WriteString(fmt.Sprintf("    put_string(buffer, self.%s, '%s')\n", fieldName, g.config.StringLenPrefixLenType))
+		}
 	} else if f.InerObject != nil {
 		b.WriteString(fmt.Sprintf("    self.%s.encode(buffer)\n", fieldName))
 	} else if _, ok := g.binModel.PacketsMap[f.Type]; ok {
