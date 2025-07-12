@@ -104,11 +104,11 @@ func (g PythonGenerator) generateEqMethod(p *model.Packet) string {
 	}
 	b.WriteString("    return all([\n")
 	for i, f := range p.Fields {
-		if _, ok := pyBasicTypeMap[f.Type]; ok {
+		if _, ok := pyBasicTypeMap[f.GetType()]; ok {
 			b.WriteString(fmt.Sprintf("        self.%s == other.%s", strcase.ToSnake(f.Name), strcase.ToSnake(f.Name)))
-		} else if _, ok := ParseCharArrayType(f.Type); ok {
+		} else if _, ok := ParseCharArrayType(f.GetType()); ok {
 			b.WriteString(fmt.Sprintf("        self.%s == other.%s", strcase.ToSnake(f.Name), strcase.ToSnake(f.Name)))
-		} else if f.InerObject != nil || (f.Type != "string" && f.Type != "char[]") {
+		} else if f.InerObject != nil || (f.GetType() != "string" && f.GetType() != "char[]") {
 			b.WriteString(fmt.Sprintf("        self.%s == other.%s", strcase.ToSnake(f.Name), strcase.ToSnake(f.Name)))
 		} else {
 			b.WriteString(fmt.Sprintf("        self.%s == other.%s", strcase.ToSnake(f.Name), strcase.ToSnake(f.Name)))
@@ -149,7 +149,7 @@ func (g PythonGenerator) generateDecodeMethod(p *model.Packet) string {
 
 func (g PythonGenerator) generateDecodeField(f *model.Field) string {
 	var b strings.Builder
-	if typ, ok := pyBasicTypeMap[f.Type]; ok {
+	if typ, ok := pyBasicTypeMap[f.GetType()]; ok {
 		read := typ.BasicType
 		if g.config.LittleEndian {
 			read = typ.Le
@@ -160,14 +160,14 @@ func (g PythonGenerator) generateDecodeField(f *model.Field) string {
 			b.WriteString(fmt.Sprintf("    self.%s = buffer.read_%s()\n", strcase.ToSnake(f.Name), read))
 		}
 	}
-	if size, ok := ParseCharArrayType(f.Type); ok {
+	if size, ok := ParseCharArrayType(f.GetType()); ok {
 		if f.IsRepeat {
 			b.WriteString(fmt.Sprintf("    self.%s.append(buffer.read_bytes(%s).decode('utf-8').strip('\\x00'))\n", strcase.ToSnake(f.Name), size))
 		} else {
 			b.WriteString(fmt.Sprintf("    self.%s = buffer.read_bytes(%s).decode('utf-8').strip('\\x00')\n", strcase.ToSnake(f.Name), size))
 		}
 	}
-	if f.Type == "string" || f.Type == "char[]" {
+	if f.GetType() == "string" || f.GetType() == "char[]" {
 		var le string
 		if g.config.LittleEndian {
 			le = "_le"
@@ -179,20 +179,26 @@ func (g PythonGenerator) generateDecodeField(f *model.Field) string {
 		}
 	}
 	if f.InerObject != nil {
-		b.WriteString(fmt.Sprintf("    self.%s = %s()\n", strcase.ToSnake(f.Name), strcase.ToCamel(f.InerObject.Name)))
-		b.WriteString(fmt.Sprintf("    self.%s.decode(buffer)\n", strcase.ToSnake(f.Name)))
-	}
-	if _, ok := g.binModel.PacketsMap[f.Type]; ok {
 		if f.IsRepeat {
-			b.WriteString(fmt.Sprintf("    _%s = %s()\n", strcase.ToSnake(f.Type), strcase.ToCamel(f.Type)))
-			b.WriteString(fmt.Sprintf("    _%s.decode(buffer)\n", strcase.ToSnake(f.Type)))
-			b.WriteString(fmt.Sprintf("    self.%s.append(_%s)\n", strcase.ToSnake(f.Name), strcase.ToSnake(f.Type)))
+			b.WriteString(fmt.Sprintf("    _%s = %s()\n", strcase.ToSnake(f.Name), strcase.ToCamel(f.InerObject.Name)))
+			b.WriteString(fmt.Sprintf("    _%s.decode(buffer)\n", strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("    self.%s.append(_%s)\n", strcase.ToSnake(f.Name), strcase.ToSnake(f.Name)))
 		} else {
-			b.WriteString(fmt.Sprintf("    self.%s = %s()\n", strcase.ToSnake(f.Name), strcase.ToCamel(f.Type)))
+			b.WriteString(fmt.Sprintf("    self.%s = %s()\n", strcase.ToSnake(f.Name), strcase.ToCamel(f.InerObject.Name)))
 			b.WriteString(fmt.Sprintf("    self.%s.decode(buffer)\n", strcase.ToSnake(f.Name)))
 		}
 	}
-	if f.Type == "match" {
+	if _, ok := g.binModel.PacketsMap[f.GetType()]; ok {
+		if f.IsRepeat {
+			b.WriteString(fmt.Sprintf("    _%s = %s()\n", strcase.ToSnake(f.GetType()), strcase.ToCamel(f.GetType())))
+			b.WriteString(fmt.Sprintf("    _%s.decode(buffer)\n", strcase.ToSnake(f.GetType())))
+			b.WriteString(fmt.Sprintf("    self.%s.append(_%s)\n", strcase.ToSnake(f.Name), strcase.ToSnake(f.GetType())))
+		} else {
+			b.WriteString(fmt.Sprintf("    self.%s = %s()\n", strcase.ToSnake(f.Name), strcase.ToCamel(f.GetType())))
+			b.WriteString(fmt.Sprintf("    self.%s.decode(buffer)\n", strcase.ToSnake(f.Name)))
+		}
+	}
+	if f.GetType() == "match" {
 		for _, pair := range f.MatchPairs {
 			b.WriteString(fmt.Sprintf("    if self.%s == %s:\n", strcase.ToSnake(f.MatchKey), pair.Key))
 			b.WriteString(fmt.Sprintf("        self.%s = %s()\n", strcase.ToSnake(f.Name), pair.Value))
@@ -244,15 +250,15 @@ func (g PythonGenerator) generateEncodeField(f *model.Field) string {
 		fieldName += "[i]"
 	}
 
-	if typ, ok := pyBasicTypeMap[f.Type]; ok {
+	if typ, ok := pyBasicTypeMap[f.GetType()]; ok {
 		if g.config.LittleEndian {
 			b.WriteString(fmt.Sprintf("    buffer.write_%s(self.%s)\n", typ.Le, fieldName))
 		} else {
 			b.WriteString(fmt.Sprintf("    buffer.write_%s(self.%s)\n", typ.BasicType, fieldName))
 		}
-	} else if size, ok := ParseCharArrayType(f.Type); ok {
+	} else if size, ok := ParseCharArrayType(f.GetType()); ok {
 		b.WriteString(fmt.Sprintf("    write_fixed_string(buffer, self.%s, %s)\n", fieldName, size))
-	} else if f.Type == "string" || f.Type == "char[]" {
+	} else if f.GetType() == "string" || f.GetType() == "char[]" {
 		if g.config.LittleEndian {
 			b.WriteString(fmt.Sprintf("    put_string_le(buffer, self.%s, '%s')\n", fieldName, g.config.StringLenPrefixLenType))
 		} else {
@@ -260,13 +266,13 @@ func (g PythonGenerator) generateEncodeField(f *model.Field) string {
 		}
 	} else if f.InerObject != nil {
 		b.WriteString(fmt.Sprintf("    self.%s.encode(buffer)\n", fieldName))
-	} else if _, ok := g.binModel.PacketsMap[f.Type]; ok {
+	} else if _, ok := g.binModel.PacketsMap[f.GetType()]; ok {
 		b.WriteString(fmt.Sprintf("    self.%s.encode(buffer)\n", fieldName))
-	} else if f.Type == "match" {
+	} else if f.GetType() == "match" {
 		b.WriteString(fmt.Sprintf("    if self.%s is not None:\n", fieldName))
 		b.WriteString(fmt.Sprintf("        self.%s.encode(buffer)\n", fieldName))
 	} else {
-		b.WriteString("-- unsupported type: " + f.Type + "\n")
+		b.WriteString("-- unsupported type: " + f.GetType() + "\n")
 	}
 	return b.String()
 }
@@ -283,15 +289,15 @@ func (g PythonGenerator) generateInitMethod(p *model.Packet) string {
 			b.WriteString(fmt.Sprintf("    self.%s = []\n", strcase.ToSnake(f.Name)))
 			continue
 		}
-		if _, ok := pyBasicTypeMap[f.Type]; ok {
-			b.WriteString(fmt.Sprintf("    self.%s = %s\n", strcase.ToSnake(f.Name), pyBasicTypeMap[f.Type].DefaultValue))
+		if _, ok := pyBasicTypeMap[f.GetType()]; ok {
+			b.WriteString(fmt.Sprintf("    self.%s = %s\n", strcase.ToSnake(f.Name), pyBasicTypeMap[f.GetType()].DefaultValue))
 			continue
 		}
-		if _, ok := ParseCharArrayType(f.Type); ok {
+		if _, ok := ParseCharArrayType(f.GetType()); ok {
 			b.WriteString(fmt.Sprintf("    self.%s = ''\n", strcase.ToSnake(f.Name)))
 			continue
 		}
-		switch f.Type {
+		switch f.GetType() {
 		case "string", "char[]":
 			b.WriteString(fmt.Sprintf("    self.%s = ''\n", strcase.ToSnake(f.Name)))
 		case "match":
@@ -339,10 +345,10 @@ func (g PythonGenerator) generateNewInstance(name string, packet *model.Packet) 
 		if f.InerObject != nil {
 			b.WriteString(g.generateNewInstance(strcase.ToSnake(f.InerObject.Name), f.InerObject))
 		}
-		if rp, ok := g.binModel.PacketsMap[f.Type]; ok {
+		if rp, ok := g.binModel.PacketsMap[f.GetType()]; ok {
 			b.WriteString(g.generateNewInstance(strcase.ToSnake(f.Name), &rp))
 		}
-		if f.Type == "match" {
+		if f.GetType() == "match" {
 			mp := g.binModel.PacketsMap[f.MatchPairs[0].Value]
 			b.WriteString(g.generateNewInstance(strcase.ToSnake(f.Name), &mp))
 		}
@@ -374,17 +380,17 @@ func (g PythonGenerator) generateTestValue(f *model.Field) string {
 	if f.InerObject != nil {
 		testValue = strcase.ToSnake(f.InerObject.Name)
 	}
-	if _, ok := g.binModel.PacketsMap[f.Type]; ok {
+	if _, ok := g.binModel.PacketsMap[f.GetType()]; ok {
 		testValue = strcase.ToSnake(f.Name)
 	}
 	if f.GetType() == "string" || f.GetType() == "char[]" {
 		testValue = "\"hello\""
 	}
-	if size, ok := ParseCharArrayType(f.Type); ok {
+	if size, ok := ParseCharArrayType(f.GetType()); ok {
 		s, _ := strconv.Atoi(size)
 		testValue = "\"" + strings.Repeat("x", s) + "\""
 	}
-	if f.Type == "match" {
+	if f.GetType() == "match" {
 		testValue = strcase.ToSnake(f.Name)
 	}
 	if f.IsRepeat {
