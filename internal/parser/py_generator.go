@@ -199,6 +199,15 @@ func (g PythonGenerator) generateEncodeMethod(p *model.Packet) string {
 	}
 
 	for _, f := range p.Fields {
+		if f.LengthOfField != "" {
+			b.WriteString(fmt.Sprintf("    %s_buf = ByteBuf()\n", strcase.ToSnake(f.LengthOfField)))
+			b.WriteString(fmt.Sprintf("    self.%s.encode(%s_buf)\n", strcase.ToSnake(f.LengthOfField), strcase.ToSnake(f.LengthOfField)))
+			b.WriteString(fmt.Sprintf("    self.%s = %s_buf.readable_bytes_len()\n", strcase.ToSnake(f.Name), strcase.ToSnake(f.LengthOfField)))
+		}
+		if f.Name == p.LengthOfField {
+			b.WriteString(fmt.Sprintf("    buffer.write_bytes(%s_buf.to_bytes())\n", strcase.ToSnake(f.Name)))
+			continue
+		}
 		if f.IsRepeat {
 			typ := pyBasicTypeMap[g.config.ListLenPrefixLenType]
 			b.WriteString(fmt.Sprintf("    size = len(self.%s)\n", strcase.ToSnake(f.Name)))
