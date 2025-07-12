@@ -228,7 +228,6 @@ func (g PythonGenerator) generateEncodeMethod(p *model.Packet) string {
 			} else {
 				b.WriteString(fmt.Sprintf("    buffer.write_%s(size)\n", typ.BasicType))
 			}
-			b.WriteString(fmt.Sprintf("    buffer.write_%s(size)\n", typ.Le))
 			b.WriteString("    for i in range(size):\n")
 			b.WriteString(AddIndent4ln(g.generateEncodeField(&f)))
 		} else {
