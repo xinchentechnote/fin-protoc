@@ -17,7 +17,7 @@ type GeneratorConfig struct {
 	StringLenPrefixLenType string //default u16
 	JavaPackage            string //default empty
 	GoPackage              string //default empty
-	GoMoudle               string //default empty
+	GoModule               string //default empty
 	LittleEndian           bool   //default false
 }
 
@@ -29,7 +29,7 @@ func NewGeneratorConfig(options map[string]string) *GeneratorConfig {
 		StringLenPrefixLenType: "u16",
 		JavaPackage:            "",
 		GoPackage:              "",
-		GoMoudle:               "",
+		GoModule:               "",
 		LittleEndian:           false,
 	}
 
@@ -49,8 +49,8 @@ func NewGeneratorConfig(options map[string]string) *GeneratorConfig {
 	if val, ok := options["LittleEndian"]; ok {
 		config.LittleEndian = strings.ToLower(val) == "true"
 	}
-	if val, ok := options["GoMoudle"]; ok {
-		config.GoMoudle = val
+	if val, ok := options["GoModule"]; ok {
+		config.GoModule = val
 	}
 
 	return config
