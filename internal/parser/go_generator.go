@@ -399,7 +399,7 @@ func (g GoGenerator) generateGoTestFileForPacket(p *model.Packet, isIner bool) s
 
 		"github.com/stretchr/testify/assert"
 		`)
-		b.WriteString(fmt.Sprintf("msg \"%s\"", g.config.GoMoudle))
+		b.WriteString(fmt.Sprintf("msg \"%s\"", g.config.GoModule))
 		b.WriteString(")")
 		b.WriteString("\n\n")
 	}
