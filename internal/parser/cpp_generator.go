@@ -95,7 +95,7 @@ func (g CppGenerator) generateCodeForPacket(p *model.Packet) string {
 	b.WriteString("    void decode(ByteBuf& buf) override {}\n")
 
 	//tostring
-	b.WriteString("    std::string toString() const {\n")
+	b.WriteString("    std::string toString() const override {\n")
 	b.WriteString("        std::string result = \"" + p.Name + " { \";\n")
 	for i, field := range p.Fields {
 		if i > 0 {
@@ -103,6 +103,18 @@ func (g CppGenerator) generateCodeForPacket(p *model.Packet) string {
 		}
 		if _, ok := cppBaiscTypeMap[field.GetType()]; ok {
 			b.WriteString(fmt.Sprintf("        result += \"%s: \" + std::to_string(%s);\n", field.Name, strcase.ToLowerCamel(field.Name)))
+			continue
+		}
+		if field.InerObject != nil {
+			b.WriteString(fmt.Sprintf("        result += \"%s: \" + %s.toString();\n", field.Name, strcase.ToLowerCamel(field.Name)))
+			continue
+		}
+		if _, ok := g.binModel.PacketsMap[field.GetType()]; ok {
+			b.WriteString(fmt.Sprintf("        result += \"%s: \" + %s.toString();\n", field.Name, strcase.ToLowerCamel(field.Name)))
+			continue
+		}
+		if field.GetType() == "match" {
+			b.WriteString(fmt.Sprintf("        result += \"%s: \" + %s->toString();\n", field.Name, strcase.ToLowerCamel(field.Name)))
 			continue
 		}
 		b.WriteString(fmt.Sprintf("        result += \"%s: \" + %s;\n", field.Name, strcase.ToLowerCamel(field.Name)))
@@ -131,5 +143,4 @@ func (g CppGenerator) getFieldType(f *model.Field) string {
 	default:
 		return f.Type
 	}
-
 }
