@@ -181,7 +181,7 @@ func (v *PacketDslVisitorImpl) VisitInerObjectField(ctx *gen.InerObjectFieldCont
 	}
 	return model.Field{
 		Name:       name,
-		Type:       "", // nested objects do not have a basic Type
+		Type:       name, // nested objects do not have a basic Type
 		IsRepeat:   ctx.REPEAT() != nil,
 		InerObject: &p,
 	}

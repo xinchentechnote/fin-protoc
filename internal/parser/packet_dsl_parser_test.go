@@ -95,7 +95,7 @@ packet Parent {
 	if nested.Name != "nestedChild" {
 		t.Errorf("expected first field 'nestedChild', got '%s'", nested.Name)
 	}
-	if nested.Type != "" {
+	if nested.Type != "nestedChild" {
 		t.Errorf("expected nestedChild Type=empty, got '%s'", nested.Type)
 	}
 	if nested.InerObject.Name != "nestedChild" {
