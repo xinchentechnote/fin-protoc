@@ -33,6 +33,7 @@ var cppBaiscTypeMap = map[string]CppType{
 type CppGenerator struct {
 	config   *GeneratorConfig
 	binModel *model.BinaryModel
+	hasGen   map[string]*model.Packet
 }
 
 // NewCppGenerator new
@@ -40,6 +41,7 @@ func NewCppGenerator(config *GeneratorConfig, binModel *model.BinaryModel) *CppG
 	return &CppGenerator{
 		config:   config,
 		binModel: binModel,
+		hasGen:   make(map[string]*model.Packet),
 	}
 }
 
@@ -75,12 +77,20 @@ func (g CppGenerator) generateHppFile(binModel *model.BinaryModel) string {
 }
 
 func (g CppGenerator) generateCodeForPacket(p *model.Packet) string {
+	if _, ok := g.hasGen[p.Name]; ok {
+		return ""
+	}
+	g.hasGen[p.Name] = p
 	var b strings.Builder
 
 	//iner
 	for _, f := range p.Fields {
 		if f.InerObject != nil {
 			b.WriteString(g.generateCodeForPacket(f.InerObject))
+			b.WriteString("\n")
+		}
+		if mp, ok := g.binModel.PacketsMap[f.GetType()]; ok {
+			b.WriteString(g.generateCodeForPacket(&mp))
 			b.WriteString("\n")
 		}
 	}
@@ -100,6 +110,10 @@ func (g CppGenerator) generateCodeForPacket(p *model.Packet) string {
 	for i, field := range p.Fields {
 		if i > 0 {
 			b.WriteString("        result += \", \";\n")
+		}
+		if field.IsRepeat {
+			b.WriteString(fmt.Sprintf("        result += \"%s: \" + codec::join_vector(%s);\n", field.Name, strcase.ToLowerCamel(field.Name)))
+			continue
 		}
 		if _, ok := cppBaiscTypeMap[field.GetType()]; ok {
 			b.WriteString(fmt.Sprintf("        result += \"%s: \" + std::to_string(%s);\n", field.Name, strcase.ToLowerCamel(field.Name)))
@@ -125,22 +139,33 @@ func (g CppGenerator) generateCodeForPacket(p *model.Packet) string {
 
 	b.WriteString("};\n")
 
+	// operator<< 实现
+	b.WriteString("\n")
+	b.WriteString(fmt.Sprintf("inline std::ostream& operator<<(std::ostream& os, const %s& pkt) {\n", p.Name))
+	b.WriteString("    return os << pkt.toString();\n")
+	b.WriteString("}\n")
+	b.WriteString("\n")
 	return b.String()
 }
 
 func (g CppGenerator) getFieldType(f *model.Field) string {
-	if typ, ok := cppBaiscTypeMap[f.GetType()]; ok {
-		return typ.Name
+	typ := ""
+	if t, ok := cppBaiscTypeMap[f.GetType()]; ok {
+		typ = t.Name
+	} else if _, ok := ParseCharArrayType(f.GetType()); ok {
+		typ = "std::string"
+	} else {
+		switch f.GetType() {
+		case "match":
+			typ = "std::unique_ptr<codec::BinaryCodec>"
+		case "string", "char[]":
+			typ = "std::string"
+		default:
+			typ = f.GetType()
+		}
 	}
-	if _, ok := ParseCharArrayType(f.GetType()); ok {
-		return "std::string"
+	if f.IsRepeat {
+		typ = "std::vector<" + typ + ">"
 	}
-	switch f.GetType() {
-	case "match":
-		return "std::unique_ptr<codec::BinaryCodec>"
-	case "string", "char[]":
-		return "std::string"
-	default:
-		return f.Type
-	}
+	return typ
 }
