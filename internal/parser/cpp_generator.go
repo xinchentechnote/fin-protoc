@@ -70,10 +70,15 @@ func (g CppGenerator) Generate(binModel *model.BinaryModel) (map[string][]byte, 
 func (g CppGenerator) generateHppFile(binModel *model.BinaryModel) string {
 	var b strings.Builder
 	for _, pkt := range binModel.PacketsMap {
-		code := g.generateCodeForPacket(&pkt)
-		b.WriteString(code)
-		b.WriteString("\n")
+		if !pkt.IsRoot {
+			code := g.generateCodeForPacket(&pkt)
+			b.WriteString(code)
+			b.WriteString("\n")
+		}
 	}
+	code := g.generateCodeForPacket(&binModel.RootPacket)
+	b.WriteString(code)
+	b.WriteString("\n")
 	return b.String()
 }
 
@@ -103,15 +108,15 @@ func (g CppGenerator) generateCodeForPacket(p *model.Packet) string {
 
 	b.WriteString("\n")
 	//gen encode method
-	b.WriteString(g.generateEncode(p))
+	b.WriteString(AddIndent4ln(g.generateEncode(p)))
 	b.WriteString("\n")
 
 	//gen decode method
-	b.WriteString(g.generateDecode(p))
+	b.WriteString(AddIndent4ln(g.generateDecode(p)))
 	b.WriteString("\n")
 
 	//tostring
-	b.WriteString(g.generateToString(p))
+	b.WriteString(AddIndent4ln(g.generateToString(p)))
 
 	b.WriteString("};\n")
 
@@ -264,6 +269,14 @@ func (g CppGenerator) generateDecode(p *model.Packet) string {
 				b.WriteString(fmt.Sprintf("    %s.decode(buf);\n", strcase.ToLowerCamel(f.Name)))
 			}
 		} else if f.GetType() == "match" {
+			b.WriteString(fmt.Sprintf("    switch (%s) {\n", strcase.ToLowerCamel(f.MatchKey)))
+			for _, pair := range f.MatchPairs {
+				b.WriteString(fmt.Sprintf("        case %s:\n", pair.Key))
+				b.WriteString(fmt.Sprintf("            %s = std::make_unique<%s>();\n", strcase.ToLowerCamel(f.Name), pair.Value))
+			}
+			b.WriteString("        default:\n")
+			b.WriteString(fmt.Sprintf("            throw std::runtime_error(\"Unknown match key: \" + std::to_string(%s));\n", strcase.ToLowerCamel(f.MatchKey)))
+			b.WriteString("    }\n")
 			b.WriteString(fmt.Sprintf("    %s->decode(buf);\n", strcase.ToLowerCamel(f.Name)))
 		} else {
 			b.WriteString("-- unsupport type:" + f.GetType() + "\n")
@@ -275,37 +288,37 @@ func (g CppGenerator) generateDecode(p *model.Packet) string {
 
 func (g CppGenerator) generateToString(p *model.Packet) string {
 	var b strings.Builder
-	b.WriteString("    std::string toString() const override {\n")
-	b.WriteString("        std::string result = \"" + p.Name + " { \";\n")
+	b.WriteString("std::string toString() const override {\n")
+	b.WriteString("    std::string result = \"" + p.Name + " { \";\n")
 	for i, field := range p.Fields {
 		if i > 0 {
-			b.WriteString("        result += \", \";\n")
+			b.WriteString("    result += \", \";\n")
 		}
 		if field.IsRepeat {
-			b.WriteString(fmt.Sprintf("        result += \"%s: \" + codec::join_vector(%s);\n", field.Name, strcase.ToLowerCamel(field.Name)))
+			b.WriteString(fmt.Sprintf("    result += \"%s: \" + codec::join_vector(%s);\n", field.Name, strcase.ToLowerCamel(field.Name)))
 			continue
 		}
 		if _, ok := cppBaiscTypeMap[field.GetType()]; ok {
-			b.WriteString(fmt.Sprintf("        result += \"%s: \" + std::to_string(%s);\n", field.Name, strcase.ToLowerCamel(field.Name)))
+			b.WriteString(fmt.Sprintf("    result += \"%s: \" + std::to_string(%s);\n", field.Name, strcase.ToLowerCamel(field.Name)))
 			continue
 		}
 		if field.InerObject != nil {
-			b.WriteString(fmt.Sprintf("        result += \"%s: \" + %s.toString();\n", field.Name, strcase.ToLowerCamel(field.Name)))
+			b.WriteString(fmt.Sprintf("    result += \"%s: \" + %s.toString();\n", field.Name, strcase.ToLowerCamel(field.Name)))
 			continue
 		}
 		if _, ok := g.binModel.PacketsMap[field.GetType()]; ok {
-			b.WriteString(fmt.Sprintf("        result += \"%s: \" + %s.toString();\n", field.Name, strcase.ToLowerCamel(field.Name)))
+			b.WriteString(fmt.Sprintf("    result += \"%s: \" + %s.toString();\n", field.Name, strcase.ToLowerCamel(field.Name)))
 			continue
 		}
 		if field.GetType() == "match" {
-			b.WriteString(fmt.Sprintf("        result += \"%s: \" + %s->toString();\n", field.Name, strcase.ToLowerCamel(field.Name)))
+			b.WriteString(fmt.Sprintf("    result += \"%s: \" + %s->toString();\n", field.Name, strcase.ToLowerCamel(field.Name)))
 			continue
 		}
-		b.WriteString(fmt.Sprintf("        result += \"%s: \" + %s;\n", field.Name, strcase.ToLowerCamel(field.Name)))
+		b.WriteString(fmt.Sprintf("    result += \"%s: \" + %s;\n", field.Name, strcase.ToLowerCamel(field.Name)))
 	}
-	b.WriteString("        result += \" }\";\n")
-	b.WriteString("        return result;\n")
-	b.WriteString("    }\n")
+	b.WriteString("    result += \" }\";\n")
+	b.WriteString("    return result;\n")
+	b.WriteString("}\n")
 	return b.String()
 }
 
