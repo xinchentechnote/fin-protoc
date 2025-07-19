@@ -13,20 +13,21 @@ import (
 type CppType struct {
 	Name      string
 	BasicType string
+	Le        string
 	Size      int
 }
 
 var cppBaiscTypeMap = map[string]CppType{
-	"i8":  {"int8_t", "int", 1},
-	"i16": {"int16_t", "int", 2},
-	"i32": {"int32_t", "int", 4},
-	"i64": {"int64_t", "int", 8},
-	"u8":  {"uint8_t", "unsigned int", 1},
-	"u16": {"uint16_t", "unsigned int", 2},
-	"u32": {"uint32_t", "unsigned int", 4},
-	"u64": {"uint64_t", "unsigned int", 8},
-	"f32": {"float", "float", 4},
-	"f64": {"double", "double", 8},
+	"i8":  {"int8_t", "int", "i8", 1},
+	"i16": {"int16_t", "int", "i16_le", 2},
+	"i32": {"int32_t", "int", "i32_le", 4},
+	"i64": {"int64_t", "int", "i64_le", 8},
+	"u8":  {"uint8_t", "unsigned int", "u8", 1},
+	"u16": {"uint16_t", "unsigned int", "u16_le", 2},
+	"u32": {"uint32_t", "unsigned int", "u32_le", 4},
+	"u64": {"uint64_t", "unsigned int", "u64_le", 8},
+	"f32": {"float", "float", "f32_le", 4},
+	"f64": {"double", "double", "f64_le", 8},
 }
 
 // CppGenerator a go code generator
@@ -101,10 +102,179 @@ func (g CppGenerator) generateCodeForPacket(p *model.Packet) string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString("    void encode(ByteBuf& buf) const override {}\n")
-	b.WriteString("    void decode(ByteBuf& buf) override {}\n")
+	//gen encode method
+	b.WriteString(g.generateEncode(p))
+	b.WriteString("\n")
+
+	//gen decode method
+	b.WriteString(g.generateDecode(p))
+	b.WriteString("\n")
 
 	//tostring
+	b.WriteString(g.generateToString(p))
+
+	b.WriteString("};\n")
+
+	// override operator<<
+	b.WriteString("\n")
+	b.WriteString(g.generateOstreamOperator(p))
+
+	b.WriteString("\n")
+	return b.String()
+}
+
+func (g CppGenerator) generateEncode(p *model.Packet) string {
+	var b strings.Builder
+	b.WriteString("void encode(ByteBuf& buf) const override {\n")
+	strLenTyp := cppBaiscTypeMap[g.config.StringLenPrefixLenType]
+	listLenTyp := cppBaiscTypeMap[g.config.ListLenPrefixLenType]
+	for _, f := range p.Fields {
+		if typ, ok := cppBaiscTypeMap[f.GetType()]; ok {
+			if f.IsRepeat {
+				if g.config.LittleEndian {
+					b.WriteString(fmt.Sprintf("    codec::put_basic_type_le<%s,%s>(buf,%s);\n", listLenTyp.Name, typ.Name, strcase.ToLowerCamel(f.Name)))
+				} else {
+					b.WriteString(fmt.Sprintf("    codec::put_basic_type<%s,%s>(buf,%s);\n", listLenTyp.Name, typ.Name, strcase.ToLowerCamel(f.Name)))
+				}
+			} else {
+				if g.config.LittleEndian {
+					b.WriteString(fmt.Sprintf("    buf.write_%s(%s);\n", typ.Le, strcase.ToLowerCamel(f.Name)))
+				} else {
+					b.WriteString(fmt.Sprintf("    buf.write_%s(%s);\n", f.GetType(), strcase.ToLowerCamel(f.Name)))
+				}
+			}
+		} else if size, ok := ParseCharArrayType(f.GetType()); ok {
+			if f.IsRepeat {
+				if g.config.LittleEndian {
+					b.WriteString(fmt.Sprintf("    codec::put_fixed_string_list_le<%s>(buf, %s, %s);\n", listLenTyp.Name, strcase.ToLowerCamel(f.Name), size))
+				} else {
+					b.WriteString(fmt.Sprintf("    codec::put_fixed_string_list<>%s(buf, %s, %s);\n", listLenTyp.Name, strcase.ToLowerCamel(f.Name), size))
+				}
+			} else {
+				b.WriteString(fmt.Sprintf("    codec::put_fixed_string(buf, %s, %s);\n", strcase.ToLowerCamel(f.Name), size))
+			}
+		} else if f.GetType() == "string" || f.GetType() == "char[]" {
+			if f.IsRepeat {
+				if g.config.LittleEndian {
+					b.WriteString(fmt.Sprintf("    codec::put_string_list_le<%s,%s>(buf, %s);\n", listLenTyp.Name, strLenTyp.Name, strcase.ToLowerCamel(f.Name)))
+				} else {
+					b.WriteString(fmt.Sprintf("    codec::put_string_list<%s,%s>(buf, %s);\n", listLenTyp.Name, strLenTyp.Name, strcase.ToLowerCamel(f.Name)))
+				}
+			} else {
+				if g.config.LittleEndian {
+					b.WriteString(fmt.Sprintf("    codec::put_string_le<%s>(buf, %s);\n", strLenTyp.Name, strcase.ToLowerCamel(f.Name)))
+				} else {
+					b.WriteString(fmt.Sprintf("    codec::put_string<%s>(buf, %s);\n", strLenTyp.Name, strcase.ToLowerCamel(f.Name)))
+				}
+			}
+		} else if f.InerObject != nil {
+			if f.IsRepeat {
+				if g.config.LittleEndian {
+					b.WriteString(fmt.Sprintf("    codec::put_object_List_le<%s>(buf,%s);\n", listLenTyp.Name, strcase.ToLowerCamel(f.Name)))
+				} else {
+					b.WriteString(fmt.Sprintf("    codec::put_object_List<%s>(buf,%s);\n", listLenTyp.Name, strcase.ToLowerCamel(f.Name)))
+				}
+			} else {
+				b.WriteString(fmt.Sprintf("    %s.encode(buf);\n", strcase.ToLowerCamel(f.Name)))
+			}
+		} else if _, ok := g.binModel.PacketsMap[f.GetType()]; ok {
+			if f.IsRepeat {
+				if g.config.LittleEndian {
+					b.WriteString(fmt.Sprintf("    codec::put_object_List_le<%s>(buf,%s);\n", listLenTyp.Name, strcase.ToLowerCamel(f.Name)))
+				} else {
+					b.WriteString(fmt.Sprintf("    codec::put_object_List<%s>(buf,%s);\n", listLenTyp.Name, strcase.ToLowerCamel(f.Name)))
+				}
+			} else {
+				b.WriteString(fmt.Sprintf("    %s.encode(buf);\n", strcase.ToLowerCamel(f.Name)))
+			}
+		} else if f.GetType() == "match" {
+			b.WriteString(fmt.Sprintf("    %s->encode(buf);\n", strcase.ToLowerCamel(f.Name)))
+		} else {
+			b.WriteString("-- unsupport type:" + f.GetType() + "\n")
+		}
+	}
+	b.WriteString("}\n")
+	return b.String()
+}
+
+func (g CppGenerator) generateDecode(p *model.Packet) string {
+	var b strings.Builder
+	strLenTyp := cppBaiscTypeMap[g.config.StringLenPrefixLenType]
+	listLenTyp := cppBaiscTypeMap[g.config.ListLenPrefixLenType]
+	b.WriteString("void decode(ByteBuf& buf) override {\n")
+	for _, f := range p.Fields {
+		if typ, ok := cppBaiscTypeMap[f.GetType()]; ok {
+			if f.IsRepeat {
+				if g.config.LittleEndian {
+					b.WriteString(fmt.Sprintf("    %s = codec::get_basic_type_le<%s,%s>(buf);\n", strcase.ToLowerCamel(f.Name), listLenTyp.Name, typ.Name))
+				} else {
+					b.WriteString(fmt.Sprintf("    %s = codec::get_basic_type<%s,%s>(buf);\n", strcase.ToLowerCamel(f.Name), listLenTyp.Name, typ.Name))
+				}
+
+			} else {
+				if g.config.LittleEndian {
+					b.WriteString(fmt.Sprintf("    %s = buf.read_%s();\n", strcase.ToLowerCamel(f.Name), typ.Le))
+				} else {
+					b.WriteString(fmt.Sprintf("    %s = buf.write_%s();\n", strcase.ToLowerCamel(f.Name), f.GetType()))
+				}
+			}
+
+		} else if size, ok := ParseCharArrayType(f.GetType()); ok {
+			if f.IsRepeat {
+				if g.config.LittleEndian {
+					b.WriteString(fmt.Sprintf("    %s = codec::get_fixed_string_list_le<%s>(buf, %s);\n", strcase.ToLowerCamel(f.Name), listLenTyp.Name, size))
+				} else {
+					b.WriteString(fmt.Sprintf("    %s = codec::get_fixed_string_list<%s>(buf, %s);\n", strcase.ToLowerCamel(f.Name), listLenTyp.Name, size))
+				}
+			} else {
+				b.WriteString(fmt.Sprintf("    %s = codec::get_fixed_string(buf, %s);\n", strcase.ToLowerCamel(f.Name), size))
+			}
+		} else if f.GetType() == "string" || f.GetType() == "char[]" {
+			if f.IsRepeat {
+				if g.config.LittleEndian {
+					b.WriteString(fmt.Sprintf("    %s = codec::get_string_list_le<%s,%s>(buf);\n", strcase.ToLowerCamel(f.Name), listLenTyp.Name, strLenTyp.Name))
+				} else {
+					b.WriteString(fmt.Sprintf("    %s = codec::get_string_list<%s,%s>(buf);\n", strcase.ToLowerCamel(f.Name), listLenTyp.Name, strLenTyp.Name))
+				}
+			} else {
+				if g.config.LittleEndian {
+					b.WriteString(fmt.Sprintf("    %s = codec::get_string_le<%s>(buf);\n", strcase.ToLowerCamel(f.Name), strLenTyp.Name))
+				} else {
+					b.WriteString(fmt.Sprintf("    %s = codec::get_string<%s>(buf);\n", strcase.ToLowerCamel(f.Name), strLenTyp.Name))
+				}
+			}
+		} else if f.InerObject != nil {
+			if f.IsRepeat {
+				if g.config.LittleEndian {
+					b.WriteString(fmt.Sprintf("    %s = codec::get_object_List_le<%s,%s>(buf);\n", strcase.ToLowerCamel(f.Name), listLenTyp.Name, f.GetType()))
+				} else {
+					b.WriteString(fmt.Sprintf("    %s = codec::get_object_List<%s,%s>(buf);\n", strcase.ToLowerCamel(f.Name), listLenTyp.Name, f.GetType()))
+				}
+			} else {
+				b.WriteString(fmt.Sprintf("    %s.decode(buf);\n", strcase.ToLowerCamel(f.Name)))
+			}
+		} else if _, ok := g.binModel.PacketsMap[f.GetType()]; ok {
+			if f.IsRepeat {
+				if g.config.LittleEndian {
+					b.WriteString(fmt.Sprintf("    %s = codec::get_object_List_le<%s,%s>(buf);\n", strcase.ToLowerCamel(f.Name), listLenTyp.Name, f.GetType()))
+				} else {
+					b.WriteString(fmt.Sprintf("    %s = codec::get_object_List<%s,%s>(buf);\n", strcase.ToLowerCamel(f.Name), listLenTyp.Name, f.GetType()))
+				}
+			} else {
+				b.WriteString(fmt.Sprintf("    %s.decode(buf);\n", strcase.ToLowerCamel(f.Name)))
+			}
+		} else if f.GetType() == "match" {
+			b.WriteString(fmt.Sprintf("    %s->decode(buf);\n", strcase.ToLowerCamel(f.Name)))
+		} else {
+			b.WriteString("-- unsupport type:" + f.GetType() + "\n")
+		}
+	}
+	b.WriteString("}\n")
+	return b.String()
+}
+
+func (g CppGenerator) generateToString(p *model.Packet) string {
+	var b strings.Builder
 	b.WriteString("    std::string toString() const override {\n")
 	b.WriteString("        std::string result = \"" + p.Name + " { \";\n")
 	for i, field := range p.Fields {
@@ -136,15 +306,14 @@ func (g CppGenerator) generateCodeForPacket(p *model.Packet) string {
 	b.WriteString("        result += \" }\";\n")
 	b.WriteString("        return result;\n")
 	b.WriteString("    }\n")
+	return b.String()
+}
 
-	b.WriteString("};\n")
-
-	// operator<< 实现
-	b.WriteString("\n")
+func (g CppGenerator) generateOstreamOperator(p *model.Packet) string {
+	var b strings.Builder
 	b.WriteString(fmt.Sprintf("inline std::ostream& operator<<(std::ostream& os, const %s& pkt) {\n", p.Name))
 	b.WriteString("    return os << pkt.toString();\n")
 	b.WriteString("}\n")
-	b.WriteString("\n")
 	return b.String()
 }
 
