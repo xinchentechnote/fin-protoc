@@ -19,7 +19,7 @@ type CppType struct {
 	TestValue string
 }
 
-var cppBaiscTypeMap = map[string]CppType{
+var cppBasicTypeMap = map[string]CppType{
 	"i8":  {"int8_t", "int", "i8", 1, "1"},
 	"i16": {"int16_t", "int", "i16_le", 2, "2"},
 	"i32": {"int32_t", "int", "i32_le", 4, "4"},
@@ -69,6 +69,7 @@ func (g CppGenerator) generateHppFile(binModel *model.BinaryModel) string {
 	b.WriteString("#include <iostream>\n")
 	b.WriteString("#include \"include/codec.hpp\"\n")
 	b.WriteString("#include \"include/bytebuf.hpp\"\n")
+	b.WriteString("#include <iomanip>\n")
 	b.WriteString("\n")
 	for _, pkt := range binModel.Packets {
 		if !pkt.IsRoot {
@@ -146,7 +147,11 @@ func (g CppGenerator) generateEquals(p *model.Packet) string {
 			if idx > 0 {
 				b.WriteString("           && ")
 			}
-			b.WriteString(fmt.Sprintf("%s == checkType->%s", strcase.ToLowerCamel(f.Name), strcase.ToLowerCamel(f.Name)))
+			if f.GetType() == "match" {
+				b.WriteString(fmt.Sprintf("%s->equals(*checkType->%s)", strcase.ToLowerCamel(f.Name), strcase.ToLowerCamel(f.Name)))
+			} else {
+				b.WriteString(fmt.Sprintf("%s == checkType->%s", strcase.ToLowerCamel(f.Name), strcase.ToLowerCamel(f.Name)))
+			}
 			if idx == len(p.Fields)-1 {
 				b.WriteString(";\n")
 			} else {
@@ -161,13 +166,13 @@ func (g CppGenerator) generateEquals(p *model.Packet) string {
 func (g CppGenerator) generateEncode(p *model.Packet) string {
 	var b strings.Builder
 	b.WriteString("void encode(ByteBuf& buf) const override {\n")
-	strLenTyp := cppBaiscTypeMap[g.config.StringLenPrefixLenType]
-	listLenTyp := cppBaiscTypeMap[g.config.ListLenPrefixLenType]
+	strLenTyp := cppBasicTypeMap[g.config.StringLenPrefixLenType]
+	listLenTyp := cppBasicTypeMap[g.config.ListLenPrefixLenType]
 	for _, f := range p.Fields {
 		if f.LengthOfField != "" {
 			b.WriteString(fmt.Sprintf("    ByteBuf %sBuf;\n", strcase.ToLowerCamel(f.LengthOfField)))
 			b.WriteString(fmt.Sprintf("    %s->encode(%sBuf);\n", strcase.ToLowerCamel(f.LengthOfField), strcase.ToLowerCamel(f.LengthOfField)))
-			typ := cppBaiscTypeMap[f.GetType()]
+			typ := cppBasicTypeMap[f.GetType()]
 			b.WriteString(fmt.Sprintf("    auto %sLen_ = static_cast<%s>(%sBuf.readable_bytes());\n", strcase.ToLowerCamel(f.LengthOfField), typ.Name, strcase.ToLowerCamel(f.LengthOfField)))
 			if g.config.LittleEndian {
 				b.WriteString(fmt.Sprintf("    buf.write_%s(%sLen_);\n", typ.Le, strcase.ToLowerCamel(f.LengthOfField)))
@@ -176,7 +181,7 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 			}
 		} else if f.Name == p.LengthOfField {
 			b.WriteString(fmt.Sprintf("    buf.write_bytes(%sBuf.data().data(), %sLen_);\n", strcase.ToLowerCamel(f.Name), strcase.ToLowerCamel(f.Name)))
-		} else if typ, ok := cppBaiscTypeMap[f.GetType()]; ok {
+		} else if typ, ok := cppBasicTypeMap[f.GetType()]; ok {
 			if f.IsRepeat {
 				if g.config.LittleEndian {
 					b.WriteString(fmt.Sprintf("    codec::put_basic_type_le<%s,%s>(buf,%s);\n", listLenTyp.Name, typ.Name, strcase.ToLowerCamel(f.Name)))
@@ -246,11 +251,11 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 
 func (g CppGenerator) generateDecode(p *model.Packet) string {
 	var b strings.Builder
-	strLenTyp := cppBaiscTypeMap[g.config.StringLenPrefixLenType]
-	listLenTyp := cppBaiscTypeMap[g.config.ListLenPrefixLenType]
+	strLenTyp := cppBasicTypeMap[g.config.StringLenPrefixLenType]
+	listLenTyp := cppBasicTypeMap[g.config.ListLenPrefixLenType]
 	b.WriteString("void decode(ByteBuf& buf) override {\n")
 	for _, f := range p.Fields {
-		if typ, ok := cppBaiscTypeMap[f.GetType()]; ok {
+		if typ, ok := cppBasicTypeMap[f.GetType()]; ok {
 			if f.IsRepeat {
 				if g.config.LittleEndian {
 					b.WriteString(fmt.Sprintf("    %s = codec::get_basic_type_le<%s,%s>(buf);\n", strcase.ToLowerCamel(f.Name), listLenTyp.Name, typ.Name))
@@ -339,11 +344,28 @@ func (g CppGenerator) generateToString(p *model.Packet) string {
 			b.WriteString("    << \", \"\n")
 		}
 		if field.IsRepeat {
-			b.WriteString(fmt.Sprintf("    << \"%s: \" << codec::join_vector(%s)\n", field.Name, strcase.ToLowerCamel(field.Name)))
+			t := field.GetType()
+			if typ, ok := cppBasicTypeMap[field.GetType()]; ok {
+				t = typ.Name
+			} else if _, ok := ParseCharArrayType(field.GetType()); ok {
+				t = "std::string"
+			} else if field.GetType() == "string" || field.GetType() == "char[]" {
+				t = "std::string"
+			}
+			b.WriteString(fmt.Sprintf("    << \"%s: \" << codec::join_vector<%s>(%s)\n", field.Name, t, strcase.ToLowerCamel(field.Name)))
 			continue
 		}
-		if _, ok := cppBaiscTypeMap[field.GetType()]; ok {
-			b.WriteString(fmt.Sprintf("    << \"%s: \" << std::to_string(%s)\n", field.Name, strcase.ToLowerCamel(field.Name)))
+		if _, ok := cppBasicTypeMap[field.GetType()]; ok {
+			switch field.GetType() {
+			case "i8":
+				b.WriteString(fmt.Sprintf("    << \"%s: \" << static_cast<int>(%s)\n", field.Name, strcase.ToLowerCamel(field.Name)))
+			case "u8":
+				b.WriteString(fmt.Sprintf("    << \"%s: \" << static_cast<unsigned>(%s)\n", field.Name, strcase.ToLowerCamel(field.Name)))
+			case "f32", "f64":
+				b.WriteString(fmt.Sprintf("    << \"%s: \" << std::fixed << std::setprecision(6) << %s\n", field.Name, strcase.ToLowerCamel(field.Name)))
+			default:
+				b.WriteString(fmt.Sprintf("    << \"%s: \" << std::to_string(%s)\n", field.Name, strcase.ToLowerCamel(field.Name)))
+			}
 			continue
 		}
 		if field.InerObject != nil {
@@ -376,7 +398,7 @@ func (g CppGenerator) generateOstreamOperator(p *model.Packet) string {
 
 func (g CppGenerator) getFieldType(f *model.Field) string {
 	typ := ""
-	if t, ok := cppBaiscTypeMap[f.GetType()]; ok {
+	if t, ok := cppBasicTypeMap[f.GetType()]; ok {
 		typ = t.Name
 	} else if _, ok := ParseCharArrayType(f.GetType()); ok {
 		typ = "std::string"
@@ -450,8 +472,12 @@ func (g CppGenerator) generateNewInstance(name string, p *model.Packet) string {
 	b.WriteString(fmt.Sprintf("%s %s;\n", strcase.ToCamel(p.Name), name))
 	for _, f := range p.Fields {
 		if f.GetType() == "match" {
+			b.WriteString(fmt.Sprintf("%s.%s = %s;\n", name, strcase.ToLowerCamel(f.MatchKey), f.MatchPairs[0].Key))
 			b.WriteString(fmt.Sprintf("%s.%s = std::move(%s);\n", name, strcase.ToLowerCamel(f.Name), g.generateTestValue(&f)))
 		} else {
+			if _, ok := p.MatchFields[f.Name]; ok {
+				continue
+			}
 			b.WriteString(fmt.Sprintf("%s.%s = %s;\n", name, strcase.ToLowerCamel(f.Name), g.generateTestValue(&f)))
 		}
 	}
@@ -485,7 +511,7 @@ func (g CppGenerator) generateMakeUniqueInstance(name string, p *model.Packet) s
 
 func (g CppGenerator) generateTestValue(f *model.Field) any {
 	tv := ""
-	if typ, ok := cppBaiscTypeMap[f.GetType()]; ok {
+	if typ, ok := cppBasicTypeMap[f.GetType()]; ok {
 		tv = typ.TestValue
 	} else if size, ok := ParseCharArrayType(f.GetType()); ok {
 		l, _ := strconv.Atoi(size)
