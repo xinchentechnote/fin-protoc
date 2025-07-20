@@ -200,7 +200,7 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 				if g.config.LittleEndian {
 					b.WriteString(fmt.Sprintf("    codec::put_fixed_string_list_le<%s>(buf, %s, %s);\n", listLenTyp.Name, strcase.ToLowerCamel(f.Name), size))
 				} else {
-					b.WriteString(fmt.Sprintf("    codec::put_fixed_string_list<>%s(buf, %s, %s);\n", listLenTyp.Name, strcase.ToLowerCamel(f.Name), size))
+					b.WriteString(fmt.Sprintf("    codec::put_fixed_string_list<%s>(buf, %s, %s);\n", listLenTyp.Name, strcase.ToLowerCamel(f.Name), size))
 				}
 			} else {
 				b.WriteString(fmt.Sprintf("    codec::put_fixed_string(buf, %s, %s);\n", strcase.ToLowerCamel(f.Name), size))
@@ -267,7 +267,7 @@ func (g CppGenerator) generateDecode(p *model.Packet) string {
 				if g.config.LittleEndian {
 					b.WriteString(fmt.Sprintf("    %s = buf.read_%s();\n", strcase.ToLowerCamel(f.Name), typ.Le))
 				} else {
-					b.WriteString(fmt.Sprintf("    %s = buf.write_%s();\n", strcase.ToLowerCamel(f.Name), f.GetType()))
+					b.WriteString(fmt.Sprintf("    %s = buf.read_%s();\n", strcase.ToLowerCamel(f.Name), f.GetType()))
 				}
 			}
 
