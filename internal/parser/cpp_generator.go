@@ -273,6 +273,7 @@ func (g CppGenerator) generateDecode(p *model.Packet) string {
 			for _, pair := range f.MatchPairs {
 				b.WriteString(fmt.Sprintf("        case %s:\n", pair.Key))
 				b.WriteString(fmt.Sprintf("            %s = std::make_unique<%s>();\n", strcase.ToLowerCamel(f.Name), pair.Value))
+				b.WriteString("            break;\n")
 			}
 			b.WriteString("        default:\n")
 			b.WriteString(fmt.Sprintf("            throw std::runtime_error(\"Unknown match key: \" + std::to_string(%s));\n", strcase.ToLowerCamel(f.MatchKey)))
@@ -289,35 +290,36 @@ func (g CppGenerator) generateDecode(p *model.Packet) string {
 func (g CppGenerator) generateToString(p *model.Packet) string {
 	var b strings.Builder
 	b.WriteString("std::string toString() const override {\n")
-	b.WriteString("    std::string result = \"" + p.Name + " { \";\n")
+	b.WriteString("    std::ostringstream oss;\n")
+	b.WriteString("    oss << \"" + p.Name + " { \"\n")
 	for i, field := range p.Fields {
 		if i > 0 {
-			b.WriteString("    result += \", \";\n")
+			b.WriteString("    << \", \"\n")
 		}
 		if field.IsRepeat {
-			b.WriteString(fmt.Sprintf("    result += \"%s: \" + codec::join_vector(%s);\n", field.Name, strcase.ToLowerCamel(field.Name)))
+			b.WriteString(fmt.Sprintf("    << \"%s: \" << codec::join_vector(%s)\n", field.Name, strcase.ToLowerCamel(field.Name)))
 			continue
 		}
 		if _, ok := cppBaiscTypeMap[field.GetType()]; ok {
-			b.WriteString(fmt.Sprintf("    result += \"%s: \" + std::to_string(%s);\n", field.Name, strcase.ToLowerCamel(field.Name)))
+			b.WriteString(fmt.Sprintf("    << \"%s: \" << std::to_string(%s)\n", field.Name, strcase.ToLowerCamel(field.Name)))
 			continue
 		}
 		if field.InerObject != nil {
-			b.WriteString(fmt.Sprintf("    result += \"%s: \" + %s.toString();\n", field.Name, strcase.ToLowerCamel(field.Name)))
+			b.WriteString(fmt.Sprintf("    << \"%s: \" << %s.toString()\n", field.Name, strcase.ToLowerCamel(field.Name)))
 			continue
 		}
 		if _, ok := g.binModel.PacketsMap[field.GetType()]; ok {
-			b.WriteString(fmt.Sprintf("    result += \"%s: \" + %s.toString();\n", field.Name, strcase.ToLowerCamel(field.Name)))
+			b.WriteString(fmt.Sprintf("    << \"%s: \" << %s.toString()\n", field.Name, strcase.ToLowerCamel(field.Name)))
 			continue
 		}
 		if field.GetType() == "match" {
-			b.WriteString(fmt.Sprintf("    result += \"%s: \" + %s->toString();\n", field.Name, strcase.ToLowerCamel(field.Name)))
+			b.WriteString(fmt.Sprintf("    << \"%s: \" << %s->toString()\n", field.Name, strcase.ToLowerCamel(field.Name)))
 			continue
 		}
-		b.WriteString(fmt.Sprintf("    result += \"%s: \" + %s;\n", field.Name, strcase.ToLowerCamel(field.Name)))
+		b.WriteString(fmt.Sprintf("    << \"%s: \" << %s\n", field.Name, strcase.ToLowerCamel(field.Name)))
 	}
-	b.WriteString("    result += \" }\";\n")
-	b.WriteString("    return result;\n")
+	b.WriteString("    << \" }\";\n")
+	b.WriteString("    return oss.str();\n")
 	b.WriteString("}\n")
 	return b.String()
 }
