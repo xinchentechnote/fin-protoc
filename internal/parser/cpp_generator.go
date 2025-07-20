@@ -134,7 +134,19 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 	strLenTyp := cppBaiscTypeMap[g.config.StringLenPrefixLenType]
 	listLenTyp := cppBaiscTypeMap[g.config.ListLenPrefixLenType]
 	for _, f := range p.Fields {
-		if typ, ok := cppBaiscTypeMap[f.GetType()]; ok {
+		if f.LengthOfField != "" {
+			b.WriteString(fmt.Sprintf("    ByteBuf %sBuf;\n", strcase.ToLowerCamel(f.LengthOfField)))
+			b.WriteString(fmt.Sprintf("    %s->encode(%sBuf);\n", strcase.ToLowerCamel(f.LengthOfField), strcase.ToLowerCamel(f.LengthOfField)))
+			typ := cppBaiscTypeMap[f.GetType()]
+			b.WriteString(fmt.Sprintf("    auto %sLen_ = static_cast<%s>(%sBuf.readable_bytes());\n", strcase.ToLowerCamel(f.LengthOfField), typ.Name, strcase.ToLowerCamel(f.LengthOfField)))
+			if g.config.LittleEndian {
+				b.WriteString(fmt.Sprintf("    buf.write_%s(%sLen_);\n", typ.Le, strcase.ToLowerCamel(f.LengthOfField)))
+			} else {
+				b.WriteString(fmt.Sprintf("    buf.write_%s(%sLen_);\n", f.GetType(), strcase.ToLowerCamel(f.LengthOfField)))
+			}
+		} else if f.Name == p.LengthOfField {
+			b.WriteString(fmt.Sprintf("    buf.write_bytes(%sBuf.data().data(), %sLen_);\n", strcase.ToLowerCamel(f.Name), strcase.ToLowerCamel(f.Name)))
+		} else if typ, ok := cppBaiscTypeMap[f.GetType()]; ok {
 			if f.IsRepeat {
 				if g.config.LittleEndian {
 					b.WriteString(fmt.Sprintf("    codec::put_basic_type_le<%s,%s>(buf,%s);\n", listLenTyp.Name, typ.Name, strcase.ToLowerCamel(f.Name)))
