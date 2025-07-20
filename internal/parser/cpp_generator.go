@@ -69,7 +69,7 @@ func (g CppGenerator) Generate(binModel *model.BinaryModel) (map[string][]byte, 
 
 func (g CppGenerator) generateHppFile(binModel *model.BinaryModel) string {
 	var b strings.Builder
-	for _, pkt := range binModel.PacketsMap {
+	for _, pkt := range binModel.Packets {
 		if !pkt.IsRoot {
 			code := g.generateCodeForPacket(&pkt)
 			b.WriteString(code)
