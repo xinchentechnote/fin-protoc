@@ -501,7 +501,7 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 			}
 			return b.String()
 		}
-		return "--" + f.Type
+		return "//TODO " + f.Type
 	}
 }
 
@@ -730,7 +730,7 @@ func (g JavaGenerator) GenerateNewInstance(instanceName string, parent string, p
 					b.WriteString(fmt.Sprintf("%s.set%s(%s);\n", instanceName, strcase.ToCamel(f.Name), inerObjName))
 				}
 			} else {
-				b.WriteString("--" + f.GetType())
+				b.WriteString("//TODO " + f.GetType())
 			}
 		}
 
