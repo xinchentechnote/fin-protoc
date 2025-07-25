@@ -15,8 +15,14 @@ func FormatPacketDsl(dsl string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("could not create parser: %v", err)
 	}
+	listener := NewSyntaxErrorListener()
+	parser.RemoveErrorListeners()
+	parser.AddErrorListener(listener)
 	// 设置语法规则，开始解析
 	tree := parser.Packet()
+	if listener.HasErrors() {
+		return dsl, fmt.Errorf("syntax errors found: %v", listener.Errors)
+	}
 	formattor := NewPacketDslFormattor(stream)
 	formattedDsl := tree.Accept(formattor).(string)
 	return strings.TrimSpace(formattedDsl), nil

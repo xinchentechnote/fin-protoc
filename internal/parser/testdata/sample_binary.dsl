@@ -44,7 +44,7 @@ packet RiskControlRequest {
     		char[16] ClOrdID `子订单号`,
     		u64 Price `子订单价格`,
     		u32 Qty `子订单数量`,
-    	}
+    	},
 }
 
 packet RiskControlResponse {
