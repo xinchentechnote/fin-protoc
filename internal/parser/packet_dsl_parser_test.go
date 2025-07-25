@@ -26,8 +26,8 @@ func TestParseSimplePacket(t *testing.T) {
 	// Example DSL: one root packet with two simple fields
 	dsl := `
 root packet Logon {
-	string username
-	u16 password
+	string username,
+	u16 password,
 }`
 	path := writeTempFile(t, dsl)
 	defer os.Remove(path)

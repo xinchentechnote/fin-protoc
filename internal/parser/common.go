@@ -13,6 +13,70 @@ import (
 	gen "github.com/xinchentechnote/fin-protoc/internal/grammar"
 )
 
+// SyntaxError represents a single syntax error found during parsing
+type SyntaxError struct {
+	Line            int
+	Column          int
+	Msg             string
+	OffendingSymbol interface{}
+}
+
+// SyntaxErrorListener implements antlr.ErrorListener to collect syntax errors
+type SyntaxErrorListener struct {
+	Errors []SyntaxError
+}
+
+// NewSyntaxErrorListener creates a new SyntaxErrorListener
+func NewSyntaxErrorListener() *SyntaxErrorListener {
+	return &SyntaxErrorListener{
+		Errors: make([]SyntaxError, 0),
+	}
+}
+
+// ReportAmbiguity implements antlr.ErrorListener
+func (s *SyntaxErrorListener) ReportAmbiguity(recognizer antlr.Parser, dfa *antlr.DFA, startIndex int, stopIndex int, exact bool, ambigAlts *antlr.BitSet, configs *antlr.ATNConfigSet) {
+	// Typically you might want to ignore this in production parsers
+	// but you could log it if needed
+}
+
+// ReportAttemptingFullContext implements antlr.ErrorListener
+func (s *SyntaxErrorListener) ReportAttemptingFullContext(recognizer antlr.Parser, dfa *antlr.DFA, startIndex int, stopIndex int, conflictingAlts *antlr.BitSet, configs *antlr.ATNConfigSet) {
+	// Typically you might want to ignore this in production parsers
+}
+
+// ReportContextSensitivity implements antlr.ErrorListener
+func (s *SyntaxErrorListener) ReportContextSensitivity(recognizer antlr.Parser, dfa *antlr.DFA, startIndex int, stopIndex int, prediction int, configs *antlr.ATNConfigSet) {
+	// Typically you might want to ignore this in production parsers
+}
+
+// SyntaxError implements antlr.ErrorListener
+func (s *SyntaxErrorListener) SyntaxError(recognizer antlr.Recognizer, offendingSymbol interface{}, line int, column int, msg string, e antlr.RecognitionException) {
+	s.Errors = append(s.Errors, SyntaxError{
+		Line:            line,
+		Column:          column,
+		Msg:             msg,
+		OffendingSymbol: offendingSymbol,
+	})
+}
+
+// HasErrors returns true if any syntax errors were collected
+func (s *SyntaxErrorListener) HasErrors() bool {
+	return len(s.Errors) > 0
+}
+
+// Error returns a formatted string containing all syntax errors
+func (s *SyntaxErrorListener) Error() string {
+	if !s.HasErrors() {
+		return ""
+	}
+
+	var errStr string
+	for _, err := range s.Errors {
+		errStr += fmt.Sprintf("line %d:%d %s\n", err.Line, err.Column, err.Msg)
+	}
+	return errStr
+}
+
 // AddIndent4ln adds 4-space indent and a newline (similar to fmt.Println)
 func AddIndent4ln(s string) string {
 	return AddIndent4(s) + "\n"

@@ -19,7 +19,7 @@ func TestFormatPacketDsl(t *testing.T) {
 }
 
 func TestFormatPacketDsl1(t *testing.T) {
-	formattedDsl, err := FormatPacketDsl("root packet MyPacket {  Int64 name   `description` }")
+	formattedDsl, err := FormatPacketDsl("root packet MyPacket {  Int64 name   `description`, }")
 	assert.NoError(t, err)
 	fmt.Println(formattedDsl)
 }

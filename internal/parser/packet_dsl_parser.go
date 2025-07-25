@@ -15,10 +15,14 @@ func ParseFile(filename string) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	listener := NewSyntaxErrorListener()
+	parser.RemoveErrorListeners()
+	parser.AddErrorListener(listener)
 	// Invoke the root rule 'Packet' to parse the file
 	tree := parser.Packet()
-
+	if listener.HasErrors() {
+		return nil, fmt.Errorf("syntax errors found: %v", listener.Errors)
+	}
 	// Use the custom visitor to build the model from the parse tree
 	visitor := NewPacketDslVisitor()
 	astData := tree.Accept(visitor)
