@@ -1,14 +1,70 @@
 package model
 
-import "strings"
+import (
+	"sort"
+	"strings"
+)
+
+func contains(slice []string, target string) bool {
+	for _, v := range slice {
+		if v == target {
+			return true
+		}
+	}
+	return false
+}
+
+// SyntaxError represents a single syntax error found during parsing
+type SyntaxError struct {
+	Line            int
+	Column          int
+	Msg             string
+	OffendingSymbol interface{}
+}
+
+var _ = map[string]struct{}{
+	"u8":      {},
+	"u16":     {},
+	"u32":     {},
+	"u64":     {},
+	"i8":      {},
+	"i16":     {},
+	"i32":     {},
+	"i64":     {},
+	"f32":     {},
+	"f64":     {},
+	"uint8":   {},
+	"uint16":  {},
+	"uint32":  {},
+	"uint64":  {},
+	"int8":    {},
+	"int16":   {},
+	"int32":   {},
+	"int64":   {},
+	"float32": {},
+	"float64": {},
+	"char":    {},
+	"char[]":  {},
+	"string":  {},
+}
+
+var options = map[string][]string{
+	"StringPreFixLenType":  {"u8", "u16", "u32", "u64"},
+	"RepeatPreFixSizeType": {"u8", "u16", "u32", "u64"},
+	"LittleEndian":         {"true", "false"},
+	"JavaPackage":          {},
+	"GoPackage":            {},
+	"GoModule":             {},
+}
 
 // BinaryModel contains metaData, options,and packets
 type BinaryModel struct {
-	MetaDataMap map[string]MetaData // Map of metadata definitions
-	Options     map[string]string   // Map of options
-	PacketsMap  map[string]Packet   // Map of packet definitions, keyed by packet name
-	Packets     []Packet            // Map of packet definitions, keyed by packet name
-	RootPacket  Packet              // root packet
+	MetaDataMap  map[string]MetaData // Map of metadata definitions
+	Options      map[string]string   // Map of options
+	PacketsMap   map[string]Packet   // Map of packet definitions, keyed by packet name
+	Packets      []Packet            // List of all packets
+	RootPacket   Packet              // root packet
+	SyntaxErrors []SyntaxError       // List of syntax errors encountered during parsing
 }
 
 // NewBinaryModel new BinaryModel
@@ -29,8 +85,31 @@ func (m *BinaryModel) AddMetaData(metaData MetaData) {
 }
 
 // AddOption add option
-func (m *BinaryModel) AddOption(name, value string) {
+func (m *BinaryModel) AddOption(name, value string, line int, column int) {
+	if values, ok := options[name]; ok {
+		if !contains(values, value) {
+			m.AddSyntaxError(SyntaxError{line, column, "Option " + name + " is not allowed to be " + value + ", Expected one of:" + strings.Join(values, ","), nil})
+		}
+	} else {
+		var keys []string
+		for key := range options {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		m.AddSyntaxError(SyntaxError{line, column, "Option " + name + " is not allowed in this context, Expected one of:" + strings.Join(keys, ","), nil})
+		return
+	}
+
+	if _, ok := m.Options[name]; ok {
+		m.AddSyntaxError(SyntaxError{line, column, "Option " + name + " is already defined", nil})
+		return
+	}
 	m.Options[name] = value
+}
+
+// AddSyntaxError add syntax error
+func (m *BinaryModel) AddSyntaxError(error SyntaxError) {
+	m.SyntaxErrors = append(m.SyntaxErrors, error)
 }
 
 // AddPacket add packet
