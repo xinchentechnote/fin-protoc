@@ -72,7 +72,7 @@ func (v *PacketDslVisitorImpl) VisitPacket(ctx *gen.PacketContext) interface{} {
 				value = strings.Trim(value, "\"")
 			}
 			// Store option in the map
-			v.BinModel.AddOption(name, value)
+			v.BinModel.AddOption(name, value, option.GetStart().GetLine(), option.GetStart().GetTokenSource().GetCharPositionInLine())
 		}
 	}
 

@@ -11,25 +11,18 @@ import (
 
 	"github.com/antlr4-go/antlr/v4"
 	gen "github.com/xinchentechnote/fin-protoc/internal/grammar"
+	"github.com/xinchentechnote/fin-protoc/internal/model"
 )
-
-// SyntaxError represents a single syntax error found during parsing
-type SyntaxError struct {
-	Line            int
-	Column          int
-	Msg             string
-	OffendingSymbol interface{}
-}
 
 // SyntaxErrorListener implements antlr.ErrorListener to collect syntax errors
 type SyntaxErrorListener struct {
-	Errors []SyntaxError
+	Errors []model.SyntaxError
 }
 
 // NewSyntaxErrorListener creates a new SyntaxErrorListener
 func NewSyntaxErrorListener() *SyntaxErrorListener {
 	return &SyntaxErrorListener{
-		Errors: make([]SyntaxError, 0),
+		Errors: make([]model.SyntaxError, 0),
 	}
 }
 
@@ -51,7 +44,7 @@ func (s *SyntaxErrorListener) ReportContextSensitivity(recognizer antlr.Parser, 
 
 // SyntaxError implements antlr.ErrorListener
 func (s *SyntaxErrorListener) SyntaxError(recognizer antlr.Recognizer, offendingSymbol interface{}, line int, column int, msg string, e antlr.RecognitionException) {
-	s.Errors = append(s.Errors, SyntaxError{
+	s.Errors = append(s.Errors, model.SyntaxError{
 		Line:            line,
 		Column:          column,
 		Msg:             msg,
