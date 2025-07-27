@@ -58,6 +58,8 @@ func (v *PacketDslVisitorImpl) VisitPacket(ctx *gen.PacketContext) interface{} {
 				Typ:         typ,
 				BasicType:   basicType,
 				Description: metaDataDeclaration.STRING_LITERAL().GetText(),
+				Line:        metaDataDeclaration.GetStart().GetLine(),
+				Column:      metaDataDeclaration.GetStart().GetTokenSource().GetCharPositionInLine(),
 			})
 
 		}
@@ -140,6 +142,8 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 		Fields:        fields,
 		FieldMap:      fieldMap,
 		MatchFields:   matchFields,
+		Line:          ctx.GetStart().GetLine(),
+		Column:        ctx.GetStart().GetTokenSource().GetCharPositionInLine(),
 	}
 }
 

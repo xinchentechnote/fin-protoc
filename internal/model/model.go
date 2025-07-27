@@ -63,7 +63,7 @@ type BinaryModel struct {
 	Options      map[string]string   // Map of options
 	PacketsMap   map[string]Packet   // Map of packet definitions, keyed by packet name
 	Packets      []Packet            // List of all packets
-	RootPacket   Packet              // root packet
+	RootPacket   *Packet             // root packet
 	SyntaxErrors []SyntaxError       // List of syntax errors encountered during parsing
 }
 
@@ -78,6 +78,14 @@ func NewBinaryModel() *BinaryModel {
 
 // AddMetaData add MetaData
 func (m *BinaryModel) AddMetaData(metaData MetaData) {
+	if _, exists := m.MetaDataMap[metaData.Name]; exists {
+		m.AddSyntaxError(SyntaxError{
+			Line:   metaData.Line,
+			Column: metaData.Column,
+			Msg:    "Duplicate metadata definition for " + metaData.Name,
+		})
+		return
+	}
 	if m.MetaDataMap[metaData.Typ] != (MetaData{}) {
 		metaData.BasicType = m.MetaDataMap[metaData.Typ].BasicType
 	}
@@ -114,10 +122,26 @@ func (m *BinaryModel) AddSyntaxError(error SyntaxError) {
 
 // AddPacket add packet
 func (m *BinaryModel) AddPacket(packet Packet) {
+	if _, exists := m.PacketsMap[packet.Name]; exists {
+		m.AddSyntaxError(SyntaxError{
+			Line:   packet.Line,
+			Column: packet.Column,
+			Msg:    "Duplicate packet definition for " + packet.Name,
+		})
+		return
+	}
 	m.PacketsMap[packet.Name] = packet
 	m.Packets = append(m.Packets, packet)
 	if packet.IsRoot {
-		m.RootPacket = packet
+		if m.RootPacket != nil {
+			m.AddSyntaxError(SyntaxError{
+				Line:   packet.Line,   // Assuming the first field's line is the packet's line
+				Column: packet.Column, // Column is not defined in Packet
+				Msg:    "Multiple root packets are not allowed",
+			})
+			return
+		}
+		m.RootPacket = &packet
 	}
 }
 
@@ -127,6 +151,8 @@ type MetaData struct {
 	Typ         string // Type of the metadata,
 	BasicType   string // Basic type if applicable, e.g., "i32", "u16"
 	Description string // Description of the metadata
+	Line        int    // Line number where the metadata is defined
+	Column      int    // Column number where the metadata is defined
 }
 
 // Packet represents a message definition, which may be a root or nested packet.
@@ -137,6 +163,8 @@ type Packet struct {
 	Fields        []Field                // List of fields belonging to this packet
 	FieldMap      map[string]Field       // Map of fields belonging to this packet
 	MatchFields   map[string][]MatchPair // Map of match field names to their key-value pairs
+	Line          int                    // Line number where the packet is defined
+	Column        int                    // Column number where the packet is defined
 }
 
 // Field represents a single field within a packet. It can be a basic field, nested object, or match field.
