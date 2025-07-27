@@ -98,14 +98,29 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 	var lengthOfField string
 	var matchFields = make(map[string][]model.MatchPair)
 	for _, fctx := range ctx.AllFieldDefinition() {
-		fld := v.VisitFieldDefinition(fctx).(model.Field)
-
+		fd := v.VisitFieldDefinition(fctx)
+		if fd == nil {
+			continue
+		}
+		fld := fd.(model.Field) // Ensure type assertion
 		if fld.LengthOfField != "" {
 			if !isRoot {
-				panic("LengthOfField can only be declared in the root packet")
+				v.BinModel.AddSyntaxError(model.SyntaxError{
+					Line:            fctx.GetStart().GetLine(),
+					Column:          fctx.GetStart().GetTokenSource().GetCharPositionInLine(),
+					Msg:             "LengthOfField can only be declared in the root packet",
+					OffendingSymbol: nil,
+				})
+				continue
 			}
 			if lengthOfField != "" {
-				panic("duplicate LengthOfField declaration")
+				v.BinModel.AddSyntaxError(model.SyntaxError{
+					Line:            fctx.GetStart().GetLine(),
+					Column:          fctx.GetStart().GetTokenSource().GetCharPositionInLine(),
+					Msg:             "Duplicate LengthOfField declaration",
+					OffendingSymbol: nil,
+				})
+				continue
 			}
 			lengthOfField = fld.LengthOfField
 		}
@@ -163,8 +178,14 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinition(ctx interface{}) interface{}
 		return v.VisitMatchFieldDeclaration(c.MatchFieldDeclaration().(*gen.MatchFieldDeclarationContext)).(model.Field)
 
 	default:
-		panic(fmt.Sprintf("unexpected context type in VisitFieldDefinition: %T", ctx))
+		v.BinModel.AddSyntaxError(model.SyntaxError{
+			Line:            ctx.(*gen.FieldDefinitionContext).GetStart().GetLine(),
+			Column:          ctx.(*gen.FieldDefinitionContext).GetStart().GetTokenSource().GetCharPositionInLine(),
+			Msg:             "Unexpected field definition type",
+			OffendingSymbol: nil,
+		})
 	}
+	return nil
 }
 
 // VisitInerObjectField handles a nested object declaration and returns model.Field.
@@ -174,8 +195,11 @@ func (v *PacketDslVisitorImpl) VisitInerObjectField(ctx *gen.InerObjectFieldCont
 	var subFields []model.Field
 	// Iterate all sub-field definitions inside the nested object
 	for _, fctx := range decl.AllFieldDefinition() {
-		fld := v.VisitFieldDefinition(fctx).(model.Field)
-		subFields = append(subFields, fld)
+		fld := v.VisitFieldDefinition(fctx)
+		if fld == nil {
+			continue
+		}
+		subFields = append(subFields, fld.(model.Field))
 	}
 	// Construct nested Packet model
 	p := model.Packet{
