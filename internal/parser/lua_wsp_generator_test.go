@@ -39,7 +39,7 @@ func TestGenerateLua(t *testing.T) {
 		},
 	}
 	binModel := &model.BinaryModel{
-		RootPacket: rootPacket,
+		RootPacket: &rootPacket,
 		PacketsMap: map[string]model.Packet{
 			"TestProtocol": rootPacket,
 		},
@@ -99,14 +99,14 @@ func TestGenerateMainDissector(t *testing.T) {
 		},
 	}
 	binModel := &model.BinaryModel{
-		RootPacket: rootPacket,
+		RootPacket: &rootPacket,
 		PacketsMap: map[string]model.Packet{
 			"TestProtocol": rootPacket,
 		},
 	}
 
 	generator := NewLuaWspGenerator(config, binModel)
-	code := generator.generateMainDissector(rootPacket)
+	code := generator.generateMainDissector(&rootPacket)
 
 	assert.Contains(t, code, "function test_protocol_proto.dissector")
 	assert.Contains(t, code, "pinfo.cols.protocol = \"test_protocol\"")
@@ -133,7 +133,7 @@ func TestDecodeList(t *testing.T) {
 	}
 
 	generator := NewLuaWspGenerator(config, binModel)
-	code := generator.decodeList("tree", packet, field)
+	code := generator.decodeList("tree", &packet, field)
 
 	assert.Contains(t, code, "local test_packet_test_list_size = buf(offset, 2):uint()")
 	assert.Contains(t, code, "tree:add(\"testList Size: \".. test_packet_test_list_size")
@@ -201,7 +201,7 @@ offset = offset + 10`,
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			generator := NewLuaWspGenerator(config, binModel)
-			result := generator.decodeField("tree", tt.packet, tt.field)
+			result := generator.decodeField("tree", &tt.packet, tt.field)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -256,7 +256,7 @@ offset = offset + 4`,
 		t.Run(tt.name, func(t *testing.T) {
 			config.ListLenPrefixLenType = tt.prefix
 			generator := NewLuaWspGenerator(config, binModel)
-			result := generator.decodeListSize("tree", packet, field)
+			result := generator.decodeListSize("tree", &packet, field)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -310,7 +310,7 @@ offset = offset + 2`,
 		t.Run(tt.name, func(t *testing.T) {
 			config.StringLenPrefixLenType = tt.prefix
 			generator := NewLuaWspGenerator(config, binModel)
-			result := generator.decodeStringLen("tree", packet, field)
+			result := generator.decodeStringLen("tree", &packet, field)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -433,7 +433,7 @@ func TestIsMatchField(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := isMatchField(tt.field, tt.rootPacket)
+			result := isMatchField(tt.field, &tt.rootPacket)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

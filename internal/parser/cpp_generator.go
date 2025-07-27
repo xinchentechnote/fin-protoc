@@ -80,7 +80,7 @@ func (g CppGenerator) generateHppFile(binModel *model.BinaryModel) string {
 			b.WriteString("\n")
 		}
 	}
-	code := g.generateCodeForPacket(&binModel.RootPacket)
+	code := g.generateCodeForPacket(binModel.RootPacket)
 	b.WriteString(code)
 	b.WriteString("\n")
 	return b.String()
