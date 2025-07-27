@@ -220,6 +220,8 @@ func (f Field) GetType() string {
 
 // MatchPair represents a single key-value mapping inside a match field.
 type MatchPair struct {
-	Key   string // Matching key literal, e.g. "0", "1", or "[A,B]"
-	Value string // Corresponding field name for this match key
+	Key    string // Matching key literal, e.g. "0", "1", or "[A,B]"
+	Value  string // Corresponding field name for this match key
+	Line   int    // Line number where the match pair is defined
+	Column int    // Column number where the match pair is defined
 }

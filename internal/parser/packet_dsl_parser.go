@@ -262,6 +262,18 @@ func (v *PacketDslVisitorImpl) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDec
 		mp := pairCtx.Accept(v).([]model.MatchPair)
 		pairs = append(pairs, mp...)
 	}
+	var pairsMap = make(map[string]interface{})
+	for _, pair := range pairs {
+		if _, exists := pairsMap[pair.Key]; exists {
+			v.BinModel.AddSyntaxError(model.SyntaxError{
+				Line:            pair.Line,
+				Column:          pair.Column,
+				Msg:             "Duplicate match key: " + pair.Key,
+				OffendingSymbol: nil,
+			})
+			continue
+		}
+	}
 	return model.Field{
 		Name:       matchName,
 		Type:       "match",
@@ -282,15 +294,15 @@ func (v *PacketDslVisitorImpl) VisitMatchPair(ctx *gen.MatchPairContext) interfa
 		key = ctx.STRING().GetText()
 	} else if ctx.List() != nil {
 		for _, k := range ctx.List().AllDIGITS() {
-			pairs = append(pairs, model.MatchPair{Key: k.GetText(), Value: val})
+			pairs = append(pairs, model.MatchPair{Key: k.GetText(), Value: val, Line: k.GetSymbol().GetLine(), Column: k.GetSymbol().GetTokenSource().GetCharPositionInLine()})
 		}
 		for _, k := range ctx.List().AllSTRING() {
-			pairs = append(pairs, model.MatchPair{Key: k.GetText(), Value: val})
+			pairs = append(pairs, model.MatchPair{Key: k.GetText(), Value: val, Line: k.GetSymbol().GetLine(), Column: k.GetSymbol().GetTokenSource().GetCharPositionInLine()})
 		}
 		return pairs
 	}
 
-	return append(pairs, model.MatchPair{Key: key, Value: val})
+	return append(pairs, model.MatchPair{Key: key, Value: val, Line: ctx.GetStart().GetLine(), Column: ctx.GetStart().GetTokenSource().GetCharPositionInLine()})
 }
 
 // VisitMetaDataDefinition is not used currently; just logs visiting metadata definitions.
