@@ -35,11 +35,27 @@ func (v *BasePacketDslVisitor) VisitObjectField(ctx *ObjectFieldContext) interfa
 	return v.VisitChildren(ctx)
 }
 
+func (v *BasePacketDslVisitor) VisitLengthField(ctx *LengthFieldContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BasePacketDslVisitor) VisitCheckSumField(ctx *CheckSumFieldContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BasePacketDslVisitor) VisitMatchField(ctx *MatchFieldContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
 func (v *BasePacketDslVisitor) VisitMetaDataDefinition(ctx *MetaDataDefinitionContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BasePacketDslVisitor) VisitLengthFieldDeclaration(ctx *LengthFieldDeclarationContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BasePacketDslVisitor) VisitCheckSumFieldDeclaration(ctx *CheckSumFieldDeclarationContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

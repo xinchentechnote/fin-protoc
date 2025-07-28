@@ -28,11 +28,23 @@ type PacketDslVisitor interface {
 	// Visit a parse tree produced by PacketDslParser#ObjectField.
 	VisitObjectField(ctx *ObjectFieldContext) interface{}
 
+	// Visit a parse tree produced by PacketDslParser#LengthField.
+	VisitLengthField(ctx *LengthFieldContext) interface{}
+
+	// Visit a parse tree produced by PacketDslParser#CheckSumField.
+	VisitCheckSumField(ctx *CheckSumFieldContext) interface{}
+
 	// Visit a parse tree produced by PacketDslParser#MatchField.
 	VisitMatchField(ctx *MatchFieldContext) interface{}
 
 	// Visit a parse tree produced by PacketDslParser#metaDataDefinition.
 	VisitMetaDataDefinition(ctx *MetaDataDefinitionContext) interface{}
+
+	// Visit a parse tree produced by PacketDslParser#lengthFieldDeclaration.
+	VisitLengthFieldDeclaration(ctx *LengthFieldDeclarationContext) interface{}
+
+	// Visit a parse tree produced by PacketDslParser#checkSumFieldDeclaration.
+	VisitCheckSumFieldDeclaration(ctx *CheckSumFieldDeclarationContext) interface{}
 
 	// Visit a parse tree produced by PacketDslParser#metaDataDeclaration.
 	VisitMetaDataDeclaration(ctx *MetaDataDeclarationContext) interface{}

@@ -19,17 +19,23 @@ fieldDefinition:
 	REPEAT? inerObjectDeclaration COMMA	# InerObjectField
 	| REPEAT? metaDataDeclaration		# MetaField
 	| REPEAT? IDENTIFIER COMMA			# ObjectField
+	| lengthFieldDeclaration			# LengthField
+	| checkSumFieldDeclaration			# CheckSumField
 	| matchFieldDeclaration COMMA		# MatchField;
 
 // MetaData rule with declarations inside curly braces
 metaDataDefinition:
 	METADATA IDENTIFIER '{' metaDataDeclaration* '}';
 
+lengthFieldDeclaration:
+	type name = IDENTIFIER ('@lengthOf(' from = IDENTIFIER ')') STRING_LITERAL? COMMA;
+
+checkSumFieldDeclaration:
+	type name = IDENTIFIER ('@calculatedFrom(' from = STRING ')') STRING_LITERAL? COMMA;
+
 // Metadata declaration with type and description
 metaDataDeclaration:
-	type? name = IDENTIFIER (
-		'=' 'lengthof(' from = IDENTIFIER ')'
-	)? STRING_LITERAL? COMMA;
+	type? name = IDENTIFIER STRING_LITERAL? COMMA;
 
 value: type | STRING | DIGITS;
 
@@ -60,19 +66,19 @@ inerObjectDeclaration: IDENTIFIER ('{' fieldDefinition+ '}');
 
 list: '[' (DIGITS | STRING) (COMMA (DIGITS | STRING))* ']';
 
-UINT8 : 'uint8' | 'u8';
-UINT16 : 'uint16' | 'u16';
-UINT32 : 'uint32' | 'u32';
-UINT64 : 'uint64' | 'u64';
+UINT8: 'uint8' | 'u8';
+UINT16: 'uint16' | 'u16';
+UINT32: 'uint32' | 'u32';
+UINT64: 'uint64' | 'u64';
 
-INT8 : 'int8' | 'i8';
-INT16 : 'int16' | 'i16';
-INT32 : 'int32' | 'i32';
-INT64 : 'int64' | 'i64';
+INT8: 'int8' | 'i8';
+INT16: 'int16' | 'i16';
+INT32: 'int32' | 'i32';
+INT64: 'int64' | 'i64';
 
-FLOAT32 : 'float32' | 'f32';
+FLOAT32: 'float32' | 'f32';
 
-FLOAT64 : 'float64' | 'f64';
+FLOAT64: 'float64' | 'f64';
 
 DIGITS: [0-9]+;
 
