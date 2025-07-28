@@ -249,7 +249,11 @@ func (v *PacketDslFormattor) VisitLengthFieldDeclaration(ctx *gen.LengthFieldDec
 	if ctx.STRING_LITERAL() != nil {
 		desc = " " + ctx.STRING_LITERAL().GetText()
 	}
-	return fmt.Sprintf("%s %s @lengthOf(%s)%s,", ctx.Type_().GetText(), ctx.GetName().GetText(), ctx.GetFrom().GetText(), desc)
+	typ := ""
+	if ctx.Type_() != nil {
+		typ = ctx.Type_().GetText() + " "
+	}
+	return fmt.Sprintf("%s%s @lengthOf(%s)%s,", typ, ctx.GetName().GetText(), ctx.GetFrom().GetText(), desc)
 }
 
 // VisitCheckSumFieldDeclaration format check sum field
@@ -258,7 +262,11 @@ func (v *PacketDslFormattor) VisitCheckSumFieldDeclaration(ctx *gen.CheckSumFiel
 	if ctx.STRING_LITERAL() != nil {
 		desc = " " + ctx.STRING_LITERAL().GetText()
 	}
-	return fmt.Sprintf("%s %s @calculatedFrom(%s)%s,", ctx.Type_().GetText(), ctx.GetName().GetText(), ctx.GetFrom().GetText(), desc)
+	typ := ""
+	if ctx.Type_() != nil {
+		typ = ctx.Type_().GetText() + " "
+	}
+	return fmt.Sprintf("%s%s @calculatedFrom(%s)%s,", typ, ctx.GetName().GetText(), ctx.GetFrom().GetText(), desc)
 }
 
 // VisitMetaDataDeclaration for visiting metadata declarations.

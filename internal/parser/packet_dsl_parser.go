@@ -202,9 +202,13 @@ func (v *PacketDslVisitorImpl) VisitLengthFieldDeclaration(ctx *gen.LengthFieldD
 	if ctx.STRING_LITERAL() != nil {
 		desc = ctx.STRING_LITERAL().GetText()
 	}
+	typ := ctx.GetName().GetText()
+	if ctx.Type_() != nil {
+		typ = ctx.Type_().GetText()
+	}
 	return model.Field{
 		Name:          ctx.GetName().GetText(),
-		Type:          ctx.Type_().GetText(),
+		Type:          typ,
 		IsRepeat:      false,
 		LengthOfField: ctx.GetFrom().GetText(),
 		Doc:           desc,
@@ -217,9 +221,13 @@ func (v *PacketDslVisitorImpl) VisitCheckSumFieldDeclaration(ctx *gen.CheckSumFi
 	if ctx.STRING_LITERAL() != nil {
 		desc = ctx.STRING_LITERAL().GetText()
 	}
+	typ := ctx.GetName().GetText()
+	if ctx.Type_() != nil {
+		typ = ctx.Type_().GetText()
+	}
 	return model.Field{
 		Name:         ctx.GetName().GetText(),
-		Type:         ctx.Type_().GetText(),
+		Type:         typ,
 		IsRepeat:     false,
 		CheckSumType: ctx.GetFrom().GetText(),
 		Doc:          desc,

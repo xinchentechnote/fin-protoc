@@ -28,10 +28,12 @@ metaDataDefinition:
 	METADATA IDENTIFIER '{' metaDataDeclaration* '}';
 
 lengthFieldDeclaration:
-	type name = IDENTIFIER ('@lengthOf(' from = IDENTIFIER ')') STRING_LITERAL? COMMA;
+	type? name = IDENTIFIER ('@lengthOf(' from = IDENTIFIER ')') STRING_LITERAL? COMMA;
 
 checkSumFieldDeclaration:
-	type name = IDENTIFIER ('@calculatedFrom(' from = STRING ')') STRING_LITERAL? COMMA;
+	type? name = IDENTIFIER (
+		'@calculatedFrom(' from = STRING ')'
+	) STRING_LITERAL? COMMA;
 
 // Metadata declaration with type and description
 metaDataDeclaration:
