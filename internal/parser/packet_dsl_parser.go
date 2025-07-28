@@ -202,12 +202,17 @@ func (v *PacketDslVisitorImpl) VisitLengthFieldDeclaration(ctx *gen.LengthFieldD
 	if ctx.STRING_LITERAL() != nil {
 		desc = ctx.STRING_LITERAL().GetText()
 	}
+	name := ctx.GetName().GetText()
 	typ := ctx.GetName().GetText()
 	if ctx.Type_() != nil {
 		typ = ctx.Type_().GetText()
 	}
+	if v.BinModel.MetaDataMap[name] != (model.MetaData{}) {
+		// If metadata exists, use its basic type
+		typ = v.BinModel.MetaDataMap[name].BasicType
+	}
 	return model.Field{
-		Name:          ctx.GetName().GetText(),
+		Name:          name,
 		Type:          typ,
 		IsRepeat:      false,
 		LengthOfField: ctx.GetFrom().GetText(),
@@ -221,9 +226,14 @@ func (v *PacketDslVisitorImpl) VisitCheckSumFieldDeclaration(ctx *gen.CheckSumFi
 	if ctx.STRING_LITERAL() != nil {
 		desc = ctx.STRING_LITERAL().GetText()
 	}
+	name := ctx.GetName().GetText()
 	typ := ctx.GetName().GetText()
 	if ctx.Type_() != nil {
 		typ = ctx.Type_().GetText()
+	}
+	if v.BinModel.MetaDataMap[name] != (model.MetaData{}) {
+		// If metadata exists, use its basic type
+		typ = v.BinModel.MetaDataMap[name].BasicType
 	}
 	return model.Field{
 		Name:         ctx.GetName().GetText(),
