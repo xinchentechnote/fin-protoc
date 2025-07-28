@@ -167,6 +167,10 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinition(ctx interface{}) interface{}
 	// Nested object field: REPEAT? IDENTIFIER '{' fieldDefinition+ '}'
 	case *gen.InerObjectFieldContext:
 		return v.VisitInerObjectField(c).(model.Field)
+	case *gen.LengthFieldContext:
+		return v.VisitLengthFieldDeclaration(c.LengthFieldDeclaration().(*gen.LengthFieldDeclarationContext)).(model.Field)
+	case *gen.CheckSumFieldContext:
+		return v.VisitCheckSumFieldDeclaration(c.CheckSumFieldDeclaration().(*gen.CheckSumFieldDeclarationContext)).(model.Field)
 
 	// Metadata field: REPEAT? metaDataDeclaration
 	case *gen.MetaFieldContext:
@@ -190,6 +194,36 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinition(ctx interface{}) interface{}
 		})
 	}
 	return nil
+}
+
+// VisitLengthFieldDeclaration parse lengthof field
+func (v *PacketDslVisitorImpl) VisitLengthFieldDeclaration(ctx *gen.LengthFieldDeclarationContext) interface{} {
+	desc := ""
+	if ctx.STRING_LITERAL() != nil {
+		desc = ctx.STRING_LITERAL().GetText()
+	}
+	return model.Field{
+		Name:          ctx.GetName().GetText(),
+		Type:          ctx.Type_().GetText(),
+		IsRepeat:      false,
+		LengthOfField: ctx.GetFrom().GetText(),
+		Doc:           desc,
+	}
+}
+
+// VisitCheckSumFieldDeclaration parse check sum field
+func (v *PacketDslVisitorImpl) VisitCheckSumFieldDeclaration(ctx *gen.CheckSumFieldDeclarationContext) interface{} {
+	desc := ""
+	if ctx.STRING_LITERAL() != nil {
+		desc = ctx.STRING_LITERAL().GetText()
+	}
+	return model.Field{
+		Name:         ctx.GetName().GetText(),
+		Type:         ctx.Type_().GetText(),
+		IsRepeat:     false,
+		CheckSumType: ctx.GetFrom().GetText(),
+		Doc:          desc,
+	}
 }
 
 // VisitInerObjectField handles a nested object declaration and returns model.Field.
@@ -234,10 +268,6 @@ func (v *PacketDslVisitorImpl) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclara
 	if meta, exists := v.BinModel.MetaDataMap[typ]; exists {
 		typ = meta.BasicType
 	}
-	var lengthOfField string
-	if ctx.GetFrom() != nil {
-		lengthOfField = ctx.GetFrom().GetText()
-	}
 	// Extract documentation string if present, by removing backticks
 	var doc string
 	if ctx.STRING_LITERAL() != nil {
@@ -245,11 +275,10 @@ func (v *PacketDslVisitorImpl) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclara
 		doc = raw[1 : len(raw)-1]
 	}
 	return model.Field{
-		Name:          name,
-		Type:          typ,
-		LengthOfField: lengthOfField,
-		IsRepeat:      false,
-		Doc:           doc,
+		Name:     name,
+		Type:     typ,
+		IsRepeat: false,
+		Doc:      doc,
 	}
 }
 

@@ -179,6 +179,10 @@ func (v *PacketDslFormattor) VisitFieldDefinition(ctx interface{}) interface{} {
 		return repeat + c.IDENTIFIER().GetText()
 	case *gen.InerObjectFieldContext:
 		return v.VisitInerObjectField(c).(string)
+	case *gen.LengthFieldContext:
+		return v.VisitLengthFieldDeclaration(c.LengthFieldDeclaration().(*gen.LengthFieldDeclarationContext)).(string)
+	case *gen.CheckSumFieldContext:
+		return v.VisitCheckSumFieldDeclaration(c.CheckSumFieldDeclaration().(*gen.CheckSumFieldDeclarationContext)).(string)
 	case *gen.MetaFieldContext:
 		repeat := ""
 		if c.REPEAT() != nil {
@@ -239,6 +243,24 @@ func (v *PacketDslFormattor) VisitMetaDataDefinition(ctx *gen.MetaDataDefinition
 	return formattedDsl.String()
 }
 
+// VisitLengthFieldDeclaration format lengthof field
+func (v *PacketDslFormattor) VisitLengthFieldDeclaration(ctx *gen.LengthFieldDeclarationContext) interface{} {
+	desc := ""
+	if ctx.STRING_LITERAL() != nil {
+		desc = " " + ctx.STRING_LITERAL().GetText()
+	}
+	return fmt.Sprintf("%s %s @lengthOf(%s)%s,", ctx.Type_().GetText(), ctx.GetName().GetText(), ctx.GetFrom().GetText(), desc)
+}
+
+// VisitCheckSumFieldDeclaration format check sum field
+func (v *PacketDslFormattor) VisitCheckSumFieldDeclaration(ctx *gen.CheckSumFieldDeclarationContext) interface{} {
+	desc := ""
+	if ctx.STRING_LITERAL() != nil {
+		desc = " " + ctx.STRING_LITERAL().GetText()
+	}
+	return fmt.Sprintf("%s %s @calculatedFrom(%s)%s,", ctx.Type_().GetText(), ctx.GetName().GetText(), ctx.GetFrom().GetText(), desc)
+}
+
 // VisitMetaDataDeclaration for visiting metadata declarations.
 func (v *PacketDslFormattor) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclarationContext) interface{} {
 	var formattedDsl strings.Builder
@@ -248,9 +270,6 @@ func (v *PacketDslFormattor) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclarati
 		typeName = ctx.Type_().GetText()
 	}
 	fieldName := ctx.GetName().GetText()
-	if ctx.GetFrom() != nil {
-		fieldName += " = " + "lengthof(" + ctx.GetFrom().GetText() + ")"
-	}
 	description := ""
 	if ctx.STRING_LITERAL() != nil {
 		description = ctx.STRING_LITERAL().GetText()
