@@ -155,7 +155,10 @@ func (g JavaGenerator) GenerateJavaClassFileForPacket(packet *model.Packet, isIn
 		//package
 		b.WriteString(fmt.Sprintf("package %s;\n", g.config.JavaPackage))
 		//import
-		b.WriteString(`import java.nio.charset.StandardCharsets;
+		b.WriteString(`
+import com.finproto.codec.ChecksumService;
+import com.finproto.codec.ChecksumServiceContext;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -555,6 +558,21 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 			b.WriteString(fmt.Sprintf("byteBuf.write%s(this.%s);\n", strcase.ToCamel(lenTyp.BasicType), strcase.ToLowerCamel(f.Name)))
 		}
 
+		return b.String()
+	}
+	if f.CheckSumType != "" {
+		// auto calculate checksum
+		var b strings.Builder
+		b.WriteString(fmt.Sprintf("ChecksumService<ByteBuf, Integer> checksumService = ChecksumServiceContext.getChecksumService(%s);\n", f.CheckSumType))
+		b.WriteString("if (checksumService != null) {\n")
+		lenTyp := javaBasicTypeMap[f.GetType()]
+		b.WriteString(fmt.Sprintf("this.%s = (%s) checksumService.calc(byteBuf);\n", strcase.ToLowerCamel(f.Name), lenTyp.BasicType))
+		b.WriteString("}\n")
+		if g.config.LittleEndian {
+			b.WriteString(fmt.Sprintf("byteBuf.write%s(this.%s);\n", lenTyp.Le, strcase.ToLowerCamel(f.Name)))
+		} else {
+			b.WriteString(fmt.Sprintf("byteBuf.write%s(this.%s);\n", strcase.ToCamel(lenTyp.BasicType), strcase.ToLowerCamel(f.Name)))
+		}
 		return b.String()
 	}
 	fieldName := g.GetFieldNameLower(f)
