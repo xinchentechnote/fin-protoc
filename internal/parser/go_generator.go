@@ -312,6 +312,12 @@ func (g GoGenerator) generateEncodingField(p *model.Packet, field *model.Field) 
 		typ := goBasicTypeMap[field.GetType()]
 		b.WriteString(fmt.Sprintf("p.%s = %s(%sBuf.Available())\n", strcase.ToCamel(field.Name), typ.BasicType, strcase.ToCamel(field.LengthOfField)))
 	}
+	if field.CheckSumType != "" {
+		typ := goBasicTypeMap[field.GetType()]
+		b.WriteString(fmt.Sprintf("if checksumService, ok := codec.Get(%s); ok {\n", field.CheckSumType))
+		b.WriteString(fmt.Sprintf("    p.%s = checksumService.(codec.ChecksumService[*bytes.Buffer, %s]).Calc(buf)\n", strcase.ToCamel(field.Name), typ.BasicType))
+		b.WriteString("}\n")
+	}
 	order := g.getOrder()
 	if _, ok := goBasicTypeMap[field.GetType()]; ok {
 		b.WriteString(fmt.Sprintf("    if err :=codec.PutBasicType%s(buf, p.%s); err != nil {\n", order, strcase.ToCamel(field.Name)))
