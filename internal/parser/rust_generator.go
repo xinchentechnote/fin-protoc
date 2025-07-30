@@ -191,6 +191,18 @@ func (g RustGenerator) EncodeField(p *model.Packet, f model.Field) string {
 
 		return b.String()
 	}
+
+	if f.CheckSumType != "" {
+		var b strings.Builder
+		b.WriteString(fmt.Sprintf("let val = CHECKSUM_SERVICE_CONTEXT.get(%s)\n", f.CheckSumType))
+		b.WriteString("    .and_then(|service| match service.calc(buf) {\n")
+		b.WriteString(fmt.Sprintf("        Checksum::%s(v) => Some(v),\n", strings.ToUpper(f.GetType())))
+		b.WriteString("        _ => None,\n")
+		b.WriteString(fmt.Sprintf("        }).unwrap_or(self.%s);\n", strcase.ToSnake(f.Name)))
+		b.WriteString(fmt.Sprintf("    buf.put_%s(val);\n", f.GetType()))
+		return b.String()
+	}
+
 	name := strcase.ToSnake(f.Name)
 	if f.IsRepeat {
 		if f.GetType() == "string" {
@@ -444,7 +456,7 @@ func (g RustGenerator) generateUnitTestCode(pkt *model.Packet) string {
 	// decoding
 	b.WriteString(AddIndent4ln(AddIndent4(fmt.Sprintf("let decoded = %s::decode(&mut bytes).unwrap();", strcase.ToCamel(pkt.Name)))))
 	for _, f := range pkt.Fields {
-		if f.LengthOfField != "" {
+		if f.LengthOfField != "" || f.CheckSumType != "" {
 			b.WriteString(AddIndent4ln(AddIndent4(fmt.Sprintf("original.%s = decoded.%s;", strcase.ToSnake(f.Name), strcase.ToSnake(f.Name)))))
 		}
 	}
