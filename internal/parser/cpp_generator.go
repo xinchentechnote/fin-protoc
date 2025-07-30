@@ -72,6 +72,7 @@ func (g CppGenerator) generateHppFile(binModel *model.BinaryModel) string {
 	b.WriteString("#include <iostream>\n")
 	b.WriteString("#include \"include/codec.hpp\"\n")
 	b.WriteString("#include \"include/bytebuf.hpp\"\n")
+	b.WriteString("#include \"include/checksum.hpp\"\n")
 	b.WriteString("\n")
 	for _, pkt := range binModel.Packets {
 		if !pkt.IsRoot {
@@ -198,6 +199,19 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 			} else {
 				b.WriteString(fmt.Sprintf("    buf.write_%s(%sLen_);\n", f.GetType(), strcase.ToLowerCamel(f.LengthOfField)))
 			}
+		} else if f.CheckSumType != "" {
+			typ := cppBasicTypeMap[f.GetType()]
+			ty := f.GetType()
+			if g.config.LittleEndian {
+				ty = typ.Le
+			}
+			b.WriteString(fmt.Sprintf("    auto service = ChecksumServiceContext::instance().get<ByteBuf, %s>(%s);\n", typ.Name, f.CheckSumType))
+			b.WriteString("    if(service != nullptr){\n")
+			b.WriteString("        auto cs = service->calc(buf);\n")
+			b.WriteString(fmt.Sprintf("        buf.write_%s(cs);\n", ty))
+			b.WriteString("    } else {\n")
+			b.WriteString(fmt.Sprintf("        buf.write_%s(%s);\n", ty, strcase.ToLowerCamel(f.Name)))
+			b.WriteString("    }\n")
 		} else if f.Name == p.LengthOfField {
 			b.WriteString(fmt.Sprintf("    buf.write_bytes(%sBuf.data().data(), %sLen_);\n", strcase.ToLowerCamel(f.Name), strcase.ToLowerCamel(f.Name)))
 		} else if typ, ok := cppBasicTypeMap[f.GetType()]; ok {
@@ -460,8 +474,8 @@ func (g CppGenerator) generateUnitestForPacket(p *model.Packet) string {
 	b.WriteString(fmt.Sprintf("    %s decoded;\n", p.Name))
 	b.WriteString("    decoded.decode(buf);\n")
 	for _, f := range p.Fields {
-		if f.LengthOfField != "" {
-			b.WriteString(fmt.Sprintf("    original.%s = decoded.%s;", strcase.ToLowerCamel(f.Name), strcase.ToLowerCamel(f.Name)))
+		if f.LengthOfField != "" || f.CheckSumType != "" {
+			b.WriteString(fmt.Sprintf("    original.%s = decoded.%s;\n", strcase.ToLowerCamel(f.Name), strcase.ToLowerCamel(f.Name)))
 		}
 	}
 	b.WriteString("\n")
