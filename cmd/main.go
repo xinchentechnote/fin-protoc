@@ -23,8 +23,8 @@ func FormatPacketDslExport(dsl *C.char) *C.char {
 	goDsl := C.GoString(dsl)
 	formatted, err := parser.FormatPacketDsl(goDsl)
 	if err != nil {
-		// 返回错误信息，调用方需要检查空指针
-		return C.CString(err.Error())
+		// rerurn error msg
+		return C.CString("Error:" + err.Error())
 	}
 	return C.CString(formatted)
 }

@@ -106,14 +106,11 @@ func NewPacketDslParserByFile(filename string) (*gen.PacketDslParser, *antlr.Com
 
 // NewPacketDslParserByContent creates a new PacketDslParser instance from a string.
 func NewPacketDslParserByContent(data string) (*gen.PacketDslParser, *antlr.CommonTokenStream, error) {
-	// 创建一个新的输入流
 	input := antlr.NewInputStream(string(data))
 
-	// 创建一个新的词法分析器
 	lexer := gen.NewPacketDslLexer(input)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
-	// 创建一个新的语法分析器
 	parser := gen.NewPacketDslParser(stream)
 	return parser, stream, nil
 }
