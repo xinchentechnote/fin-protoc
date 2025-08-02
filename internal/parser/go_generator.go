@@ -67,7 +67,7 @@ func (g GoGenerator) generateGoFileForPacket(p *model.Packet, isIner bool) strin
 		"fmt"
 		"encoding/binary"
 	
-		"github.com/xinchentechnote/fin-proto-go/internal/codec"
+		"github.com/xinchentechnote/fin-proto-go/codec"
 	)`)
 		b.WriteString("\n\n")
 	}
