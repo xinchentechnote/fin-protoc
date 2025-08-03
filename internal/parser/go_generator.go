@@ -395,8 +395,10 @@ func (g GoGenerator) generateEncodingField(p *model.Packet, field *model.Field) 
 		b.WriteString("        return err\n")
 		b.WriteString("    }\n")
 	} else if field.GetType() == "match" {
-		b.WriteString(fmt.Sprintf("    if err := p.%s.Encode(buf); err != nil {\n", strcase.ToCamel(field.Name)))
-		b.WriteString("        return err\n")
+		b.WriteString(fmt.Sprintf("    if p.%s != nil {\n", strcase.ToCamel(field.Name)))
+		b.WriteString(fmt.Sprintf("        if err := p.%s.Encode(buf); err != nil {\n", strcase.ToCamel(field.Name)))
+		b.WriteString("            return err\n")
+		b.WriteString("        }\n")
 		b.WriteString("    }\n")
 	} else {
 		b.WriteString("--" + field.GetType() + ":" + field.Name + " is not supported for encoding--\n")
