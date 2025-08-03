@@ -310,7 +310,7 @@ func (g GoGenerator) generateEncodingField(p *model.Packet, field *model.Field) 
 		b.WriteString("    return err\n")
 		b.WriteString("}\n")
 		typ := goBasicTypeMap[field.GetType()]
-		b.WriteString(fmt.Sprintf("p.%s = %s(%sBuf.Available())\n", strcase.ToCamel(field.Name), typ.BasicType, strcase.ToCamel(field.LengthOfField)))
+		b.WriteString(fmt.Sprintf("p.%s = %s(%sBuf.Lens())\n", strcase.ToCamel(field.Name), typ.BasicType, strcase.ToCamel(field.LengthOfField)))
 	}
 	if field.CheckSumType != "" {
 		typ := goBasicTypeMap[field.GetType()]
