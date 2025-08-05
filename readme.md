@@ -159,6 +159,49 @@ The compilation process:
 3. Generates language-specific code through appropriate generators
 4. Organizes output files with proper module structure
 
+## Applications
+
+The fin-protoc compiler has been applied across multiple language implementations to ensure consistent binary protocol definitions and codec logic:
+
+- [`fin-proto`](https://github.com/xinchentechnote/fin-proto)
+  - A comprehensive financial protocol library
+  - Supports SSE, SZSE, and risk protocols
+  - Includes Lua dissectors for Wireshark
+
+- [`fin-proto-rs`](https://github.com/xinchentechnote/fin-proto-rs)
+
+  - High-performance binary codec in Rust
+  - Zero-copy serialization/deserialization
+  - Supports SSE, SZSE, and risk protocols
+  - Includes unit testing infrastructure
+
+- [`fin-proto-go`](https://github.com/xinchentechnote/fin-proto-go)
+
+  - Native Go implementation of the protocols
+  - Standardized codec interface
+  - Modular, exchange-specific architecture
+
+- [`fin-proto-cpp`](https://github.com/xinchentechnote/fin-proto-cpp)
+
+  - Efficient C++ implementation
+  - Protocol support for SSE, SZSE, risk
+  - Optimized serialization logic
+
+- [`fin-proto-java`](https://github.com/xinchentechnote/fin-proto-java)
+
+  - Binary protocol codec for Java
+  - Netty ByteBuf integration
+  - Gradle build system
+  - Java 17+ compatible
+
+- [`fin-proto-py`](https://github.com/xinchentechnote/fin-proto-py)
+
+  - Python implementation for financial protocols
+  - SSE, SZSE, and risk protocol support
+  - Easy-to-use parsing and serialization API
+
+Together, these projects demonstrate how fin-protoc enables protocol definitions to be shared and consistently executed across different ecosystems.
+
 ## Notes
 
 The codebase demonstrates a well-structured compiler architecture with clear separation between parsing, model transformation, and code generation phases. The ANTLR integration provides robust grammar processing, while the visitor pattern enables clean transformation logic. The multi-language generator system allows consistent code generation across diverse target platforms.
