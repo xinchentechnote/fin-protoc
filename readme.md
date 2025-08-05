@@ -180,6 +180,7 @@ The fin-protoc compiler has been applied across multiple language implementation
   - Native Go implementation of the protocols
   - Standardized codec interface
   - Modular, exchange-specific architecture
+  - This repository has been integrated into the [`gt-auto`](https://github.com/xinchentechnote/gt-auto) repository, an automated testing tool for financial systems(gateway,engine and so on)
 
 - [`fin-proto-cpp`](https://github.com/xinchentechnote/fin-proto-cpp)
 
