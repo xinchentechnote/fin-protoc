@@ -139,17 +139,17 @@ The primary interface is through the compile command, which processes DSL files 
 
 ```bash
 # generate code for rust
-fin-protoc compile -f input.dsl -r ./src
+fin-protoc -f input.dsl -r ./src
 # generate code for lua (Wireshark)
-fin-protoc compile -f input.dsl -l ./src
+fin-protoc -f input.dsl -l ./src
 # generate code for java
-fin-protoc compile -f input.dsl -j ./src
+fin-protoc -f input.dsl -j ./src
 # generate code for go
-fin-protoc compile -f input.dsl -g ./src
+fin-protoc -f input.dsl -g ./src
 # generate code for python
-fin-protoc compile -f input.dsl -p ./src
+fin-protoc -f input.dsl -p ./src
 # generate code for c++
-fin-protoc compile -f input.dsl -c ./src
+fin-protoc -f input.dsl -c ./src
 ```
 
 The compilation process:
@@ -162,6 +162,5 @@ The compilation process:
 ## Notes
 
 The codebase demonstrates a well-structured compiler architecture with clear separation between parsing, model transformation, and code generation phases. The ANTLR integration provides robust grammar processing, while the visitor pattern enables clean transformation logic. The multi-language generator system allows consistent code generation across diverse target platforms.
-
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/xinchentechnote/fin-protoc)
