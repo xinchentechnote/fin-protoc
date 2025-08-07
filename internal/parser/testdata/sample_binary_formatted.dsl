@@ -1,6 +1,6 @@
 options {
-	string_pre_fix_len_type = u16;
-	repeat_pre_fix_size_type = u16;
+    string_pre_fix_len_type = u16;
+    repeat_pre_fix_size_type = u16;
 }
 
 packet SampleBinary {
@@ -41,10 +41,10 @@ packet RiskControlRequest {
     u32 Qty `数量`,
     repeat string ExtraInfo `附加信息`,
     repeat SubOrder {
-    		char[16] ClOrdID `子订单号`,
-    		u64 Price `子订单价格`,
-    		u32 Qty `子订单数量`,
-    	},
+        char[16] ClOrdID `子订单号`,
+        u64 Price `子订单价格`,
+        u32 Qty `子订单数量`,
+    },
 }
 
 packet RiskControlResponse {
