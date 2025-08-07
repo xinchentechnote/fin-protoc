@@ -51,57 +51,51 @@ else
 	exit 1
 endif
 
-cross-build: gen dirs
-	# Linux
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=1 \
-	go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/fin-protoc-linux-amd64 ./cmd/
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=1 \
-	go build -ldflags "$(LDFLAGS)" -buildmode=c-shared -o $(LIB_DIR)/libpacketdsl-linux-amd64.so ./cmd/
-
-	# Windows
-	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 \
-	CC="x86_64-w64-mingw32-gcc" \
-	go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/fin-protoc-windows-amd64.exe ./cmd/
-	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 \
-	CC="x86_64-w64-mingw32-gcc" \
-	go build -ldflags "$(LDFLAGS)" -buildmode=c-shared -o $(LIB_DIR)/libpacketdsl-windows-amd64.dll ./cmd/
-
-	# macOS
-	GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 \
-	go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/fin-protoc-darwin-amd64 ./cmd/
-	GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 \
-	go build -ldflags "$(LDFLAGS)" -buildmode=c-shared -o $(LIB_DIR)/libpacketdsl-darwin-amd64.dylib ./cmd/
-
-package: cross-build
+package:shared-build main-build
 	mkdir -p release temp-pack/{bin,lib,include}
-	
-	# Linux
-	cp $(BIN_DIR)/fin-protoc-linux-amd64 temp-pack/bin/fin-protoc
-	cp $(LIB_DIR)/libpacketdsl-linux-amd64.so temp-pack/lib/
-	cp $(LIB_DIR)/packetdsl.h temp-pack/include/
-	tar -czvf release/fin-protoc-$(VERSION)-linux-amd64.tar.gz \
-		-C temp-pack bin/fin-protoc \
-		lib/libpacketdsl-linux-amd64.so \
-		include/packetdsl.h
-	
+
+ifeq ($(OS),Windows_NT) 
 	# Windows
-	cp $(BIN_DIR)/fin-protoc-windows-amd64.exe temp-pack/bin/fin-protoc.exe
-	cp $(LIB_DIR)/libpacketdsl-windows-amd64.dll temp-pack/lib/
-	cp $(LIB_DIR)/packetdsl.h temp-pack/include/
+	cp $(BIN_DIR)/fin-protoc.exe temp-pack/bin/fin-protoc.exe
+	cp $(LIB_DIR)/libpacketdsl.dll temp-pack/lib/
+	cp $(LIB_DIR)/libpacketdsl.h temp-pack/include/
 	cd temp-pack && zip -r ../release/fin-protoc-$(VERSION)-windows-amd64.zip \
 		bin/fin-protoc.exe \
-		lib/libpacketdsl-windows-amd64.dll \
-		include/packetdsl.h
-	
+		lib/libpacketdsl.dll \
+		include/libpacketdsl.h
+else ifneq (,$(findstring MSYS_NT,$(UNAME_S)))
+	@echo "Building for Windows (MSYS2)..."
+	go build -ldflags "$# Windows
+	cp $(BIN_DIR)/fin-protoc.exe temp-pack/bin/fin-protoc.exe
+	cp $(LIB_DIR)/libpacketdsl.dll temp-pack/lib/
+	cp $(LIB_DIR)/libpacketdsl.h temp-pack/include/
+	cd temp-pack && zip -r ../release/fin-protoc-$(VERSION)-windows-amd64.zip \
+		bin/fin-protoc.exe \
+		lib/libpacketdsl.dll \
+		include/libpacketdsl.h
+else ifeq ($(UNAME_S),Linux)
+	# Linux
+	cp $(BIN_DIR)/fin-protoc temp-pack/bin/fin-protoc
+	cp $(LIB_DIR)/libpacketdsl.so temp-pack/lib/
+	cp $(LIB_DIR)/libpacketdsl.h temp-pack/include/
+	tar -czvf release/fin-protoc-$(VERSION)-linux-amd64.tar.gz \
+		-C temp-pack bin/fin-protoc \
+		lib/libpacketdsl.so \
+		include/libpacketdsl.h
+else ifeq ($(UNAME_S),Darwin)
 	# macOS
-	cp $(BIN_DIR)/fin-protoc-darwin-amd64 temp-pack/bin/fin-protoc
-	cp $(LIB_DIR)/libpacketdsl-darwin-amd64.dylib temp-pack/lib/
-	cp $(LIB_DIR)/packetdsl.h temp-pack/include/
+	cp $(BIN_DIR)/fin-protoc temp-pack/bin/fin-protoc
+	cp $(LIB_DIR)/libpacketdsl.dylib temp-pack/lib/
+	cp $(LIB_DIR)/libpacketdsl.h temp-pack/include/
 	tar -czvf release/fin-protoc-$(VERSION)-darwin-amd64.tar.gz \
 		-C temp-pack bin/fin-protoc \
-		lib/libpacketdsl-darwin-amd64.dylib \
-		include/packetdsl.h
-	
+		lib/libpacketdsl.dylib \
+		include/libpacketdsl.h
+else
+	@echo "Unsupported system: $(UNAME_S)"
+	exit 1
+endif	
+
 	rm -rf temp-pack
 
 dirs:

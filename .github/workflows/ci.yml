@@ -96,7 +96,5 @@ jobs:
       with:
         files: |
           release/fin-protoc-*-linux-amd64.tar.gz
-          release/fin-protoc-*-windows-amd64.zip
-          release/fin-protoc-*-darwin-amd64.tar.gz
         draft: false
         prerelease: false
