@@ -52,7 +52,10 @@ else
 endif
 
 package:shared-build main-build
-	mkdir -p release temp-pack/{bin,lib,include}
+	mkdir -p release
+	mkdir -p temp-pack/bin
+	mkdir -p temp-pack/lib
+	mkdir -p temp-pack/include
 
 ifeq ($(OS),Windows_NT) 
 	# Windows
