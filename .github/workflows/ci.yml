@@ -89,7 +89,7 @@ jobs:
 
     - name: Cross compile binaries
       run: |
-        make cross-build
+        make package
         ls -la release/
 
     - name: Create Release
