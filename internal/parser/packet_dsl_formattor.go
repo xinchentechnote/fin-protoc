@@ -10,7 +10,6 @@ import (
 
 // FormatPacketDsl formats the packet DSL string.
 func FormatPacketDsl(dsl string) (string, error) {
-	// 创建一个新的语法分析器
 	parser, stream, err := NewPacketDslParserByContent(dsl)
 	if err != nil {
 		return "", fmt.Errorf("could not create parser: %v", err)
@@ -18,7 +17,7 @@ func FormatPacketDsl(dsl string) (string, error) {
 	listener := NewSyntaxErrorListener()
 	parser.RemoveErrorListeners()
 	parser.AddErrorListener(listener)
-	// 设置语法规则，开始解析
+	// parese the file
 	tree := parser.Packet()
 	if listener.HasErrors() {
 		return dsl, fmt.Errorf("syntax errors found: %v", listener.Errors)
@@ -119,17 +118,16 @@ func (v *PacketDslFormattor) VisitPacket(ctx *gen.PacketContext) interface{} {
 func (v *PacketDslFormattor) VisitPacketDefinition(ctx *gen.PacketDefinitionContext) interface{} {
 	var formattedDsl strings.Builder
 	formattedDsl.WriteString(v.getHiddenLeft(ctx.GetStart()))
-	// 判断是否有 root 修饰符
 	if ctx.ROOT() != nil {
 		formattedDsl.WriteString("root ")
 	}
 
-	// packet 关键字 + 包名
+	// packet key world and name
 	formattedDsl.WriteString("packet ")
 	formattedDsl.WriteString(ctx.IDENTIFIER().GetText())
 	formattedDsl.WriteString(" {\n")
 
-	// 遍历字段定义（通过 fieldDefinition*）
+	// iterate over all field definitions
 	for _, fieldCtx := range ctx.AllFieldDefinition() {
 		formatted := v.VisitFieldDefinition(fieldCtx).(string)
 		formattedDsl.WriteString(AddIndent4ln(formatted))
@@ -143,7 +141,7 @@ func (v *PacketDslFormattor) VisitPacketDefinition(ctx *gen.PacketDefinitionCont
 func (v *PacketDslFormattor) VisitOptionDefinition(ctx *gen.OptionDefinitionContext) interface{} {
 	var formattedDsl strings.Builder
 	formattedDsl.WriteString(v.getHiddenLeft(ctx.GetStart()))
-	// 处理 option 声明
+	// format options
 	formattedDsl.WriteString("options {\n")
 	for _, decl := range ctx.AllOptionDeclaration() {
 		if d, ok := decl.(*gen.OptionDeclarationContext); ok {
@@ -217,7 +215,7 @@ func (v *PacketDslFormattor) VisitInerObjectField(ctx *gen.InerObjectFieldContex
 	}
 	formattedDsl.WriteString("{\n")
 
-	// 遍历所有字段声明
+	// iterate over all field definitions
 	for _, decl := range inerObjectDeclaration.AllFieldDefinition() {
 		result := v.VisitFieldDefinition(decl).(string)
 		formattedDsl.WriteString(AddIndent4ln(result))
@@ -302,7 +300,6 @@ func (v *PacketDslFormattor) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDecla
 			formattedDsl.WriteString(AddIndent4ln(lineComment))
 		}
 		key := ""
-		// 处理 STRING / number / list
 		switch {
 		case pairCtx.STRING() != nil:
 			key = pairCtx.STRING().GetText()
@@ -310,9 +307,11 @@ func (v *PacketDslFormattor) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDecla
 			key = pairCtx.DIGITS().GetText()
 		case pairCtx.List() != nil:
 			items := []string{}
+			// digit list
 			for _, num := range pairCtx.List().AllDIGITS() {
 				items = append(items, num.GetText())
 			}
+			// string list
 			for _, num := range pairCtx.List().AllSTRING() {
 				items = append(items, num.GetText())
 			}
