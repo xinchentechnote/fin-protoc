@@ -89,8 +89,8 @@ MetaData SampleMeta {
 	got := formatter.VisitMetaDataDefinition(p.MetaDataDefinition().(*gen.MetaDataDefinitionContext)).(string)
 
 	expected := `MetaData SampleMeta {
-	string key ` + "`" + `a description` + "`" + `,
-	Int32 value ` + "`" + `another desc` + "`" + `,
+    string key ` + "`" + `a description` + "`" + `,
+    Int32 value ` + "`" + `another desc` + "`" + `,
 }`
 
 	// 4. 去掉首尾空行并比较

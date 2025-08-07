@@ -146,7 +146,7 @@ func (v *PacketDslFormattor) VisitOptionDefinition(ctx *gen.OptionDefinitionCont
 	formattedDsl.WriteString("options {\n")
 	for _, decl := range ctx.AllOptionDeclaration() {
 		if d, ok := decl.(*gen.OptionDeclarationContext); ok {
-			formattedDsl.WriteString("\t" + v.VisitOptionDeclaration(d).(string) + "\n")
+			formattedDsl.WriteString(AddIndent4ln(v.VisitOptionDeclaration(d).(string)))
 		}
 	}
 	formattedDsl.WriteString("}")
@@ -216,10 +216,10 @@ func (v *PacketDslFormattor) VisitInerObjectField(ctx *gen.InerObjectFieldContex
 	// 遍历所有字段声明
 	for _, decl := range inerObjectDeclaration.AllFieldDefinition() {
 		result := v.VisitFieldDefinition(decl).(string)
-		formattedDsl.WriteString("\t\t" + result + "\n")
+		formattedDsl.WriteString(AddIndent4ln(result))
 	}
 
-	formattedDsl.WriteString("\t},")
+	formattedDsl.WriteString("},")
 	formattedDsl.WriteString(v.getHiddenRight(ctx.GetStop()))
 	return formattedDsl.String()
 }
@@ -234,7 +234,7 @@ func (v *PacketDslFormattor) VisitMetaDataDefinition(ctx *gen.MetaDataDefinition
 	for _, decl := range ctx.AllMetaDataDeclaration() {
 		if d, ok := decl.(*gen.MetaDataDeclarationContext); ok {
 			result := v.VisitMetaDataDeclaration(d).(string)
-			formattedDsl.WriteString("\t" + result + "\n")
+			formattedDsl.WriteString(AddIndent4ln(result))
 		}
 	}
 
