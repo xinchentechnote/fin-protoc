@@ -1,6 +1,7 @@
 .antlr
 bin/
 **/target/
+release/
 coverage.*
 lib/libpacketdsl.so
 lib/libpacketdsl.dll
