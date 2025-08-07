@@ -90,23 +90,14 @@ jobs:
     - name: Cross compile binaries
       run: |
         make cross-build
-        mkdir -p release
-        
-        # Package Linux binaries
-        tar -czvf release/fin-protoc-linux-amd64.tar.gz -C bin fin-protoc-linux-amd64 -C ../lib libpacketdsl-linux-amd64.so
-        
-        # Package Windows binaries
-        zip -j release/fin-protoc-windows-amd64.zip bin/fin-protoc-windows-amd64.exe lib/libpacketdsl-windows-amd64.dll
-        
-        # Package macOS binaries
-        tar -czvf release/fin-protoc-darwin-amd64.tar.gz -C bin fin-protoc-darwin-amd64 -C ../lib libpacketdsl-darwin-amd64.dylib
+        ls -la release/
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          release/fin-protoc-linux-amd64.tar.gz
-          release/fin-protoc-windows-amd64.zip
-          release/fin-protoc-darwin-amd64.tar.gz
+          release/fin-protoc-*-linux-amd64.tar.gz
+          release/fin-protoc-*-windows-amd64.zip
+          release/fin-protoc-*-darwin-amd64.tar.gz
         draft: false
         prerelease: false

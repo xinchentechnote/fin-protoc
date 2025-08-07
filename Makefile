@@ -1,16 +1,12 @@
-# 构建目录
 BIN_DIR := bin
 LIB_DIR := lib
 
-# 目标名称
 TARGET := fin-protoc
 SHARED_LIB := libpacketdsl
 
-# 检测操作系统
 UNAME_S := $(shell uname -s)
 UNAME_M := $(shell uname -m)
 
-# 默认目标
 all: build
 
 ifeq ($(OS),Windows_NT)
@@ -21,7 +17,6 @@ else
     ANTLR_JAR := ${HOME}/software/antlr-4.13.2-complete.jar
 endif
 
-# 版本信息
 VERSION := $(shell git describe --tags --always --dirty)
 BUILD_TIME := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
 GIT_COMMIT := $(shell git rev-parse HEAD)
@@ -30,17 +25,14 @@ LDFLAGS := -X main.version=$(VERSION) -X main.buildTime=$(BUILD_TIME) -X main.gi
 gen: 
 	java -jar "$(ANTLR_JAR)" -Dlanguage=Go -no-listener -visitor -package gen -o internal grammar/PacketDsl.g4
 
-# 构建主程序和共享库
 build: gen dirs main-build shared-build
 
-# 仅构建主程序
 main-build:
 	go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/$(TARGET) ./cmd/
 
 print-system:
 	@echo "Detected system: UNAME_S = $(UNAME_S)"
 
-# 共享库构建规则
 shared-build: print-system
 ifeq ($(OS),Windows_NT) 
 	@echo "Building for native Windows..."
@@ -59,48 +51,73 @@ else
 	exit 1
 endif
 
-# 交叉编译
 cross-build: gen dirs
 	# Linux
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=1 \
-	go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/$(TARGET)-linux-amd64 ./cmd/
+	go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/fin-protoc-linux-amd64 ./cmd/
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=1 \
-	go build -ldflags "$(LDFLAGS)" -buildmode=c-shared -o $(LIB_DIR)/$(SHARED_LIB)-linux-amd64.so ./cmd/
+	go build -ldflags "$(LDFLAGS)" -buildmode=c-shared -o $(LIB_DIR)/libpacketdsl-linux-amd64.so ./cmd/
 
 	# Windows
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 \
 	CC="x86_64-w64-mingw32-gcc" \
-	go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/$(TARGET)-windows-amd64.exe ./cmd/
+	go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/fin-protoc-windows-amd64.exe ./cmd/
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 \
 	CC="x86_64-w64-mingw32-gcc" \
-	go build -ldflags "$(LDFLAGS)" -buildmode=c-shared -o $(LIB_DIR)/$(SHARED_LIB)-windows-amd64.dll ./cmd/
+	go build -ldflags "$(LDFLAGS)" -buildmode=c-shared -o $(LIB_DIR)/libpacketdsl-windows-amd64.dll ./cmd/
 
 	# macOS
 	GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 \
-	go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/$(TARGET)-darwin-amd64 ./cmd/
+	go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/fin-protoc-darwin-amd64 ./cmd/
 	GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 \
-	go build -ldflags "$(LDFLAGS)" -buildmode=c-shared -o $(LIB_DIR)/$(SHARED_LIB)-darwin-amd64.dylib ./cmd/
+	go build -ldflags "$(LDFLAGS)" -buildmode=c-shared -o $(LIB_DIR)/libpacketdsl-darwin-amd64.dylib ./cmd/
 
-# 创建必要的目录
+package: cross-build
+	mkdir -p release temp-pack/{bin,lib,include}
+	
+	# Linux
+	cp $(BIN_DIR)/fin-protoc-linux-amd64 temp-pack/bin/fin-protoc
+	cp $(LIB_DIR)/libpacketdsl-linux-amd64.so temp-pack/lib/
+	cp $(LIB_DIR)/packetdsl.h temp-pack/include/
+	tar -czvf release/fin-protoc-$(VERSION)-linux-amd64.tar.gz \
+		-C temp-pack bin/fin-protoc \
+		lib/libpacketdsl-linux-amd64.so \
+		include/packetdsl.h
+	
+	# Windows
+	cp $(BIN_DIR)/fin-protoc-windows-amd64.exe temp-pack/bin/fin-protoc.exe
+	cp $(LIB_DIR)/libpacketdsl-windows-amd64.dll temp-pack/lib/
+	cp $(LIB_DIR)/packetdsl.h temp-pack/include/
+	cd temp-pack && zip -r ../release/fin-protoc-$(VERSION)-windows-amd64.zip \
+		bin/fin-protoc.exe \
+		lib/libpacketdsl-windows-amd64.dll \
+		include/packetdsl.h
+	
+	# macOS
+	cp $(BIN_DIR)/fin-protoc-darwin-amd64 temp-pack/bin/fin-protoc
+	cp $(LIB_DIR)/libpacketdsl-darwin-amd64.dylib temp-pack/lib/
+	cp $(LIB_DIR)/packetdsl.h temp-pack/include/
+	tar -czvf release/fin-protoc-$(VERSION)-darwin-amd64.tar.gz \
+		-C temp-pack bin/fin-protoc \
+		lib/libpacketdsl-darwin-amd64.dylib \
+		include/packetdsl.h
+	
+	rm -rf temp-pack
+
 dirs:
 	mkdir -p $(BIN_DIR) $(LIB_DIR)
 
-# 运行程序
 run: build
 	$(BIN_DIR)/$(TARGET) format -f internal/parser/testdata/sample_binary.dsl
 
-# 运行测试
 test:
 	go test -v -race -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
 
-# 清理
 clean:
 	rm -rf $(BIN_DIR) $(LIB_DIR) coverage.*
 
-# 安装依赖工具
 setup:
-	# 安装MinGW (Windows交叉编译)
 	sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64
 
 .PHONY: all build main-build shared-build cross-build dirs run test clean setup
