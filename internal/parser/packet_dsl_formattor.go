@@ -63,7 +63,7 @@ func (v *PacketDslFormattor) getHiddenLeft(token antlr.Token) string {
 	return sb.String()
 }
 
-func (v *PacketDslFormattor) getHiddenRight(token antlr.Token) string {
+func (v *PacketDslFormattor) getHiddenRightAtSameLine(token antlr.Token) string {
 	hidden := v.tokenStream.GetHiddenTokensToRight(token.GetTokenIndex(), antlr.TokenHiddenChannel)
 	if hidden == nil {
 		return ""
@@ -74,10 +74,11 @@ func (v *PacketDslFormattor) getHiddenRight(token antlr.Token) string {
 			if _, ok := v.lineComments[t]; ok {
 				continue
 			}
+			if t.GetLine() != token.GetLine() {
+				continue
+			}
 			v.lineComments[t] = struct{}{}
-
 			sb.WriteString(t.GetText())
-			sb.WriteString("\n")
 		}
 	}
 	return strings.TrimRight(sb.String(), "\n")
@@ -110,7 +111,7 @@ func (v *PacketDslFormattor) VisitPacket(ctx *gen.PacketContext) interface{} {
 			}
 		}
 	}
-	formattedDsl.WriteString(v.getHiddenRight(ctx.GetStop()))
+	formattedDsl.WriteString(v.getHiddenRightAtSameLine(ctx.GetStop()))
 	return formattedDsl.String()
 }
 
@@ -134,7 +135,7 @@ func (v *PacketDslFormattor) VisitPacketDefinition(ctx *gen.PacketDefinitionCont
 		formattedDsl.WriteString(AddIndent4ln(formatted))
 	}
 	formattedDsl.WriteString("}")
-	formattedDsl.WriteString(v.getHiddenRight(ctx.GetStop()))
+	formattedDsl.WriteString(v.getHiddenRightAtSameLine(ctx.GetStop()))
 	return formattedDsl.String()
 }
 
@@ -150,7 +151,7 @@ func (v *PacketDslFormattor) VisitOptionDefinition(ctx *gen.OptionDefinitionCont
 		}
 	}
 	formattedDsl.WriteString("}")
-	formattedDsl.WriteString(v.getHiddenRight(ctx.GetStop()))
+	formattedDsl.WriteString(v.getHiddenRightAtSameLine(ctx.GetStop()))
 	return formattedDsl.String()
 }
 
@@ -164,46 +165,49 @@ func (v *PacketDslFormattor) VisitOptionDeclaration(ctx *gen.OptionDeclarationCo
 	if ctx.SEMICOLON() != nil {
 		formattedDsl.WriteString(";")
 	}
-	formattedDsl.WriteString(v.getHiddenRight(ctx.GetStop()))
+	formattedDsl.WriteString(v.getHiddenRightAtSameLine(ctx.GetStop()))
 	return formattedDsl.String()
 }
 
 // VisitFieldDefinition overrides the default implementation for field definitions.
 func (v *PacketDslFormattor) VisitFieldDefinition(ctx interface{}) interface{} {
+	var b strings.Builder
+	b.WriteString(v.getHiddenLeft(ctx.(antlr.ParserRuleContext).GetStart()))
 	switch c := ctx.(type) {
 	case *gen.ObjectFieldContext:
 		repeat := ""
 		if c.REPEAT() != nil {
 			repeat = "repeat "
 		}
-		return repeat + c.IDENTIFIER().GetText()
+		b.WriteString(repeat + c.IDENTIFIER().GetText() + ",")
 	case *gen.InerObjectFieldContext:
-		return v.VisitInerObjectField(c).(string)
+		b.WriteString(v.VisitInerObjectField(c).(string))
 	case *gen.LengthFieldContext:
-		return v.VisitLengthFieldDeclaration(c.LengthFieldDeclaration().(*gen.LengthFieldDeclarationContext)).(string)
+		b.WriteString(v.VisitLengthFieldDeclaration(c.LengthFieldDeclaration().(*gen.LengthFieldDeclarationContext)).(string))
 	case *gen.CheckSumFieldContext:
-		return v.VisitCheckSumFieldDeclaration(c.CheckSumFieldDeclaration().(*gen.CheckSumFieldDeclarationContext)).(string)
+		b.WriteString(v.VisitCheckSumFieldDeclaration(c.CheckSumFieldDeclaration().(*gen.CheckSumFieldDeclarationContext)).(string))
 	case *gen.MetaFieldContext:
 		repeat := ""
 		if c.REPEAT() != nil {
 			repeat = "repeat "
 		}
-		return repeat + v.VisitMetaDataDeclaration(c.MetaDataDeclaration().(*gen.MetaDataDeclarationContext)).(string)
+		b.WriteString(repeat + v.VisitMetaDataDeclaration(c.MetaDataDeclaration().(*gen.MetaDataDeclarationContext)).(string))
 	case *gen.MatchFieldContext:
 		code := v.VisitMatchFieldDeclaration(c.MatchFieldDeclaration().(*gen.MatchFieldDeclarationContext)).(string)
 		if (ctx.(*gen.MatchFieldContext)).COMMA() != nil {
 			code += ","
 		}
-		return code
+		b.WriteString(code)
 	default:
 		return "error"
 	}
+	b.WriteString(v.getHiddenRightAtSameLine(ctx.(antlr.ParserRuleContext).GetStop()))
+	return b.String()
 }
 
 // VisitInerObjectField overrides the default implementation for inner object fields.
 func (v *PacketDslFormattor) VisitInerObjectField(ctx *gen.InerObjectFieldContext) interface{} {
 	var formattedDsl strings.Builder
-	formattedDsl.WriteString(v.getHiddenLeft(ctx.GetStart()))
 	inerObjectDeclaration := ctx.InerObjectDeclaration()
 	if ctx.REPEAT() != nil {
 		formattedDsl.WriteString("repeat ")
@@ -220,14 +224,12 @@ func (v *PacketDslFormattor) VisitInerObjectField(ctx *gen.InerObjectFieldContex
 	}
 
 	formattedDsl.WriteString("},")
-	formattedDsl.WriteString(v.getHiddenRight(ctx.GetStop()))
 	return formattedDsl.String()
 }
 
 // VisitMetaDataDefinition overrides the default implementation for metadata definitions.
 func (v *PacketDslFormattor) VisitMetaDataDefinition(ctx *gen.MetaDataDefinitionContext) interface{} {
 	var formattedDsl strings.Builder
-	formattedDsl.WriteString(v.getHiddenLeft(ctx.GetStart()))
 	metaName := ctx.IDENTIFIER().GetText()
 	formattedDsl.WriteString(fmt.Sprintf("MetaData %s {\n", metaName))
 
@@ -239,7 +241,6 @@ func (v *PacketDslFormattor) VisitMetaDataDefinition(ctx *gen.MetaDataDefinition
 	}
 
 	formattedDsl.WriteString("}")
-	formattedDsl.WriteString(v.getHiddenRight(ctx.GetStop()))
 	return formattedDsl.String()
 }
 
@@ -272,7 +273,6 @@ func (v *PacketDslFormattor) VisitCheckSumFieldDeclaration(ctx *gen.CheckSumFiel
 // VisitMetaDataDeclaration for visiting metadata declarations.
 func (v *PacketDslFormattor) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclarationContext) interface{} {
 	var formattedDsl strings.Builder
-	formattedDsl.WriteString(v.getHiddenLeft(ctx.GetStart()))
 	typeName := ""
 	if ctx.Type_() != nil {
 		typeName = ctx.Type_().GetText()
@@ -287,10 +287,6 @@ func (v *PacketDslFormattor) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclarati
 	if ctx.COMMA() != nil {
 		formattedDsl.WriteString(",")
 	}
-	lineComment := v.getHiddenRight(ctx.GetStop())
-	if lineComment != "" {
-		formattedDsl.WriteString("\n" + lineComment)
-	}
 	return formattedDsl.String()
 }
 
@@ -299,7 +295,6 @@ func (v *PacketDslFormattor) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDecla
 	matchKey := ctx.GetMatchKey().GetText()
 	matchName := ctx.GetMatchName().GetText()
 	var formattedDsl strings.Builder
-	formattedDsl.WriteString(v.getHiddenLeft(ctx.GetStart()))
 	formattedDsl.WriteString(fmt.Sprintf("match %s as %s {\n", matchKey, matchName))
 	for _, pairCtx := range ctx.AllMatchPair() {
 		lineComment := strings.TrimRight(v.getHiddenLeft(pairCtx.GetStart()), "\n")
@@ -329,13 +324,12 @@ func (v *PacketDslFormattor) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDecla
 			value = strings.TrimSpace(value) + ","
 		}
 		formattedDsl.WriteString(AddIndent4ln(fmt.Sprintf("%s : %s", key, value)))
-		lineComment = strings.TrimRight(v.getHiddenRight(pairCtx.GetStop()), "\n")
+		lineComment = strings.TrimRight(v.getHiddenRightAtSameLine(pairCtx.GetStop()), "\n")
 		if lineComment != "" {
 			formattedDsl.WriteString(AddIndent4ln(lineComment))
 		}
 	}
 	formattedDsl.WriteString("}")
-	formattedDsl.WriteString(v.getHiddenRight(ctx.GetStop()))
 	return formattedDsl.String()
 }
 
