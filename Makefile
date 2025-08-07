@@ -44,9 +44,9 @@ else ifneq (,$(findstring MSYS_NT,$(UNAME_S)))
 else ifeq ($(UNAME_S),Linux)
 	@echo "Building for Linux..."
 	go build -buildmode=c-shared -o lib/libpacketdsl.so ./cmd/
-# else ifeq ($(UNAME_S),Darwin)
-# 	@echo "Building for macOS..."
-# 	go build -buildmode=c-shared -o lib/libpacketdsl.dylib ./cmd/
+else ifeq ($(UNAME_S),Darwin)
+	@echo "Building for macOS..."
+	go build -buildmode=c-shared -o lib/libpacketdsl.dylib ./cmd/
 else
 	@echo "Unsupported system: $(UNAME_S)"
 	exit 1
