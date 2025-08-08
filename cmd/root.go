@@ -14,7 +14,10 @@ var rootCmd = &cobra.Command{
 
 // Execute runs the root command.
 func Execute() {
-	if len(os.Args) == 1 || (len(os.Args) > 1 && !isSubcommand(os.Args[1])) {
+	fmt.Println(len(os.Args))
+	if len(os.Args) == 1 {
+		os.Args = append(os.Args, "--help")
+	} else if len(os.Args) > 1 && !isSubcommand(os.Args[1]) {
 		// insert "compile"
 		os.Args = append([]string{os.Args[0], "compile"}, os.Args[1:]...)
 	}
