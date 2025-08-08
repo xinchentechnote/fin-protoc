@@ -28,7 +28,7 @@ gen:
 build: gen dirs main-build shared-build
 
 main-build:
-	go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/$(TARGET) ./cmd/
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/$(TARGET) ./cmd/
 
 print-system:
 	@echo "Detected system: UNAME_S = $(UNAME_S)"
