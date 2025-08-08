@@ -53,47 +53,56 @@ endif
 
 package:shared-build main-build
 	mkdir -p release
-	mkdir -p temp-pack/bin
-	mkdir -p temp-pack/lib
-	mkdir -p temp-pack/include
 
 ifeq ($(OS),Windows_NT) 
 	# Windows
-	cp $(BIN_DIR)/fin-protoc.exe temp-pack/bin/fin-protoc.exe
-	cp $(LIB_DIR)/libpacketdsl.dll temp-pack/lib/
-	cp $(LIB_DIR)/libpacketdsl.h temp-pack/include/
+	mkdir -p temp-pack/fin-protoc-$(VERSION)-windows-amd64/bin
+	mkdir -p temp-pack/fin-protoc-$(VERSION)-windows-amd64/lib
+	mkdir -p temp-pack/fin-protoc-$(VERSION)-windows-amd64/include
+	cp $(BIN_DIR)/fin-protoc.exe temp-pack/fin-protoc-$(VERSION)-windows-amd64/bin/fin-protoc.exe
+	cp $(LIB_DIR)/libpacketdsl.dll temp-pack/fin-protoc-$(VERSION)-windows-amd64/lib/
+	cp $(LIB_DIR)/libpacketdsl.h temp-pack/fin-protoc-$(VERSION)-windows-amd64/include/
 	cd temp-pack && zip -r ../release/fin-protoc-$(VERSION)-windows-amd64.zip \
-		bin/fin-protoc.exe \
-		lib/libpacketdsl.dll \
-		include/libpacketdsl.h
+		fin-protoc-$(VERSION)-windows-amd64/bin/fin-protoc.exe \
+		fin-protoc-$(VERSION)-windows-amd64/lib/libpacketdsl.dll \
+		fin-protoc-$(VERSION)-windows-amd64/include/libpacketdsl.h
 else ifneq (,$(findstring MSYS_NT,$(UNAME_S)))
 	@echo "Building for Windows (MSYS2)..."
+	mkdir -p temp-pack/fin-protoc-$(VERSION)-windows-amd64/bin
+	mkdir -p temp-pack/fin-protoc-$(VERSION)-windows-amd64/lib
+	mkdir -p temp-pack/fin-protoc-$(VERSION)-windows-amd64/include
 	go build -ldflags "$# Windows
-	cp $(BIN_DIR)/fin-protoc.exe temp-pack/bin/fin-protoc.exe
-	cp $(LIB_DIR)/libpacketdsl.dll temp-pack/lib/
-	cp $(LIB_DIR)/libpacketdsl.h temp-pack/include/
+	cp $(BIN_DIR)/fin-protoc.exe temp-pack/fin-protoc-$(VERSION)-windows-amd64/bin/fin-protoc.exe
+	cp $(LIB_DIR)/libpacketdsl.dll temp-pack/fin-protoc-$(VERSION)-windows-amd64/lib/
+	cp $(LIB_DIR)/libpacketdsl.h temp-pack/fin-protoc-$(VERSION)-windows-amd64/include/
 	cd temp-pack && zip -r ../release/fin-protoc-$(VERSION)-windows-amd64.zip \
-		bin/fin-protoc.exe \
-		lib/libpacketdsl.dll \
-		include/libpacketdsl.h
+		fin-protoc-$(VERSION)-windows-amd64/bin/fin-protoc.exe \
+		fin-protoc-$(VERSION)-windows-amd64/lib/libpacketdsl.dll \
+		fin-protoc-$(VERSION)-windows-amd64/include/libpacketdsl.h
 else ifeq ($(UNAME_S),Linux)
 	# Linux
-	cp $(BIN_DIR)/fin-protoc temp-pack/bin/fin-protoc
-	cp $(LIB_DIR)/libpacketdsl.so temp-pack/lib/
-	cp $(LIB_DIR)/libpacketdsl.h temp-pack/include/
+	mkdir -p temp-pack/fin-protoc-$(VERSION)-linux-amd64/bin
+	mkdir -p temp-pack/fin-protoc-$(VERSION)-linux-amd64/lib
+	mkdir -p temp-pack/fin-protoc-$(VERSION)-linux-amd64/include
+	cp $(BIN_DIR)/fin-protoc temp-pack/fin-protoc-$(VERSION)-linux-amd64/bin/fin-protoc
+	cp $(LIB_DIR)/libpacketdsl.so temp-pack/fin-protoc-$(VERSION)-linux-amd64/lib/
+	cp $(LIB_DIR)/libpacketdsl.h temp-pack/fin-protoc-$(VERSION)-linux-amd64/include/
 	tar -czvf release/fin-protoc-$(VERSION)-linux-amd64.tar.gz \
-		-C temp-pack bin/fin-protoc \
-		lib/libpacketdsl.so \
-		include/libpacketdsl.h
+		-C temp-pack fin-protoc-$(VERSION)-linux-amd64/bin/fin-protoc \
+		fin-protoc-$(VERSION)-linux-amd64/lib/libpacketdsl.so \
+		fin-protoc-$(VERSION)-linux-amd64/include/libpacketdsl.h
 else ifeq ($(UNAME_S),Darwin)
 	# macOS
-	cp $(BIN_DIR)/fin-protoc temp-pack/bin/fin-protoc
-	cp $(LIB_DIR)/libpacketdsl.dylib temp-pack/lib/
-	cp $(LIB_DIR)/libpacketdsl.h temp-pack/include/
+	mkdir -p temp-pack/fin-protoc-$(VERSION)-darwin-amd64/bin
+	mkdir -p temp-pack/fin-protoc-$(VERSION)-darwin-amd64/lib
+	mkdir -p temp-pack/fin-protoc-$(VERSION)-darwin-amd64/include
+	cp $(BIN_DIR)/fin-protoc temp-pack/fin-protoc-$(VERSION)-darwin-amd64/bin/fin-protoc
+	cp $(LIB_DIR)/libpacketdsl.dylib temp-pack/fin-protoc-$(VERSION)-darwin-amd64/lib/
+	cp $(LIB_DIR)/libpacketdsl.h temp-pack/fin-protoc-$(VERSION)-darwin-amd64/include/
 	tar -czvf release/fin-protoc-$(VERSION)-darwin-amd64.tar.gz \
-		-C temp-pack bin/fin-protoc \
-		lib/libpacketdsl.dylib \
-		include/libpacketdsl.h
+		-C temp-pack fin-protoc-$(VERSION)-darwin-amd64/bin/fin-protoc \
+		fin-protoc-$(VERSION)-darwin-amd64/lib/libpacketdsl.dylib \
+		fin-protoc-$(VERSION)-darwin-amd64/include/libpacketdsl.h
 else
 	@echo "Unsupported system: $(UNAME_S)"
 	exit 1
