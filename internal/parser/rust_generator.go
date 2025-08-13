@@ -236,7 +236,7 @@ func (g RustGenerator) EncodeField(p *model.Packet, f model.Field) string {
 		}
 		return fmt.Sprintf("put_list::<%s,%s>(buf, &self.%s);", f.GetType(), g.config.ListLenPrefixLenType, name)
 	}
-	if f.Name == p.LengthOfField {
+	if p.LengthField != nil && f.Name == p.LengthField.LengthOfField {
 		var b strings.Builder
 		b.WriteString(fmt.Sprintf("buf.extend_from_slice(&%s_buf);\n", strcase.ToLowerCamel(f.Name)))
 		return b.String()

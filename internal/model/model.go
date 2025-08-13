@@ -157,14 +157,14 @@ type MetaData struct {
 
 // Packet represents a message definition, which may be a root or nested packet.
 type Packet struct {
-	Name          string                 // Name of the packet
-	IsRoot        bool                   // True if the packet declaration included the 'root' keyword
-	LengthOfField string                 // Length field name for root packet (only one allowed and only applies to root packet)
-	Fields        []Field                // List of fields belonging to this packet
-	FieldMap      map[string]Field       // Map of fields belonging to this packet
-	MatchFields   map[string][]MatchPair // Map of match field names to their key-value pairs
-	Line          int                    // Line number where the packet is defined
-	Column        int                    // Column number where the packet is defined
+	Name        string                 // Name of the packet
+	IsRoot      bool                   // True if the packet declaration included the 'root' keyword
+	LengthField *Field                 // Length field for root packet (only one allowed and only applies to root packet)
+	Fields      []Field                // List of fields belonging to this packet
+	FieldMap    map[string]Field       // Map of fields belonging to this packet
+	MatchFields map[string][]MatchPair // Map of match field names to their key-value pairs
+	Line        int                    // Line number where the packet is defined
+	Column      int                    // Column number where the packet is defined
 }
 
 // Field represents a single field within a packet. It can be a basic field, nested object, or match field.
