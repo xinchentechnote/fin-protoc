@@ -228,7 +228,7 @@ func (g PythonGenerator) generateEncodeMethod(p *model.Packet) string {
 			b.WriteString("    if service :\n")
 			b.WriteString(fmt.Sprintf("        self.%s = service.calc(buffer)\n", strcase.ToSnake(f.Name)))
 		}
-		if f.Name == p.LengthOfField {
+		if p.LengthField != nil && f.Name == p.LengthField.LengthOfField {
 			b.WriteString(fmt.Sprintf("    buffer.write_bytes(%s_buf.to_bytes())\n", strcase.ToSnake(f.Name)))
 			continue
 		}

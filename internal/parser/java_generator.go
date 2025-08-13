@@ -608,7 +608,7 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 			return fmt.Sprintf("writeFixedString(byteBuf, this.%s, %s);", fieldName, len)
 		}
 
-		if f.Name == p.LengthOfField {
+		if p.LengthField != nil && f.Name == p.LengthField.LengthOfField {
 			var b strings.Builder
 			b.WriteString(fmt.Sprintf("if (%sBuf != null) {\n", strcase.ToLowerCamel(f.Name)))
 			b.WriteString(fmt.Sprintf("byteBuf.writeBytes(%sBuf);\n", strcase.ToLowerCamel(f.Name)))

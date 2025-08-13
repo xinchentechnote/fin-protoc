@@ -97,7 +97,7 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 	// Iterate over all fieldDefinition children
 	var fields []model.Field
 	var fieldMap = make(map[string]model.Field)
-	var lengthOfField string
+	var lengthField *model.Field
 	var matchFields = make(map[string][]model.MatchPair)
 	for _, fctx := range ctx.AllFieldDefinition() {
 		fd := v.VisitFieldDefinition(fctx)
@@ -115,7 +115,7 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 				})
 				continue
 			}
-			if lengthOfField != "" {
+			if lengthField != nil {
 				v.BinModel.AddSyntaxError(model.SyntaxError{
 					Line:            fctx.GetStart().GetLine(),
 					Column:          fctx.GetStart().GetTokenSource().GetCharPositionInLine(),
@@ -124,7 +124,7 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 				})
 				continue
 			}
-			lengthOfField = fld.LengthOfField
+			lengthField = &fld
 		}
 
 		fields = append(fields, fld)
@@ -136,14 +136,14 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 	}
 
 	return model.Packet{
-		Name:          name,
-		IsRoot:        isRoot,
-		LengthOfField: lengthOfField,
-		Fields:        fields,
-		FieldMap:      fieldMap,
-		MatchFields:   matchFields,
-		Line:          ctx.GetStart().GetLine(),
-		Column:        ctx.GetStart().GetTokenSource().GetCharPositionInLine(),
+		Name:        name,
+		IsRoot:      isRoot,
+		LengthField: lengthField,
+		Fields:      fields,
+		FieldMap:    fieldMap,
+		MatchFields: matchFields,
+		Line:        ctx.GetStart().GetLine(),
+		Column:      ctx.GetStart().GetTokenSource().GetCharPositionInLine(),
 	}
 }
 

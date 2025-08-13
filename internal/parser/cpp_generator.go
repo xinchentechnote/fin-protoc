@@ -212,7 +212,7 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 			b.WriteString("    } else {\n")
 			b.WriteString(fmt.Sprintf("        buf.write_%s(%s);\n", ty, strcase.ToLowerCamel(f.Name)))
 			b.WriteString("    }\n")
-		} else if f.Name == p.LengthOfField {
+		} else if p.LengthField != nil && f.Name == p.LengthField.LengthOfField {
 			b.WriteString(fmt.Sprintf("    buf.write_bytes(%sBuf.data().data(), %sLen_);\n", strcase.ToLowerCamel(f.Name), strcase.ToLowerCamel(f.Name)))
 		} else if typ, ok := cppBasicTypeMap[f.GetType()]; ok {
 			if f.IsRepeat {

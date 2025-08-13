@@ -348,14 +348,6 @@ func (g GoGenerator) generateEncodingCode(p *model.Packet) string {
 
 func (g GoGenerator) generateEncodingField(p *model.Packet, field *model.Field) string {
 	var b strings.Builder
-	if field.LengthOfField != "" {
-		b.WriteString(fmt.Sprintf("var %sBuf bytes.Buffer\n", strcase.ToCamel(field.LengthOfField)))
-		b.WriteString(fmt.Sprintf("if err := p.%s.Encode(&%sBuf); err != nil {\n", strcase.ToCamel(field.LengthOfField), strcase.ToCamel(field.LengthOfField)))
-		b.WriteString("    return err\n")
-		b.WriteString("}\n")
-		typ := goBasicTypeMap[field.GetType()]
-		b.WriteString(fmt.Sprintf("p.%s = %s(%sBuf.Len())\n", strcase.ToCamel(field.Name), typ.BasicType, strcase.ToCamel(field.LengthOfField)))
-	}
 	if field.CheckSumType != "" {
 		typ := goBasicTypeMap[field.GetType()]
 		b.WriteString(fmt.Sprintf("if checksumService, ok := codec.Get(%s); ok {\n", field.CheckSumType))
@@ -363,18 +355,31 @@ func (g GoGenerator) generateEncodingField(p *model.Packet, field *model.Field) 
 		b.WriteString("}\n")
 	}
 	order := g.getOrder()
-	if _, ok := goBasicTypeMap[field.GetType()]; ok {
+	if field.LengthOfField != "" {
+		typ := goBasicTypeMap[field.GetType()]
+		b.WriteString(fmt.Sprintf("    %sPos := buf.Len()\n", strcase.ToLowerCamel(field.LengthOfField)))
+		b.WriteString(fmt.Sprintf("    if err :=codec.PutBasicType%s(buf, %s(0)); err != nil {\n", order, typ.BasicType))
+		b.WriteString("        return fmt.Errorf(\"failed to encode %s: %w\", \"" + field.Name + "\", err)\n")
+		b.WriteString("    }\n")
+	} else if _, ok := goBasicTypeMap[field.GetType()]; ok {
 		b.WriteString(fmt.Sprintf("    if err :=codec.PutBasicType%s(buf, p.%s); err != nil {\n", order, strcase.ToCamel(field.Name)))
 		b.WriteString("        return fmt.Errorf(\"failed to encode %s: %w\", \"" + field.Name + "\", err)\n")
 		b.WriteString("    }\n")
-	} else if field.Name == p.LengthOfField {
-		if g.config.LittleEndian {
-			b.WriteString(fmt.Sprintf("if err := binary.Write(buf, binary.LittleEndian, %sBuf.Bytes()); err != nil {\n", strcase.ToCamel(p.LengthOfField)))
-		} else {
-			b.WriteString(fmt.Sprintf("if err := binary.Write(buf, binary.BigEndian, %sBuf.Bytes()); err != nil {\n", strcase.ToCamel(p.LengthOfField)))
-		}
-		b.WriteString("    return err\n")
+	} else if p.LengthField != nil && field.Name == p.LengthField.LengthOfField {
+		b.WriteString(fmt.Sprintf("%sStart := buf.Len()\n", strcase.ToLowerCamel(field.Name)))
+		b.WriteString(fmt.Sprintf("if p.%s != nil { \n", strcase.ToCamel(field.Name)))
+		b.WriteString(fmt.Sprintf("    if err := p.%s.Encode(buf); err != nil {\n", strcase.ToCamel(field.Name)))
+		b.WriteString("        return err\n")
+		b.WriteString("    }\n")
 		b.WriteString("}\n")
+		b.WriteString(fmt.Sprintf("%sEnd := buf.Len()\n", strcase.ToLowerCamel(field.Name)))
+		typ := goBasicTypeMap[p.LengthField.GetType()]
+		b.WriteString(fmt.Sprintf("p.%s = %s(%sEnd - %sStart)\n", strcase.ToCamel(p.LengthField.Name), typ.BasicType, strcase.ToLowerCamel(field.Name), strcase.ToLowerCamel(field.Name)))
+		if g.config.LittleEndian {
+			b.WriteString(fmt.Sprintf("binary.LittleEndian.Put%s(buf.Bytes()[%sPos:%sPos + 4], p.%s)\n", strcase.ToCamel(typ.BasicType), strcase.ToLowerCamel(field.Name), strcase.ToLowerCamel(field.Name), strcase.ToCamel(p.LengthField.Name)))
+		} else {
+			b.WriteString(fmt.Sprintf("binary.BigEndian.Put%s(buf.Bytes()[%sPos:%sPos + 4], p.%s)\n", strcase.ToCamel(typ.BasicType), strcase.ToLowerCamel(field.Name), strcase.ToLowerCamel(field.Name), strcase.ToCamel(p.LengthField.Name)))
+		}
 	} else if l, ok := ParseCharArrayType(field.GetType()); ok {
 		// fixed string
 		b.WriteString(fmt.Sprintf("    if err := codec.PutFixedString(buf, p.%s, %s); err != nil {\n", strcase.ToCamel(field.Name), l))
