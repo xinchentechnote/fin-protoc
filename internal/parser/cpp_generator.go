@@ -190,14 +190,12 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 	listLenTyp := cppBasicTypeMap[g.config.ListLenPrefixLenType]
 	for _, f := range p.Fields {
 		if f.LengthOfField != "" {
-			b.WriteString(fmt.Sprintf("    ByteBuf %sBuf;\n", strcase.ToLowerCamel(f.LengthOfField)))
-			b.WriteString(fmt.Sprintf("    %s->encode(%sBuf);\n", strcase.ToLowerCamel(f.LengthOfField), strcase.ToLowerCamel(f.LengthOfField)))
 			typ := cppBasicTypeMap[f.GetType()]
-			b.WriteString(fmt.Sprintf("    auto %sLen_ = static_cast<%s>(%sBuf.readable_bytes());\n", strcase.ToLowerCamel(f.LengthOfField), typ.Name, strcase.ToLowerCamel(f.LengthOfField)))
+			b.WriteString(fmt.Sprintf("    auto %sPos = buf.writer_index();\n", strcase.ToLowerCamel(f.Name)))
 			if g.config.LittleEndian {
-				b.WriteString(fmt.Sprintf("    buf.write_%s(%sLen_);\n", typ.Le, strcase.ToLowerCamel(f.LengthOfField)))
+				b.WriteString(fmt.Sprintf("    buf.write_%s(0);\n", typ.Le))
 			} else {
-				b.WriteString(fmt.Sprintf("    buf.write_%s(%sLen_);\n", f.GetType(), strcase.ToLowerCamel(f.LengthOfField)))
+				b.WriteString(fmt.Sprintf("    buf.write_%s(0);\n", f.GetType()))
 			}
 		} else if f.CheckSumType != "" {
 			typ := cppBasicTypeMap[f.GetType()]
@@ -213,7 +211,16 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 			b.WriteString(fmt.Sprintf("        buf.write_%s(%s);\n", ty, strcase.ToLowerCamel(f.Name)))
 			b.WriteString("    }\n")
 		} else if p.LengthField != nil && f.Name == p.LengthField.LengthOfField {
-			b.WriteString(fmt.Sprintf("    buf.write_bytes(%sBuf.data().data(), %sLen_);\n", strcase.ToLowerCamel(f.Name), strcase.ToLowerCamel(f.Name)))
+			b.WriteString(fmt.Sprintf("    auto %sStart = buf.writer_index();\n", strcase.ToLowerCamel(f.Name)))
+			b.WriteString(fmt.Sprintf("    %s->encode(buf);\n", strcase.ToLowerCamel(f.Name)))
+			b.WriteString(fmt.Sprintf("    auto %sEnd = buf.writer_index();\n", strcase.ToLowerCamel(f.Name)))
+			typ := cppBasicTypeMap[p.LengthField.GetType()]
+			b.WriteString(fmt.Sprintf("    auto %sLen_ = static_cast<%s>(%sEnd - %sStart);\n", strcase.ToLowerCamel(p.LengthField.LengthOfField), typ.BasicType, strcase.ToLowerCamel(f.Name), strcase.ToLowerCamel(f.Name)))
+			if g.config.LittleEndian {
+				b.WriteString(fmt.Sprintf("    buf.write_%s_le_at(%sPos, %s_);\n", typ.Le, strcase.ToLowerCamel(p.LengthField.LengthOfField), strcase.ToLowerCamel(p.LengthField.LengthOfField)))
+			} else {
+				b.WriteString(fmt.Sprintf("    buf.write_%s_at(%sPos, %sLen_);\n", p.LengthField.GetType(), strcase.ToLowerCamel(p.LengthField.Name), strcase.ToLowerCamel(p.LengthField.LengthOfField)))
+			}
 		} else if typ, ok := cppBasicTypeMap[f.GetType()]; ok {
 			if f.IsRepeat {
 				if g.config.LittleEndian {
