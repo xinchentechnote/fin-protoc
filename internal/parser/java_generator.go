@@ -542,20 +542,12 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 	if f.LengthOfField != "" {
 		// auto calculate length field
 		var b strings.Builder
-		b.WriteString(fmt.Sprintf("ByteBuf %sBuf = null;\n", strcase.ToLowerCamel(f.LengthOfField)))
-		b.WriteString(fmt.Sprintf("if (this.%s != null) {\n", strcase.ToLowerCamel(f.LengthOfField)))
-		b.WriteString(fmt.Sprintf("%sBuf = Unpooled.buffer();\n", strcase.ToLowerCamel(f.LengthOfField)))
-		b.WriteString(fmt.Sprintf("this.%s.encode(%sBuf);\n", strcase.ToLowerCamel(f.LengthOfField), strcase.ToLowerCamel(f.LengthOfField)))
 		lenTyp := javaBasicTypeMap[f.GetType()]
-		b.WriteString(fmt.Sprintf("this.%s = (%s) %sBuf.readableBytes();\n", strcase.ToLowerCamel(f.Name), lenTyp.BasicType, strcase.ToLowerCamel(f.LengthOfField)))
-		b.WriteString("} else {\n")
-		b.WriteString(fmt.Sprintf("this.%s = 0;\n", strcase.ToLowerCamel(f.Name)))
-		b.WriteString("}\n")
-
+		b.WriteString(fmt.Sprintf("int %sPos = byteBuf.writerIndex();\n", strcase.ToLowerCamel(f.Name)))
 		if g.config.LittleEndian {
-			b.WriteString(fmt.Sprintf("byteBuf.write%s(this.%s);\n", lenTyp.Le, strcase.ToLowerCamel(f.Name)))
+			b.WriteString(fmt.Sprintf("byteBuf.write%s(0);\n", lenTyp.Le))
 		} else {
-			b.WriteString(fmt.Sprintf("byteBuf.write%s(this.%s);\n", strcase.ToCamel(lenTyp.BasicType), strcase.ToLowerCamel(f.Name)))
+			b.WriteString(fmt.Sprintf("byteBuf.write%s(0);\n", strcase.ToCamel(lenTyp.BasicType)))
 		}
 
 		return b.String()
@@ -610,10 +602,18 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 
 		if p.LengthField != nil && f.Name == p.LengthField.LengthOfField {
 			var b strings.Builder
-			b.WriteString(fmt.Sprintf("if (%sBuf != null) {\n", strcase.ToLowerCamel(f.Name)))
-			b.WriteString(fmt.Sprintf("byteBuf.writeBytes(%sBuf);\n", strcase.ToLowerCamel(f.Name)))
-			b.WriteString(fmt.Sprintf("%sBuf.release();\n", strcase.ToLowerCamel(f.Name)))
+			b.WriteString(fmt.Sprintf("int %sStart = byteBuf.writerIndex();", strcase.ToLowerCamel(f.Name)))
+			b.WriteString(fmt.Sprintf("if (this.%s != null) {\n", strcase.ToLowerCamel(f.Name)))
+			b.WriteString(fmt.Sprintf("    this.%s.encode(byteBuf);\n", strcase.ToLowerCamel(f.Name)))
 			b.WriteString("}\n")
+			lenTyp := javaBasicTypeMap[p.LengthField.GetType()]
+			b.WriteString(fmt.Sprintf("int %sEnd = byteBuf.writerIndex();", strcase.ToLowerCamel(f.Name)))
+			b.WriteString(fmt.Sprintf("this.%s = (%s)(%sEnd - %sStart);", strcase.ToLowerCamel(p.LengthField.Name), lenTyp.BasicType, strcase.ToLowerCamel(f.Name), strcase.ToLowerCamel(f.Name)))
+			if g.config.LittleEndian {
+				b.WriteString(fmt.Sprintf("byteBuf.set%s(%sPos, this.%s);", lenTyp.Le, strcase.ToLowerCamel(p.LengthField.Name), strcase.ToLowerCamel(p.LengthField.Name)))
+			} else {
+				b.WriteString(fmt.Sprintf("byteBuf.set%s(%sPos, this.%s);", strcase.ToCamel(lenTyp.BasicType), strcase.ToLowerCamel(p.LengthField.Name), strcase.ToLowerCamel(p.LengthField.Name)))
+			}
 			return b.String()
 		}
 
