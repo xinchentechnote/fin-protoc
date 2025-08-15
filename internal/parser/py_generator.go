@@ -219,9 +219,14 @@ func (g PythonGenerator) generateEncodeMethod(p *model.Packet) string {
 
 	for _, f := range p.Fields {
 		if f.LengthOfField != "" {
-			b.WriteString(fmt.Sprintf("    %s_buf = ByteBuf()\n", strcase.ToSnake(f.LengthOfField)))
-			b.WriteString(fmt.Sprintf("    self.%s.encode(%s_buf)\n", strcase.ToSnake(f.LengthOfField), strcase.ToSnake(f.LengthOfField)))
-			b.WriteString(fmt.Sprintf("    self.%s = %s_buf.readable_bytes_len()\n", strcase.ToSnake(f.Name), strcase.ToSnake(f.LengthOfField)))
+			typ := pyBasicTypeMap[f.GetType()]
+			b.WriteString(fmt.Sprintf("    %s_pos = buffer.write_index\n", strcase.ToSnake(f.Name)))
+			if g.config.LittleEndian {
+				b.WriteString(fmt.Sprintf("    buffer.write_%s(0)\n", typ.Le))
+			} else {
+				b.WriteString(fmt.Sprintf("    buffer.write_%s(0)\n", typ.BasicType))
+			}
+			continue
 		}
 		if f.CheckSumType != "" {
 			b.WriteString(fmt.Sprintf("    service = create_checksum_service(%s)\n", f.CheckSumType))
@@ -229,7 +234,16 @@ func (g PythonGenerator) generateEncodeMethod(p *model.Packet) string {
 			b.WriteString(fmt.Sprintf("        self.%s = service.calc(buffer)\n", strcase.ToSnake(f.Name)))
 		}
 		if p.LengthField != nil && f.Name == p.LengthField.LengthOfField {
-			b.WriteString(fmt.Sprintf("    buffer.write_bytes(%s_buf.to_bytes())\n", strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("    %s_start = buffer.write_index\n", strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("    self.%s.encode(buffer)\n", strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("    %s_end = buffer.write_index\n", strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("    self.%s = %s_end - %s_start\n", strcase.ToSnake(p.LengthField.Name), strcase.ToSnake(f.Name), strcase.ToSnake(f.Name)))
+			typ := pyBasicTypeMap[p.LengthField.GetType()]
+			if g.config.LittleEndian {
+				b.WriteString(fmt.Sprintf("    buffer.write_%s_at(%s_pos, self.%s)\n", typ.Le, strcase.ToSnake(p.LengthField.Name), strcase.ToSnake(p.LengthField.Name)))
+			} else {
+				b.WriteString(fmt.Sprintf("    buffer.write_%s_at(%s_pos, self.%s)\n", typ.BasicType, strcase.ToSnake(p.LengthField.Name), strcase.ToSnake(p.LengthField.Name)))
+			}
 			continue
 		}
 		if f.IsRepeat {
