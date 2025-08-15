@@ -1,6 +1,21 @@
 # fin-protoc
 
-A multi-language protocol compiler that transforms PacketDSL definitions into executable code for binary packet serialization and deserialization across Java, Rust, Lua (Wireshark), Go, Python, and C++. [1](#0-0)
+fin-protoc is a powerful multi-language protocol compiler that transforms PacketDSL definitions into executable code for binary packet serialization and deserialization across six programming languages: **Java**, **Rust**, **Lua (Wireshark)**, **Go**, **Python**, and **C++**.
+
+This tool enables developers to define binary communication protocols once and generate consistent, type-safe implementations across multiple platforms, eliminating the tedious and error-prone process of writing protocol codecs manually for each target language.
+
+---
+
+In modern distributed systems, especially in **financial trading**, **gaming**, and **network communication**, binary protocols are essential for performance-critical applications. However, implementing the same protocol across multiple programming languages presents significant challenges:
+
+- **Code duplication**: Writing and maintaining serialization/deserialization logic in multiple languages
+- **Consistency risks**: Protocol drift between language implementations can cause subtle bugs
+- **Development overhead**: Protocol changes require updates across all language implementations
+- **Testing complexity**: Ensuring all implementations behave identically requires extensive cross-language testing
+
+---
+
+fin-protoc addresses these challenges by providing a single source of truth for protocol definitions that generates optimized, idiomatic code for each target language.
 
 ## Architecture Overview
 
@@ -164,6 +179,7 @@ The compilation process:
 The fin-protoc compiler has been applied across multiple language implementations to ensure consistent binary protocol definitions and codec logic:
 
 - [`fin-proto`](https://github.com/xinchentechnote/fin-proto)
+
   - A comprehensive financial protocol library
   - Supports SSE, SZSE, and risk protocols
   - Includes Lua dissectors for Wireshark

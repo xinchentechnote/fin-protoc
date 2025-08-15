@@ -107,8 +107,11 @@ func (g CppGenerator) generateCodeForPacket(p *model.Packet) string {
 		if f.GetType() == "match" {
 			for _, pair := range f.MatchPairs {
 				mp := g.binModel.PacketsMap[pair.Value]
-				b.WriteString(g.generateCodeForPacket(&mp))
-				b.WriteString("\n")
+				packetCode := g.generateCodeForPacket(&mp)
+				if packetCode != "" {
+					b.WriteString(packetCode)
+					b.WriteString("\n")
+				}
 			}
 		}
 	}
