@@ -93,6 +93,7 @@ extern "C" {
 //	Formatted DSL as C string, or error message if formatting fails
 //
 extern char* FormatPacketDslExport(char* dsl);
+extern void CompilePacketDslExport(char* dsl, char* output, unsigned int lang);
 
 #ifdef __cplusplus
 }

@@ -28,3 +28,16 @@ func FormatPacketDslExport(dsl *C.char) *C.char {
 	}
 	return C.CString(formatted)
 }
+
+// CompilePacketDslExport compiles the packet DSL string from C char pointer and writes the compiled output to C char pointer.
+//
+//export CompilePacketDslExport
+func CompilePacketDslExport(dsl *C.char, output *C.char, lang C.uint) {
+	goDsl := C.GoString(dsl)
+	goOutput := C.GoString(output)
+	goLang := int(lang)
+
+	println("dsl:", goDsl)
+	println("output:", goOutput)
+	println("lang:", goLang)
+}
