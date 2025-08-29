@@ -5,3 +5,4 @@ release/
 coverage.*
 lib/libpacketdsl.so
 lib/libpacketdsl.dll
+.idea
