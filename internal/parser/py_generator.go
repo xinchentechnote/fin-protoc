@@ -105,14 +105,15 @@ func (g PythonGenerator) generateEqMethod(p *model.Packet) string {
 	}
 	b.WriteString("    return all([\n")
 	for i, f := range p.Fields {
+		fieldName := strcase.ToSnake(f.Name)
 		if _, ok := pyBasicTypeMap[f.GetType()]; ok {
-			b.WriteString(fmt.Sprintf("        self.%s == other.%s", strcase.ToSnake(f.Name), strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("        self.%s == other.%s", fieldName, fieldName))
 		} else if _, ok := ParseCharArrayType(f.GetType()); ok {
-			b.WriteString(fmt.Sprintf("        self.%s == other.%s", strcase.ToSnake(f.Name), strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("        self.%s == other.%s", fieldName, fieldName))
 		} else if f.InerObject != nil || (f.GetType() != "string" && f.GetType() != "char[]") {
-			b.WriteString(fmt.Sprintf("        self.%s == other.%s", strcase.ToSnake(f.Name), strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("        self.%s == other.%s", fieldName, fieldName))
 		} else {
-			b.WriteString(fmt.Sprintf("        self.%s == other.%s", strcase.ToSnake(f.Name), strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("        self.%s == other.%s", fieldName, fieldName))
 		}
 		if i < len(p.Fields)-1 {
 			b.WriteString(",\n")
@@ -150,22 +151,23 @@ func (g PythonGenerator) generateDecodeMethod(p *model.Packet) string {
 
 func (g PythonGenerator) generateDecodeField(f *model.Field) string {
 	var b strings.Builder
+	fieldName := strcase.ToSnake(f.Name)
 	if typ, ok := pyBasicTypeMap[f.GetType()]; ok {
 		read := typ.BasicType
 		if g.config.LittleEndian {
 			read = typ.Le
 		}
 		if f.IsRepeat {
-			b.WriteString(fmt.Sprintf("    self.%s.append(buffer.read_%s())\n", strcase.ToSnake(f.Name), read))
+			b.WriteString(fmt.Sprintf("    self.%s.append(buffer.read_%s())\n", fieldName, read))
 		} else {
-			b.WriteString(fmt.Sprintf("    self.%s = buffer.read_%s()\n", strcase.ToSnake(f.Name), read))
+			b.WriteString(fmt.Sprintf("    self.%s = buffer.read_%s()\n", fieldName, read))
 		}
 	}
 	if size, ok := ParseCharArrayType(f.GetType()); ok {
 		if f.IsRepeat {
-			b.WriteString(fmt.Sprintf("    self.%s.append(buffer.read_bytes(%s).decode('utf-8').strip('\\x00'))\n", strcase.ToSnake(f.Name), size))
+			b.WriteString(fmt.Sprintf("    self.%s.append(buffer.read_bytes(%s).decode('utf-8').strip('\\x00'))\n", fieldName, size))
 		} else {
-			b.WriteString(fmt.Sprintf("    self.%s = buffer.read_bytes(%s).decode('utf-8').strip('\\x00')\n", strcase.ToSnake(f.Name), size))
+			b.WriteString(fmt.Sprintf("    self.%s = buffer.read_bytes(%s).decode('utf-8').strip('\\x00')\n", fieldName, size))
 		}
 	}
 	if f.GetType() == "string" || f.GetType() == "char[]" {
@@ -174,37 +176,37 @@ func (g PythonGenerator) generateDecodeField(f *model.Field) string {
 			le = "_le"
 		}
 		if f.IsRepeat {
-			b.WriteString(fmt.Sprintf("    self.%s.append(get_string%s(buffer,'%s'))\n", strcase.ToSnake(f.Name), le, g.config.StringLenPrefixLenType))
+			b.WriteString(fmt.Sprintf("    self.%s.append(get_string%s(buffer,'%s'))\n", fieldName, le, g.config.StringLenPrefixLenType))
 		} else {
-			b.WriteString(fmt.Sprintf("    self.%s = get_string%s(buffer,'%s')\n", strcase.ToSnake(f.Name), le, g.config.StringLenPrefixLenType))
+			b.WriteString(fmt.Sprintf("    self.%s = get_string%s(buffer,'%s')\n", fieldName, le, g.config.StringLenPrefixLenType))
 		}
 	}
 	if f.InerObject != nil {
 		if f.IsRepeat {
-			b.WriteString(fmt.Sprintf("    _%s = %s()\n", strcase.ToSnake(f.Name), strcase.ToCamel(f.InerObject.Name)))
-			b.WriteString(fmt.Sprintf("    _%s.decode(buffer)\n", strcase.ToSnake(f.Name)))
-			b.WriteString(fmt.Sprintf("    self.%s.append(_%s)\n", strcase.ToSnake(f.Name), strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("    _%s = %s()\n", fieldName, strcase.ToCamel(f.InerObject.Name)))
+			b.WriteString(fmt.Sprintf("    _%s.decode(buffer)\n", fieldName))
+			b.WriteString(fmt.Sprintf("    self.%s.append(_%s)\n", fieldName, fieldName))
 		} else {
-			b.WriteString(fmt.Sprintf("    self.%s = %s()\n", strcase.ToSnake(f.Name), strcase.ToCamel(f.InerObject.Name)))
-			b.WriteString(fmt.Sprintf("    self.%s.decode(buffer)\n", strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("    self.%s = %s()\n", fieldName, strcase.ToCamel(f.InerObject.Name)))
+			b.WriteString(fmt.Sprintf("    self.%s.decode(buffer)\n", fieldName))
 		}
 	}
 	if _, ok := g.binModel.PacketsMap[f.GetType()]; ok {
 		if f.IsRepeat {
 			b.WriteString(fmt.Sprintf("    _%s = %s()\n", strcase.ToSnake(f.GetType()), strcase.ToCamel(f.GetType())))
 			b.WriteString(fmt.Sprintf("    _%s.decode(buffer)\n", strcase.ToSnake(f.GetType())))
-			b.WriteString(fmt.Sprintf("    self.%s.append(_%s)\n", strcase.ToSnake(f.Name), strcase.ToSnake(f.GetType())))
+			b.WriteString(fmt.Sprintf("    self.%s.append(_%s)\n", fieldName, strcase.ToSnake(f.GetType())))
 		} else {
-			b.WriteString(fmt.Sprintf("    self.%s = %s()\n", strcase.ToSnake(f.Name), strcase.ToCamel(f.GetType())))
-			b.WriteString(fmt.Sprintf("    self.%s.decode(buffer)\n", strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("    self.%s = %s()\n", fieldName, strcase.ToCamel(f.GetType())))
+			b.WriteString(fmt.Sprintf("    self.%s.decode(buffer)\n", fieldName))
 		}
 	}
 	if f.GetType() == "match" {
 		for _, pair := range f.MatchPairs {
 			b.WriteString(fmt.Sprintf("    if self.%s == %s:\n", strcase.ToSnake(f.MatchKey), pair.Key))
-			b.WriteString(fmt.Sprintf("        self.%s = %s()\n", strcase.ToSnake(f.Name), pair.Value))
+			b.WriteString(fmt.Sprintf("        self.%s = %s()\n", fieldName, pair.Value))
 		}
-		b.WriteString(fmt.Sprintf("    self.%s.decode(buffer)\n", strcase.ToSnake(f.Name)))
+		b.WriteString(fmt.Sprintf("    self.%s.decode(buffer)\n", fieldName))
 	}
 	return b.String()
 }
@@ -218,9 +220,10 @@ func (g PythonGenerator) generateEncodeMethod(p *model.Packet) string {
 	}
 
 	for _, f := range p.Fields {
+		fieldName := strcase.ToSnake(f.Name)
 		if f.LengthOfField != "" {
 			typ := pyBasicTypeMap[f.GetType()]
-			b.WriteString(fmt.Sprintf("    %s_pos = buffer.write_index\n", strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("    %s_pos = buffer.write_index\n", fieldName))
 			if g.config.LittleEndian {
 				b.WriteString(fmt.Sprintf("    buffer.write_%s(0)\n", typ.Le))
 			} else {
@@ -231,24 +234,25 @@ func (g PythonGenerator) generateEncodeMethod(p *model.Packet) string {
 		if f.CheckSumType != "" {
 			b.WriteString(fmt.Sprintf("    service = create_checksum_service(%s)\n", f.CheckSumType))
 			b.WriteString("    if service :\n")
-			b.WriteString(fmt.Sprintf("        self.%s = service.calc(buffer)\n", strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("        self.%s = service.calc(buffer)\n", fieldName))
 		}
 		if p.LengthField != nil && f.Name == p.LengthField.LengthOfField {
-			b.WriteString(fmt.Sprintf("    %s_start = buffer.write_index\n", strcase.ToSnake(f.Name)))
-			b.WriteString(fmt.Sprintf("    self.%s.encode(buffer)\n", strcase.ToSnake(f.Name)))
-			b.WriteString(fmt.Sprintf("    %s_end = buffer.write_index\n", strcase.ToSnake(f.Name)))
-			b.WriteString(fmt.Sprintf("    self.%s = %s_end - %s_start\n", strcase.ToSnake(p.LengthField.Name), strcase.ToSnake(f.Name), strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("    %s_start = buffer.write_index\n", fieldName))
+			b.WriteString(fmt.Sprintf("    self.%s.encode(buffer)\n", fieldName))
+			b.WriteString(fmt.Sprintf("    %s_end = buffer.write_index\n", fieldName))
+			LengthFieldName := strcase.ToSnake(p.LengthField.Name)
+			b.WriteString(fmt.Sprintf("    self.%s = %s_end - %s_start\n", LengthFieldName, fieldName, fieldName))
 			typ := pyBasicTypeMap[p.LengthField.GetType()]
 			if g.config.LittleEndian {
-				b.WriteString(fmt.Sprintf("    buffer.write_%s_at(%s_pos, self.%s)\n", typ.Le, strcase.ToSnake(p.LengthField.Name), strcase.ToSnake(p.LengthField.Name)))
+				b.WriteString(fmt.Sprintf("    buffer.write_%s_at(%s_pos, self.%s)\n", typ.Le, LengthFieldName, LengthFieldName))
 			} else {
-				b.WriteString(fmt.Sprintf("    buffer.write_%s_at(%s_pos, self.%s)\n", typ.BasicType, strcase.ToSnake(p.LengthField.Name), strcase.ToSnake(p.LengthField.Name)))
+				b.WriteString(fmt.Sprintf("    buffer.write_%s_at(%s_pos, self.%s)\n", typ.BasicType, LengthFieldName, LengthFieldName))
 			}
 			continue
 		}
 		if f.IsRepeat {
 			typ := pyBasicTypeMap[g.config.ListLenPrefixLenType]
-			b.WriteString(fmt.Sprintf("    size = len(self.%s)\n", strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("    size = len(self.%s)\n", fieldName))
 			if g.config.LittleEndian {
 				b.WriteString(fmt.Sprintf("    buffer.write_%s(size)\n", typ.Le))
 			} else {
@@ -305,25 +309,26 @@ func (g PythonGenerator) generateInitMethod(p *model.Packet) string {
 		return b.String()
 	}
 	for _, f := range p.Fields {
+		fieldName := strcase.ToSnake(f.Name)
 		if f.IsRepeat {
-			b.WriteString(fmt.Sprintf("    self.%s = []\n", strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("    self.%s = []\n", fieldName))
 			continue
 		}
 		if _, ok := pyBasicTypeMap[f.GetType()]; ok {
-			b.WriteString(fmt.Sprintf("    self.%s = %s\n", strcase.ToSnake(f.Name), pyBasicTypeMap[f.GetType()].DefaultValue))
+			b.WriteString(fmt.Sprintf("    self.%s = %s\n", fieldName, pyBasicTypeMap[f.GetType()].DefaultValue))
 			continue
 		}
 		if _, ok := ParseCharArrayType(f.GetType()); ok {
-			b.WriteString(fmt.Sprintf("    self.%s = ''\n", strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("    self.%s = ''\n", fieldName))
 			continue
 		}
 		switch f.GetType() {
 		case "string", "char[]":
-			b.WriteString(fmt.Sprintf("    self.%s = ''\n", strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("    self.%s = ''\n", fieldName))
 		case "match":
-			b.WriteString(fmt.Sprintf("    self.%s = None\n", strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("    self.%s = None\n", fieldName))
 		default:
-			b.WriteString(fmt.Sprintf("    self.%s = None\n", strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("    self.%s = None\n", fieldName))
 		}
 	}
 	return b.String()
@@ -345,14 +350,15 @@ func (g PythonGenerator) generateTestCode(binModel *model.BinaryModel) string {
 
 func (g PythonGenerator) generateTestCodeForPacket(packet *model.Packet) string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("class Test%s(unittest.TestCase):\n", strcase.ToCamel(packet.Name)))
+	packageName := strcase.ToCamel(packet.Name)
+	b.WriteString(fmt.Sprintf("class Test%s(unittest.TestCase):\n", packageName))
 	b.WriteString("    def setUp(self):\n")
 	b.WriteString(AddIndent4ln(AddIndent4(g.generateNewInstance("self.packet", packet))))
 	b.WriteString("\n")
 	b.WriteString("    def test_encode_decode(self):\n")
 	b.WriteString("        buf = ByteBuf()\n")
 	b.WriteString("        self.packet.encode(buf)\n")
-	b.WriteString(fmt.Sprintf("        decoded_packet = %s()\n", strcase.ToCamel(packet.Name)))
+	b.WriteString(fmt.Sprintf("        decoded_packet = %s()\n", packageName))
 	b.WriteString("        decoded_packet.decode(buf)\n")
 	b.WriteString("        self.assertEqual(decoded_packet, self.packet)\n")
 	b.WriteString("\n")
@@ -365,28 +371,30 @@ func (g PythonGenerator) generateNewInstance(name string, packet *model.Packet) 
 		if f.InerObject != nil {
 			b.WriteString(g.generateNewInstance(strcase.ToSnake(f.InerObject.Name), f.InerObject))
 		}
+		fieldName := strcase.ToSnake(f.Name)
 		if rp, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-			b.WriteString(g.generateNewInstance(strcase.ToSnake(f.Name), &rp))
+			b.WriteString(g.generateNewInstance(fieldName, &rp))
 		}
 		if f.GetType() == "match" {
 			mp := g.binModel.PacketsMap[f.MatchPairs[0].Value]
-			b.WriteString(g.generateNewInstance(strcase.ToSnake(f.Name), &mp))
+			b.WriteString(g.generateNewInstance(fieldName, &mp))
 		}
 	}
 	b.WriteString(fmt.Sprintf("%s = %s()\n", name, strcase.ToCamel(packet.Name)))
 	for _, f := range packet.Fields {
+		fieldName := strcase.ToSnake(f.Name)
 		if packet.MatchFields[f.MatchKey] != nil {
 			if len(f.MatchPairs) > 0 {
 				key := f.MatchPairs[0].Key
 				b.WriteString(fmt.Sprintf("%s.%s = %s\n", name, strcase.ToSnake(f.MatchKey), key))
-				b.WriteString(fmt.Sprintf("%s.%s = %s\n", name, strcase.ToSnake(f.Name), g.generateTestValue(&f)))
+				b.WriteString(fmt.Sprintf("%s.%s = %s\n", name, fieldName, g.generateTestValue(&f)))
 			}
 			continue
 		}
 		if packet.MatchFields[f.Name] != nil {
 			continue
 		}
-		b.WriteString(fmt.Sprintf("%s.%s = %s\n", name, strcase.ToSnake(f.Name), g.generateTestValue(&f)))
+		b.WriteString(fmt.Sprintf("%s.%s = %s\n", name, fieldName, g.generateTestValue(&f)))
 	}
 
 	return b.String()
@@ -400,8 +408,9 @@ func (g PythonGenerator) generateTestValue(f *model.Field) string {
 	if f.InerObject != nil {
 		testValue = strcase.ToSnake(f.InerObject.Name)
 	}
+	fieldName := strcase.ToSnake(f.Name)
 	if _, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-		testValue = strcase.ToSnake(f.Name)
+		testValue = fieldName
 	}
 	if f.GetType() == "string" || f.GetType() == "char[]" {
 		testValue = "\"hello\""
@@ -411,7 +420,7 @@ func (g PythonGenerator) generateTestValue(f *model.Field) string {
 		testValue = "\"" + strings.Repeat("x", s) + "\""
 	}
 	if f.GetType() == "match" {
-		testValue = strcase.ToSnake(f.Name)
+		testValue = fieldName
 	}
 	if f.IsRepeat {
 		return "[" + testValue + "]"
