@@ -329,6 +329,8 @@ func (g LuaWspGenerator) decodeFieldForLocal(f model.Field) string {
 }
 
 func (g LuaWspGenerator) decodeField(treeName string, p *model.Packet, f model.Field) string {
+	packageName := strcase.ToSnake(p.Name)
+	fieldName := strcase.ToSnake(f.Name)
 	switch f.GetType() {
 	case "i8", "u8", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64", "char":
 		luaType, ok := luaBasicTypeMap[f.GetType()]
@@ -340,7 +342,7 @@ func (g LuaWspGenerator) decodeField(treeName string, p *model.Packet, f model.F
 			addMethod = "le_add"
 		}
 		data := map[string]interface{}{
-			"Name":     fmt.Sprintf("%s_%s", strcase.ToSnake(p.Name), strcase.ToSnake(f.Name)),
+			"Name":     fmt.Sprintf("%s_%s", packageName, fieldName),
 			"TreeName": treeName,
 			"Add":      addMethod,
 			"Type":     luaType,
@@ -368,18 +370,18 @@ func (g LuaWspGenerator) decodeField(treeName string, p *model.Packet, f model.F
 	case "string":
 		var b strings.Builder
 		b.WriteString(g.decodeStringLen(treeName, p, f) + "\n")
-		lenName := fmt.Sprintf("%s_%s_%s", strcase.ToSnake(p.Name), strcase.ToSnake(f.Name), "len")
-		b.WriteString(fmt.Sprintf("%s:add(fields.%s_%s, buf(offset, %s))\n", treeName, strcase.ToSnake(p.Name), strcase.ToSnake(f.Name), lenName))
+		lenName := fmt.Sprintf("%s_%s_%s", packageName, fieldName, "len")
+		b.WriteString(fmt.Sprintf("%s:add(fields.%s_%s, buf(offset, %s))\n", treeName, packageName, fieldName, lenName))
 		b.WriteString(fmt.Sprintf("offset = offset + %s", lenName))
 		return b.String()
 	default:
 		var b strings.Builder
 		if size, ok := ParseCharArrayType(f.GetType()); ok {
-			b.WriteString(fmt.Sprintf("%s:add(fields.%s_%s, buf(offset, %s))\n", treeName, strcase.ToSnake(p.Name), strcase.ToSnake(f.Name), size))
+			b.WriteString(fmt.Sprintf("%s:add(fields.%s_%s, buf(offset, %s))\n", treeName, packageName, fieldName, size))
 			b.WriteString(fmt.Sprintf("offset = offset + %s", size))
 			return b.String()
 		} else if f.InerObject != nil {
-			b.WriteString(fmt.Sprintf("dissect_%s(buf, pinfo, subtree, offset)", strcase.ToSnake(f.Name)))
+			b.WriteString(fmt.Sprintf("dissect_%s(buf, pinfo, subtree, offset)", fieldName))
 			if !f.IsRepeat {
 				b.WriteString("\n")
 				b.WriteString(fmt.Sprintf("pinfo.cols.info:set(\"%s\")", f.Name))
@@ -414,8 +416,9 @@ func (g LuaWspGenerator) generateFieldDefinitionFromPacket(mdl *model.BinaryMode
 	var b strings.Builder
 	b.WriteString(AddIndent4ln(fmt.Sprintf("-- Field from %s", pkt.Name)))
 	for _, f := range pkt.Fields {
-		fieldName := strcase.ToSnake(pkt.Name) + "_" + strcase.ToSnake(f.Name)
-		filterName := strcase.ToSnake(pkt.Name) + "." + strcase.ToSnake(f.Name)
+		packageName := strcase.ToSnake(pkt.Name)
+		fieldName := packageName + "_" + strcase.ToSnake(f.Name)
+		filterName := packageName + "." + strcase.ToSnake(f.Name)
 		switch f.GetType() {
 		case "char":
 			b.WriteString(AddIndent4ln(fmt.Sprintf("%s = ProtoField.char(\"%s\", \"%s\", base.OCT),",
