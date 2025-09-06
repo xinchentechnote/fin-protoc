@@ -74,6 +74,7 @@ func (g CppGenerator) generateHppFile(binModel *model.BinaryModel) string {
 	b.WriteString("#include \"include/codec.hpp\"\n")
 	b.WriteString("#include \"include/bytebuf.hpp\"\n")
 	b.WriteString("#include \"include/checksum.hpp\"\n")
+	b.WriteString("#include \"message_factory.hpp\"\n")
 	b.WriteString("\n")
 	for _, pkt := range binModel.Packets {
 		if !pkt.IsRoot {
@@ -116,14 +117,16 @@ func (g CppGenerator) generateCodeForPacket(p *model.Packet) string {
 			}
 		}
 	}
-	//factoryMap
+	//factory
 	for key, pairs := range p.MatchFields {
 		f := p.FieldMap[key]
-		b.WriteString(fmt.Sprintf("static const std::unordered_map<%s,std::function<std::unique_ptr<codec::BinaryCodec>()>> %s%sFactoryMap = {\n", g.getFieldType(&f), p.Name, key))
+		b.WriteString(fmt.Sprintf("struct %sTag{};\n", strcase.ToCamel(p.Name)))
+		b.WriteString(fmt.Sprintf("using %sMessageFactory = MessageFactory<%s, codec::BinaryCodec, %sTag>;\n", strcase.ToCamel(p.Name), g.getFieldType(&f), strcase.ToCamel(p.Name)))
 		for _, pair := range pairs {
-			b.WriteString(fmt.Sprintf("    {%s, [] { return std::make_unique<%s>(); }},\n", pair.Key, pair.Value))
+			b.WriteString(fmt.Sprintf("REGISTER_MESSAGE(%sMessageFactory, %s, %s);\n", strcase.ToCamel(p.Name), pair.Key, pair.Value))
 		}
-		b.WriteString("};\n")
+		b.WriteString("\n")
+		b.WriteString("\n")
 	}
 
 	//struct
@@ -366,12 +369,7 @@ func (g CppGenerator) generateDecode(p *model.Packet) string {
 			}
 		} else if f.GetType() == "match" {
 			matchKeyLowerCamel := strcase.ToLowerCamel(f.MatchKey)
-			b.WriteString(fmt.Sprintf("    auto it = %s%sFactoryMap.find(%s);\n", p.Name, f.MatchKey, matchKeyLowerCamel))
-			b.WriteString(fmt.Sprintf("    if(it != %s%sFactoryMap.end()) {\n", p.Name, f.MatchKey))
-			b.WriteString(fmt.Sprintf("        %s = it->second();\n", fieldNameLowerCamel))
-			b.WriteString("    } else {\n")
-			b.WriteString(fmt.Sprintf("        throw std::runtime_error(\"Unknow match key:\" + %s);\n", matchKeyLowerCamel))
-			b.WriteString("    }\n")
+			b.WriteString(fmt.Sprintf("    %s = %sMessageFactory::getInstance().create(%s);\n", fieldNameLowerCamel, strcase.ToCamel(p.Name), matchKeyLowerCamel))
 			b.WriteString(fmt.Sprintf("    %s->decode(buf);\n", fieldNameLowerCamel))
 		} else {
 			b.WriteString("-- unsupport type:" + f.GetType() + "\n")
