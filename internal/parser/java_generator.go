@@ -198,13 +198,6 @@ import io.netty.util.internal.StringUtil;
 	//decode
 	b.WriteString(AddIndent4ln(g.GenerateDecode(packet)))
 
-	//create
-	for _, f := range packet.Fields {
-		if f.Type == "match" {
-			b.WriteString(AddIndent4ln(g.GenerateCreateMethod(packet, &f)))
-		}
-	}
-
 	b.WriteString("\n")
 	//hashcode and equals
 	b.WriteString(AddIndent4ln(g.GenerateHashCode(packet)))
@@ -221,13 +214,22 @@ import io.netty.util.internal.StringUtil;
 	}
 
 	b.WriteString("\n")
+	//message factory for match field
+	for _, f := range packet.Fields {
+		if f.Type == "match" {
+			b.WriteString(AddIndent4ln(g.GenerateMessageFactory(packet, &f)))
+		}
+	}
+	b.WriteString("\n")
 	b.WriteString("}")
 	return b.String()
 }
 
-// GenerateCreateMethod gen create method
-func (g JavaGenerator) GenerateCreateMethod(p *model.Packet, f *model.Field) string {
+// GenerateMessageFactory gen message factory for match field
+func (g JavaGenerator) GenerateMessageFactory(p *model.Packet, f *model.Field) string {
 	var b strings.Builder
+	b.WriteString(fmt.Sprintf("public static enum %sMessageFactory {\n", g.GetFieldName(f)))
+	b.WriteString("    INSTANCE;\n")
 	typ := p.FieldMap[f.MatchKey].GetType()
 	matchKeyTyp, ok := javaBasicTypeMap[typ]
 	cast := ""
@@ -239,21 +241,39 @@ func (g JavaGenerator) GenerateCreateMethod(p *model.Packet, f *model.Field) str
 	if ok {
 		typ = "String"
 	}
-	b.WriteString(fmt.Sprintf("private static final Map<%s, Supplier<BinaryCodec>> %sMap = new HashMap<>();", typ, g.GetFieldNameLower(f)))
+	b.WriteString(fmt.Sprintf("private final Map<%s, Supplier<BinaryCodec>> %sMap = new HashMap<>();", typ, g.GetFieldNameLower(f)))
 	b.WriteString("\n")
 	b.WriteString("static {\n")
 	for _, pair := range f.MatchPairs {
-		b.WriteString(fmt.Sprintf("    %sMap.put(%s%s, %s::new);\n", g.GetFieldNameLower(f), cast, pair.Key, pair.Value))
+		b.WriteString(fmt.Sprintf("    getInstance().register(%s%s, %s::new);\n", cast, pair.Key, pair.Value))
 	}
 	b.WriteString("}\n")
 	b.WriteString("\n")
-	b.WriteString(fmt.Sprintf("private BinaryCodec create%s(%s %s) {\n", g.GetFieldName(f), typ, strcase.ToLowerCamel(f.MatchKey)))
+	b.WriteString(fmt.Sprintf("public BinaryCodec create(%s %s) {\n", typ, strcase.ToLowerCamel(f.MatchKey)))
 	b.WriteString(fmt.Sprintf("    Supplier<BinaryCodec> supplier = %sMap.get(%s);\n", g.GetFieldNameLower(f), strcase.ToLowerCamel(f.MatchKey)))
 	b.WriteString("    if (null == supplier) {\n")
 	b.WriteString(fmt.Sprintf("        throw new IllegalArgumentException(\"Unsupported %s:\" + %s);\n", f.MatchKey, strcase.ToLowerCamel(f.MatchKey)))
 	b.WriteString("    }\n")
 	b.WriteString("    return supplier.get();\n")
 	b.WriteString("}")
+
+	b.WriteString("\n")
+	//register method
+	b.WriteString(fmt.Sprintf("public void register(%s %s, Supplier<BinaryCodec> supplier) {\n", typ, strcase.ToLowerCamel(f.MatchKey)))
+	b.WriteString(fmt.Sprintf("    %sMap.put(%s, supplier);\n", g.GetFieldNameLower(f), strcase.ToLowerCamel(f.MatchKey)))
+	b.WriteString("}")
+	b.WriteString("\n")
+	//remove method
+	b.WriteString(fmt.Sprintf("public boolean remove(%s %s) {\n", typ, strcase.ToLowerCamel(f.MatchKey)))
+	b.WriteString(fmt.Sprintf("    return null != %sMap.remove(%s);\n", g.GetFieldNameLower(f), strcase.ToLowerCamel(f.MatchKey)))
+	b.WriteString("}")
+	b.WriteString("\n")
+	//getInstance method
+	b.WriteString("public static " + g.GetFieldName(f) + "MessageFactory getInstance() {\n")
+	b.WriteString("    return INSTANCE;\n")
+	b.WriteString("}\n")
+	b.WriteString("}")
+
 	return b.String()
 }
 
@@ -482,7 +502,7 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 			//match field
 			var b strings.Builder
 			fieldNameCamel := g.GetFieldName(f)
-			b.WriteString(fmt.Sprintf("this.%s = create%s(this.%s);\n", fieldNameLowerCamel, fieldNameCamel, strcase.ToLowerCamel(f.MatchKey)))
+			b.WriteString(fmt.Sprintf("this.%s = %sMessageFactory.getInstance().create(this.%s);\n", fieldNameLowerCamel, fieldNameCamel, strcase.ToLowerCamel(f.MatchKey)))
 			b.WriteString(fmt.Sprintf("this.%s.decode(byteBuf);", fieldNameLowerCamel))
 			return b.String()
 		}
