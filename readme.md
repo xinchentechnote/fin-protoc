@@ -227,8 +227,8 @@ The fin-protoc compiler has been applied across multiple language implementation
 
 - [`fin-proto-plugin`](https://github.com/xinchentechnote/fin-proto-plugin)
 
- - intellij idea plugin for fin-proto
- - integration with fin-protoc .so file
+  - intellij idea plugin for fin-proto
+  - integration with fin-protoc .so file
 
 Together, these projects demonstrate how fin-protoc enables protocol definitions to be shared and consistently executed across different ecosystems.
 
