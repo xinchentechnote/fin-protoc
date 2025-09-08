@@ -217,6 +217,19 @@ The fin-protoc compiler has been applied across multiple language implementation
   - SSE, SZSE, and risk protocol support
   - Easy-to-use parsing and serialization API
 
+- [`fin-proto-vscdoe`](https://github.com/xinchentechnote/fin-proto-vscdoe)
+
+  - Visual Studio Code extension for protocol development
+  - Intuitive syntax highlighting
+  - Code formatting
+  - Code completion
+  - Error reporting
+
+- [`fin-proto-plugin`](https://github.com/xinchentechnote/fin-proto-plugin)
+
+ - intellij idea plugin for fin-proto
+ - integration with fin-protoc .so file
+
 Together, these projects demonstrate how fin-protoc enables protocol definitions to be shared and consistently executed across different ecosystems.
 
 ## Notes
