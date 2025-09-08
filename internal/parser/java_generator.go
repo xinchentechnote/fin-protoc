@@ -157,7 +157,7 @@ func (g JavaGenerator) GenerateJavaClassFileForPacket(packet *model.Packet, isIn
 		//import
 		b.WriteString(`
 import com.finproto.codec.ChecksumService;
-import com.finproto.codec.ChecksumServiceContext;
+import com.finproto.codec.ChecksumServiceFactory;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -575,7 +575,7 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 	if f.CheckSumType != "" {
 		// auto calculate checksum
 		var b strings.Builder
-		b.WriteString(fmt.Sprintf("ChecksumService<ByteBuf, Integer> checksumService = ChecksumServiceContext.getChecksumService(%s);\n", f.CheckSumType))
+		b.WriteString(fmt.Sprintf("ChecksumService<ByteBuf, Integer> checksumService = ChecksumServiceFactory.getInstance().getChecksumService(%s);\n", f.CheckSumType))
 		b.WriteString("if (checksumService != null) {\n")
 		lenTyp := javaBasicTypeMap[f.GetType()]
 		b.WriteString(fmt.Sprintf("this.%s = (%s) checksumService.calc(byteBuf);\n", fieldNameLowerCamel, lenTyp.BasicType))
