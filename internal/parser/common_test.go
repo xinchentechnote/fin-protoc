@@ -328,7 +328,7 @@ func TestWriteCodeToFile(t *testing.T) {
 	}
 
 	t.Run("write multiple files", func(t *testing.T) {
-		WriteCodeToFile(tempDir, codeMap)
+		_ = WriteCodeToFile(tempDir, codeMap)
 
 		for filename, content := range codeMap {
 			filepath := filepath.Join(tempDir, filename)
@@ -340,6 +340,6 @@ func TestWriteCodeToFile(t *testing.T) {
 
 	t.Run("invalid directory", func(t *testing.T) {
 		// This should not panic and should print error messages
-		WriteCodeToFile("/nonexistent/directory", codeMap)
+		_ = WriteCodeToFile("/nonexistent/directory", codeMap)
 	})
 }

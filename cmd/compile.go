@@ -18,11 +18,10 @@ var (
 )
 
 // Compile DSL to code in various target languages
-func Compile(input string, outputs map[string]string) {
+func Compile(input string, outputs map[string]string) error {
 	result, err := parser.ParseFile(input)
 	if err != nil {
-		fmt.Printf("Failed to parse DSL file: %v\n", err)
-		return
+		return fmt.Errorf("failed to parse file: %w", err)
 	}
 
 	binModel := result.(*model.BinaryModel)
@@ -59,17 +58,19 @@ func Compile(input string, outputs map[string]string) {
 		}
 		codeMap, err := g.gen()
 		if err != nil {
-			fmt.Printf("Failed to generate %s code: %v\n", g.lang, err)
-			continue
+			return fmt.Errorf("failed to generate %s code: %w", g.lang, err)
 		}
-		parser.WriteCodeToFile(g.path, codeMap)
+		if err := parser.WriteCodeToFile(g.path, codeMap); err != nil {
+			return fmt.Errorf("write error for %s: %w", g.lang, err)
+		}
 	}
+	return nil
 }
 
 var compileCmd = &cobra.Command{
 	Use:   "compile",
 	Short: "Compile DSL into multiple target languages",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		outputs := map[string]string{
 			"lua":    luaOutput,
 			"rust":   rsOutput,
@@ -78,7 +79,7 @@ var compileCmd = &cobra.Command{
 			"python": pyOutput,
 			"cpp":    cppOutput,
 		}
-		Compile(file, outputs)
+		return Compile(file, outputs)
 	},
 }
 

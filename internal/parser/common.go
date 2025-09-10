@@ -139,23 +139,24 @@ func RenderToString(tmpl string, lang string, data interface{}) (string, error) 
 }
 
 // WriteCodeToFile write code to file
-func WriteCodeToFile(path string, codeMap map[string][]byte) {
+func WriteCodeToFile(path string, codeMap map[string][]byte) error {
 	for name, datas := range codeMap {
 		filepath := path + "/" + name
 		dir := filepathpkg.Dir(filepath)
 		err := os.MkdirAll(dir, 0755)
 		if nil != err {
-			fmt.Println("create directory fail:", err)
+			return fmt.Errorf("create directory fail:%w", err)
 		}
 		f, err := os.Create(filepath)
 		if nil != err {
-			fmt.Println("create file fail.")
+			return fmt.Errorf("create file fail:%w", err)
 		}
 		defer f.Close()
 		_, err = f.Write(datas)
 		if nil != err {
-			fmt.Println("write file fail.")
+			return fmt.Errorf("write file fail:%w", err)
 		}
 		fmt.Println("Generated code for packet:", filepath)
 	}
+	return nil
 }
