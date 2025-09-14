@@ -19,6 +19,9 @@ type PacketDslVisitor interface {
 	// Visit a parse tree produced by PacketDslParser#packetDefinition.
 	VisitPacketDefinition(ctx *PacketDefinitionContext) interface{}
 
+	// Visit a parse tree produced by PacketDslParser#fieldDefinitionWithAttribute.
+	VisitFieldDefinitionWithAttribute(ctx *FieldDefinitionWithAttributeContext) interface{}
+
 	// Visit a parse tree produced by PacketDslParser#InerObjectField.
 	VisitInerObjectField(ctx *InerObjectFieldContext) interface{}
 
@@ -45,6 +48,15 @@ type PacketDslVisitor interface {
 
 	// Visit a parse tree produced by PacketDslParser#checkSumFieldDeclaration.
 	VisitCheckSumFieldDeclaration(ctx *CheckSumFieldDeclarationContext) interface{}
+
+	// Visit a parse tree produced by PacketDslParser#fieldAttribute.
+	VisitFieldAttribute(ctx *FieldAttributeContext) interface{}
+
+	// Visit a parse tree produced by PacketDslParser#lengthOfAttribute.
+	VisitLengthOfAttribute(ctx *LengthOfAttributeContext) interface{}
+
+	// Visit a parse tree produced by PacketDslParser#calculatedFromAttribute.
+	VisitCalculatedFromAttribute(ctx *CalculatedFromAttributeContext) interface{}
 
 	// Visit a parse tree produced by PacketDslParser#metaDataDeclaration.
 	VisitMetaDataDeclaration(ctx *MetaDataDeclarationContext) interface{}

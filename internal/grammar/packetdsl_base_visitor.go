@@ -23,6 +23,10 @@ func (v *BasePacketDslVisitor) VisitPacketDefinition(ctx *PacketDefinitionContex
 	return v.VisitChildren(ctx)
 }
 
+func (v *BasePacketDslVisitor) VisitFieldDefinitionWithAttribute(ctx *FieldDefinitionWithAttributeContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BasePacketDslVisitor) VisitInerObjectField(ctx *InerObjectFieldContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -56,6 +60,18 @@ func (v *BasePacketDslVisitor) VisitLengthFieldDeclaration(ctx *LengthFieldDecla
 }
 
 func (v *BasePacketDslVisitor) VisitCheckSumFieldDeclaration(ctx *CheckSumFieldDeclarationContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BasePacketDslVisitor) VisitFieldAttribute(ctx *FieldAttributeContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BasePacketDslVisitor) VisitLengthOfAttribute(ctx *LengthOfAttributeContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BasePacketDslVisitor) VisitCalculatedFromAttribute(ctx *CalculatedFromAttributeContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

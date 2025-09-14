@@ -15,6 +15,8 @@ packetDefinition:
 	ROOT? PACKET IDENTIFIER '{' fieldDefinition* '}';
 
 // Field definitions are either identifiers, metadata declarations, or match fields
+fieldDefinitionWithAttribute: fieldAttribute* fieldDefinition;
+
 fieldDefinition:
 	REPEAT? inerObjectDeclaration COMMA	# InerObjectField
 	| REPEAT? metaDataDeclaration		# MetaField
@@ -28,12 +30,16 @@ metaDataDefinition:
 	METADATA IDENTIFIER '{' metaDataDeclaration* '}';
 
 lengthFieldDeclaration:
-	type? name = IDENTIFIER ('@lengthOf(' from = IDENTIFIER ')') STRING_LITERAL? COMMA;
+	type? name = IDENTIFIER lengthOfAttribute STRING_LITERAL? COMMA;
 
 checkSumFieldDeclaration:
-	type? name = IDENTIFIER (
-		'@calculatedFrom(' from = STRING ')'
-	) STRING_LITERAL? COMMA;
+	type? name = IDENTIFIER (calculatedFromAttribute) STRING_LITERAL? COMMA;
+
+fieldAttribute: lengthOfAttribute | calculatedFromAttribute;
+
+lengthOfAttribute: '@lengthOf(' from = IDENTIFIER ')';
+
+calculatedFromAttribute: '@calculatedFrom(' from = STRING ')';
 
 // Metadata declaration with type and description
 metaDataDeclaration:
