@@ -25,6 +25,12 @@ func Compile(input string, outputs map[string]string) error {
 	}
 
 	binModel := result.(*model.BinaryModel)
+	if len(binModel.SyntaxErrors) > 0 {
+		for i := range binModel.SyntaxErrors {
+			fmt.Printf("Syntax error at line %d, column %d: %s\n", binModel.SyntaxErrors[i].Line, binModel.SyntaxErrors[i].Column, binModel.SyntaxErrors[i].Msg)
+		}
+		return fmt.Errorf("found %d syntax errors", len(binModel.SyntaxErrors))
+	}
 	config := parser.NewGeneratorConfig(binModel.Options)
 
 	generators := []struct {

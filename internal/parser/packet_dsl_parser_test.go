@@ -50,8 +50,8 @@ root packet Logon {
 	}
 	// Check fields
 	expectedFields := []model.Field{
-		{Name: "username", Type: "string", IsRepeat: false},
-		{Name: "password", Type: "u16", IsRepeat: false},
+		{Name: "username", Type: "string", IsRepeat: false, Line: 3, Column: 1},
+		{Name: "password", Type: "u16", IsRepeat: false, Line: 4, Column: 1},
 	}
 	if !reflect.DeepEqual(pkt.Fields, expectedFields) {
 		t.Errorf("fields mismatch. expected %+v, got %+v", expectedFields, pkt.Fields)

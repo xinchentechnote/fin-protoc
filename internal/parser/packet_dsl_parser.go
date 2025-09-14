@@ -162,6 +162,8 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinition(ctx interface{}) interface{}
 			Name:     name,
 			Type:     typ,
 			IsRepeat: c.REPEAT() != nil,
+			Line:     c.GetStart().GetLine(),
+			Column:   c.GetStart().GetTokenSource().GetCharPositionInLine(),
 		}
 
 	// Nested object field: REPEAT? IDENTIFIER '{' fieldDefinition+ '}'
@@ -217,6 +219,8 @@ func (v *PacketDslVisitorImpl) VisitLengthFieldDeclaration(ctx *gen.LengthFieldD
 		IsRepeat:      false,
 		LengthOfField: ctx.GetFrom().GetText(),
 		Doc:           desc,
+		Line:          ctx.GetStart().GetLine(),
+		Column:        ctx.GetStart().GetTokenSource().GetCharPositionInLine(),
 	}
 }
 
@@ -241,6 +245,8 @@ func (v *PacketDslVisitorImpl) VisitCheckSumFieldDeclaration(ctx *gen.CheckSumFi
 		IsRepeat:     false,
 		CheckSumType: ctx.GetFrom().GetText(),
 		Doc:          desc,
+		Line:         ctx.GetStart().GetLine(),
+		Column:       ctx.GetStart().GetTokenSource().GetCharPositionInLine(),
 	}
 }
 
@@ -268,6 +274,8 @@ func (v *PacketDslVisitorImpl) VisitInerObjectField(ctx *gen.InerObjectFieldCont
 		Type:       name, // nested objects do not have a basic Type
 		IsRepeat:   ctx.REPEAT() != nil,
 		InerObject: &p,
+		Line:       ctx.GetStart().GetLine(),
+		Column:     ctx.GetStart().GetTokenSource().GetCharPositionInLine(),
 	}
 }
 
@@ -297,6 +305,8 @@ func (v *PacketDslVisitorImpl) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclara
 		Type:     typ,
 		IsRepeat: false,
 		Doc:      doc,
+		Line:     ctx.GetStart().GetLine(),
+		Column:   ctx.GetStart().GetTokenSource().GetCharPositionInLine(),
 	}
 }
 

@@ -95,7 +95,7 @@ func (m *BinaryModel) AddMetaData(metaData MetaData) {
 // AddOption add option
 func (m *BinaryModel) AddOption(name, value string, line int, column int) {
 	if values, ok := options[name]; ok {
-		if !contains(values, value) {
+		if len(values) > 0 && !contains(values, value) {
 			m.AddSyntaxError(SyntaxError{line, column, "Option " + name + " is not allowed to be " + value + ", Expected one of:" + strings.Join(values, ","), nil})
 		}
 	} else {
@@ -142,6 +142,15 @@ func (m *BinaryModel) AddPacket(packet Packet) {
 			return
 		}
 		m.RootPacket = &packet
+		if packet.LengthField != nil {
+			if _, ok := packet.FieldMap[packet.LengthField.LengthOfField]; !ok {
+				m.AddSyntaxError(SyntaxError{
+					Line:   packet.LengthField.Line,
+					Column: packet.LengthField.Column,
+					Msg:    "Length field refers to unknown field " + packet.LengthField.LengthOfField,
+				})
+			}
+		}
 	}
 }
 
@@ -178,6 +187,8 @@ type Field struct {
 	Doc           string      // Optional documentation string (from STRING_LITERAL), currently unused
 	MatchKey      string      // If the field is a match field, this holds the typeName of match
 	MatchPairs    []MatchPair // If the field is a match field, holds all match key-value pairs
+	Line          int         // Line number where the field is defined
+	Column        int         // Column number where the field is defined
 }
 
 // GetType return field type
