@@ -1,6 +1,6 @@
 // Code generated from grammar/PacketDsl.g4 by ANTLR 4.13.2. DO NOT EDIT.
 
-package gen // PacketDsl
+package grammar // PacketDsl
 import "github.com/antlr4-go/antlr/v4"
 
 type BasePacketDslVisitor struct {

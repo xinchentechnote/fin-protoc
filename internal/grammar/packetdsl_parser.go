@@ -1,6 +1,6 @@
 // Code generated from grammar/PacketDsl.g4 by ANTLR 4.13.2. DO NOT EDIT.
 
-package gen // PacketDsl
+package grammar // PacketDsl
 import (
 	"fmt"
 	"strconv"
@@ -93,7 +93,7 @@ func packetdslParserInit() {
 		5, 4, 0, 0, 58, 60, 3, 26, 13, 0, 59, 61, 5, 33, 0, 0, 60, 59, 1, 0, 0,
 		0, 60, 61, 1, 0, 0, 0, 61, 5, 1, 0, 0, 0, 62, 64, 5, 26, 0, 0, 63, 62,
 		1, 0, 0, 0, 63, 64, 1, 0, 0, 0, 64, 65, 1, 0, 0, 0, 65, 66, 5, 27, 0, 0,
-		66, 67, 5, 34, 0, 0, 67, 71, 5, 2, 0, 0, 68, 70, 3, 10, 5, 0, 69, 68, 1,
+		66, 67, 5, 34, 0, 0, 67, 71, 5, 2, 0, 0, 68, 70, 3, 8, 4, 0, 69, 68, 1,
 		0, 0, 0, 70, 73, 1, 0, 0, 0, 71, 69, 1, 0, 0, 0, 71, 72, 1, 0, 0, 0, 72,
 		74, 1, 0, 0, 0, 73, 71, 1, 0, 0, 0, 74, 75, 5, 3, 0, 0, 75, 7, 1, 0, 0,
 		0, 76, 78, 3, 18, 9, 0, 77, 76, 1, 0, 0, 0, 78, 81, 1, 0, 0, 0, 79, 77,
@@ -842,8 +842,8 @@ type IPacketDefinitionContext interface {
 	PACKET() antlr.TerminalNode
 	IDENTIFIER() antlr.TerminalNode
 	ROOT() antlr.TerminalNode
-	AllFieldDefinition() []IFieldDefinitionContext
-	FieldDefinition(i int) IFieldDefinitionContext
+	AllFieldDefinitionWithAttribute() []IFieldDefinitionWithAttributeContext
+	FieldDefinitionWithAttribute(i int) IFieldDefinitionWithAttributeContext
 
 	// IsPacketDefinitionContext differentiates from other interfaces.
 	IsPacketDefinitionContext()
@@ -893,20 +893,20 @@ func (s *PacketDefinitionContext) ROOT() antlr.TerminalNode {
 	return s.GetToken(PacketDslParserROOT, 0)
 }
 
-func (s *PacketDefinitionContext) AllFieldDefinition() []IFieldDefinitionContext {
+func (s *PacketDefinitionContext) AllFieldDefinitionWithAttribute() []IFieldDefinitionWithAttributeContext {
 	children := s.GetChildren()
 	len := 0
 	for _, ctx := range children {
-		if _, ok := ctx.(IFieldDefinitionContext); ok {
+		if _, ok := ctx.(IFieldDefinitionWithAttributeContext); ok {
 			len++
 		}
 	}
 
-	tst := make([]IFieldDefinitionContext, len)
+	tst := make([]IFieldDefinitionWithAttributeContext, len)
 	i := 0
 	for _, ctx := range children {
-		if t, ok := ctx.(IFieldDefinitionContext); ok {
-			tst[i] = t.(IFieldDefinitionContext)
+		if t, ok := ctx.(IFieldDefinitionWithAttributeContext); ok {
+			tst[i] = t.(IFieldDefinitionWithAttributeContext)
 			i++
 		}
 	}
@@ -914,11 +914,11 @@ func (s *PacketDefinitionContext) AllFieldDefinition() []IFieldDefinitionContext
 	return tst
 }
 
-func (s *PacketDefinitionContext) FieldDefinition(i int) IFieldDefinitionContext {
+func (s *PacketDefinitionContext) FieldDefinitionWithAttribute(i int) IFieldDefinitionWithAttributeContext {
 	var t antlr.RuleContext
 	j := 0
 	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IFieldDefinitionContext); ok {
+		if _, ok := ctx.(IFieldDefinitionWithAttributeContext); ok {
 			if j == i {
 				t = ctx.(antlr.RuleContext)
 				break
@@ -931,7 +931,7 @@ func (s *PacketDefinitionContext) FieldDefinition(i int) IFieldDefinitionContext
 		return nil
 	}
 
-	return t.(IFieldDefinitionContext)
+	return t.(IFieldDefinitionWithAttributeContext)
 }
 
 func (s *PacketDefinitionContext) GetRuleContext() antlr.RuleContext {
@@ -1007,10 +1007,10 @@ func (p *PacketDslParser) PacketDefinition() (localctx IPacketDefinitionContext)
 	}
 	_la = p.GetTokenStream().LA(1)
 
-	for (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&18538809088) != 0 {
+	for (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&18538809248) != 0 {
 		{
 			p.SetState(68)
-			p.FieldDefinition()
+			p.FieldDefinitionWithAttribute()
 		}
 
 		p.SetState(73)

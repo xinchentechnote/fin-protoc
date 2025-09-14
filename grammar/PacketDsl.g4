@@ -12,7 +12,7 @@ optionDeclaration: IDENTIFIER '=' value SEMICOLON?;
 
 // Root rule for packet definition
 packetDefinition:
-	ROOT? PACKET IDENTIFIER '{' fieldDefinition* '}';
+	ROOT? PACKET IDENTIFIER '{' fieldDefinitionWithAttribute* '}';
 
 // Field definitions are either identifiers, metadata declarations, or match fields
 fieldDefinitionWithAttribute: fieldAttribute* fieldDefinition;

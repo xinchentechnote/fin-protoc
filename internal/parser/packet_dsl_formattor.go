@@ -128,12 +128,31 @@ func (v *PacketDslFormattor) VisitPacketDefinition(ctx *gen.PacketDefinitionCont
 	formattedDsl.WriteString(" {\n")
 
 	// iterate over all field definitions
-	for _, fieldCtx := range ctx.AllFieldDefinition() {
-		formatted := v.VisitFieldDefinition(fieldCtx).(string)
+	for _, fieldCtx := range ctx.AllFieldDefinitionWithAttribute() {
+		formatted := v.Visit(fieldCtx).(string)
 		formattedDsl.WriteString(AddIndent4ln(formatted))
 	}
 	formattedDsl.WriteString("}")
 	formattedDsl.WriteString(v.getHiddenRightAtSameLine(ctx.GetStop()))
+	return formattedDsl.String()
+}
+
+func (v *PacketDslFormattor) VisitFieldDefinitionWithAttribute(ctx *gen.FieldDefinitionWithAttributeContext) interface{} {
+	var formattedDsl strings.Builder
+	if len(ctx.AllFieldAttribute()) > 0 {
+		for _, fieldAttr := range ctx.AllFieldAttribute() {
+			switch {
+			case fieldAttr.CalculatedFromAttribute() != nil:
+				formattedDsl.WriteString(v.Visit(fieldAttr.CalculatedFromAttribute()).(string))
+			case fieldAttr.LengthOfAttribute() != nil:
+				formattedDsl.WriteString(v.Visit(fieldAttr.LengthOfAttribute()).(string))
+			default:
+				formattedDsl.WriteString(fieldAttr.GetText())
+			}
+			formattedDsl.WriteString("\n")
+		}
+	}
+	formattedDsl.WriteString(v.VisitFieldDefinition(ctx.FieldDefinition()).(string))
 	return formattedDsl.String()
 }
 

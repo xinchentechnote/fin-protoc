@@ -92,11 +92,11 @@ extern "C" {
 //
 //	Formatted DSL as C string, or error message if formatting fails
 //
-extern char* FormatPacketDslExport(char* dsl);
+extern __declspec(dllexport) char* FormatPacketDslExport(char* dsl);
 
 // CompilePacketDslExport compiles the packet DSL string from C char pointer and writes the compiled output to C char pointer.
 //
-extern void CompilePacketDslExport(char* dsl, char* output, unsigned int lang);
+extern __declspec(dllexport) void CompilePacketDslExport(char* dsl, char* output, unsigned int lang);
 
 #ifdef __cplusplus
 }

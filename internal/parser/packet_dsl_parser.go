@@ -99,8 +99,8 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 	var fieldMap = make(map[string]model.Field)
 	var lengthField *model.Field
 	var matchFields = make(map[string][]model.MatchPair)
-	for _, fctx := range ctx.AllFieldDefinition() {
-		fd := v.VisitFieldDefinition(fctx)
+	for _, fctx := range ctx.AllFieldDefinitionWithAttribute() {
+		fd := v.VisitFieldDefinitionWithAttribute(fctx)
 		if fd == nil {
 			continue
 		}
@@ -145,6 +145,18 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 		Line:        ctx.GetStart().GetLine(),
 		Column:      ctx.GetStart().GetTokenSource().GetCharPositionInLine(),
 	}
+}
+
+// VisitFieldDefinitionWithAttribute visit field definition with attribute
+func (v *PacketDslVisitorImpl) VisitFieldDefinitionWithAttribute(ctx gen.IFieldDefinitionWithAttributeContext) interface{} {
+
+	fd := v.VisitFieldDefinition(ctx.FieldDefinition())
+
+	if len(ctx.AllFieldAttribute()) > 0 {
+		//TODO
+	}
+	return fd
+
 }
 
 // VisitFieldDefinition dispatches to specific handlers based on field type.
