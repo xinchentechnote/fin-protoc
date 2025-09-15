@@ -100,38 +100,40 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 	var lengthField *model.Field
 	var matchFields = make(map[string][]model.MatchPair)
 	for _, fctx := range ctx.AllFieldDefinitionWithAttribute() {
-		fd := v.VisitFieldDefinitionWithAttribute(fctx)
-		if fd == nil {
-			continue
-		}
-		fld := fd.(model.Field) // Ensure type assertion
-		if fld.LengthOfField != "" {
-			if !isRoot {
-				v.BinModel.AddSyntaxError(model.SyntaxError{
-					Line:            fctx.GetStart().GetLine(),
-					Column:          fctx.GetStart().GetTokenSource().GetCharPositionInLine(),
-					Msg:             "LengthOfField can only be declared in the root packet",
-					OffendingSymbol: nil,
-				})
+		if fc, ok := fctx.(*gen.FieldDefinitionWithAttributeContext); ok {
+			fd := v.VisitFieldDefinitionWithAttribute(fc)
+			if fd == nil {
 				continue
 			}
-			if lengthField != nil {
-				v.BinModel.AddSyntaxError(model.SyntaxError{
-					Line:            fctx.GetStart().GetLine(),
-					Column:          fctx.GetStart().GetTokenSource().GetCharPositionInLine(),
-					Msg:             "Duplicate LengthOfField declaration",
-					OffendingSymbol: nil,
-				})
-				continue
+			fld := fd.(model.Field) // Ensure type assertion
+			if fld.LengthOfField != "" {
+				if !isRoot {
+					v.BinModel.AddSyntaxError(model.SyntaxError{
+						Line:            fctx.GetStart().GetLine(),
+						Column:          fctx.GetStart().GetTokenSource().GetCharPositionInLine(),
+						Msg:             "LengthOfField can only be declared in the root packet",
+						OffendingSymbol: nil,
+					})
+					continue
+				}
+				if lengthField != nil {
+					v.BinModel.AddSyntaxError(model.SyntaxError{
+						Line:            fctx.GetStart().GetLine(),
+						Column:          fctx.GetStart().GetTokenSource().GetCharPositionInLine(),
+						Msg:             "Duplicate LengthOfField declaration",
+						OffendingSymbol: nil,
+					})
+					continue
+				}
+				lengthField = &fld
 			}
-			lengthField = &fld
-		}
 
-		fields = append(fields, fld)
-		fieldMap[fld.Name] = fld
+			fields = append(fields, fld)
+			fieldMap[fld.Name] = fld
 
-		if fld.Type == "match" {
-			matchFields[fld.MatchKey] = fld.MatchPairs
+			if fld.Type == "match" {
+				matchFields[fld.MatchKey] = fld.MatchPairs
+			}
 		}
 	}
 
@@ -148,13 +150,13 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 }
 
 // VisitFieldDefinitionWithAttribute visit field definition with attribute
-func (v *PacketDslVisitorImpl) VisitFieldDefinitionWithAttribute(ctx gen.IFieldDefinitionWithAttributeContext) interface{} {
+func (v *PacketDslVisitorImpl) VisitFieldDefinitionWithAttribute(ctx *gen.FieldDefinitionWithAttributeContext) interface{} {
 
 	fd := v.VisitFieldDefinition(ctx.FieldDefinition())
 
-	if len(ctx.AllFieldAttribute()) > 0 {
-		//TODO
-	}
+	//if len(ctx.AllFieldAttribute()) > 0 {
+	//TODO
+	//}
 	return fd
 
 }

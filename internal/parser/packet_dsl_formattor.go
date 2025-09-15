@@ -129,14 +129,18 @@ func (v *PacketDslFormattor) VisitPacketDefinition(ctx *gen.PacketDefinitionCont
 
 	// iterate over all field definitions
 	for _, fieldCtx := range ctx.AllFieldDefinitionWithAttribute() {
-		formatted := v.Visit(fieldCtx).(string)
-		formattedDsl.WriteString(AddIndent4ln(formatted))
+		if fc, ok := fieldCtx.(*gen.FieldDefinitionWithAttributeContext); ok {
+			formatted := v.VisitFieldDefinitionWithAttribute(fc).(string)
+			formattedDsl.WriteString(AddIndent4ln(formatted))
+		}
 	}
+
 	formattedDsl.WriteString("}")
 	formattedDsl.WriteString(v.getHiddenRightAtSameLine(ctx.GetStop()))
 	return formattedDsl.String()
 }
 
+// VisitFieldDefinitionWithAttribute overrides the default implementation for field definitions with attributes.
 func (v *PacketDslFormattor) VisitFieldDefinitionWithAttribute(ctx *gen.FieldDefinitionWithAttributeContext) interface{} {
 	var formattedDsl strings.Builder
 	if len(ctx.AllFieldAttribute()) > 0 {

@@ -1,6 +1,6 @@
 // Code generated from grammar/PacketDsl.g4 by ANTLR 4.13.2. DO NOT EDIT.
 
-package grammar
+package gen
 
 import (
 	"fmt"
