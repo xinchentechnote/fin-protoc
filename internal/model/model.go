@@ -61,10 +61,10 @@ var options = map[string][]string{
 type BinaryModel struct {
 	MetaDataMap  map[string]MetaData // Map of metadata definitions
 	Options      map[string]string   // Map of options
-	PacketsMap   map[string]Packet   // Map of packet definitions, keyed by packet name
-	Packets      []Packet            // List of all packets
+	PacketsMap   map[string]*Packet  // Map of packet definitions, keyed by packet name
+	Packets      []*Packet           // List of all packets
 	RootPacket   *Packet             // root packet
-	SyntaxErrors []SyntaxError       // List of syntax errors encountered during parsing
+	SyntaxErrors []*SyntaxError      // List of syntax errors encountered during parsing
 }
 
 // NewBinaryModel new BinaryModel
@@ -72,14 +72,14 @@ func NewBinaryModel() *BinaryModel {
 	return &BinaryModel{
 		MetaDataMap: make(map[string]MetaData),
 		Options:     make(map[string]string),
-		PacketsMap:  make(map[string]Packet),
+		PacketsMap:  make(map[string]*Packet),
 	}
 }
 
 // AddMetaData add MetaData
 func (m *BinaryModel) AddMetaData(metaData MetaData) {
 	if _, exists := m.MetaDataMap[metaData.Name]; exists {
-		m.AddSyntaxError(SyntaxError{
+		m.AddSyntaxError(&SyntaxError{
 			Line:   metaData.Line,
 			Column: metaData.Column,
 			Msg:    "Duplicate metadata definition for " + metaData.Name,
@@ -96,7 +96,7 @@ func (m *BinaryModel) AddMetaData(metaData MetaData) {
 func (m *BinaryModel) AddOption(name, value string, line int, column int) {
 	if values, ok := options[name]; ok {
 		if len(values) > 0 && !contains(values, value) {
-			m.AddSyntaxError(SyntaxError{line, column, "Option " + name + " is not allowed to be " + value + ", Expected one of:" + strings.Join(values, ","), nil})
+			m.AddSyntaxError(&SyntaxError{line, column, "Option " + name + " is not allowed to be " + value + ", Expected one of:" + strings.Join(values, ","), nil})
 		}
 	} else {
 		var keys []string
@@ -104,26 +104,26 @@ func (m *BinaryModel) AddOption(name, value string, line int, column int) {
 			keys = append(keys, key)
 		}
 		sort.Strings(keys)
-		m.AddSyntaxError(SyntaxError{line, column, "Option " + name + " is not allowed in this context, Expected one of:" + strings.Join(keys, ","), nil})
+		m.AddSyntaxError(&SyntaxError{line, column, "Option " + name + " is not allowed in this context, Expected one of:" + strings.Join(keys, ","), nil})
 		return
 	}
 
 	if _, ok := m.Options[name]; ok {
-		m.AddSyntaxError(SyntaxError{line, column, "Option " + name + " is already defined", nil})
+		m.AddSyntaxError(&SyntaxError{line, column, "Option " + name + " is already defined", nil})
 		return
 	}
 	m.Options[name] = value
 }
 
 // AddSyntaxError add syntax error
-func (m *BinaryModel) AddSyntaxError(error SyntaxError) {
+func (m *BinaryModel) AddSyntaxError(error *SyntaxError) {
 	m.SyntaxErrors = append(m.SyntaxErrors, error)
 }
 
 // AddPacket add packet
-func (m *BinaryModel) AddPacket(packet Packet) {
+func (m *BinaryModel) AddPacket(packet *Packet) {
 	if _, exists := m.PacketsMap[packet.Name]; exists {
-		m.AddSyntaxError(SyntaxError{
+		m.AddSyntaxError(&SyntaxError{
 			Line:   packet.Line,
 			Column: packet.Column,
 			Msg:    "Duplicate packet definition for " + packet.Name,
@@ -134,17 +134,17 @@ func (m *BinaryModel) AddPacket(packet Packet) {
 	m.Packets = append(m.Packets, packet)
 	if packet.IsRoot {
 		if m.RootPacket != nil {
-			m.AddSyntaxError(SyntaxError{
+			m.AddSyntaxError(&SyntaxError{
 				Line:   packet.Line,   // Assuming the first field's line is the packet's line
 				Column: packet.Column, // Column is not defined in Packet
 				Msg:    "Multiple root packets are not allowed",
 			})
 			return
 		}
-		m.RootPacket = &packet
+		m.RootPacket = packet
 		if packet.LengthField != nil {
 			if _, ok := packet.FieldMap[packet.LengthField.LengthOfField]; !ok {
-				m.AddSyntaxError(SyntaxError{
+				m.AddSyntaxError(&SyntaxError{
 					Line:   packet.LengthField.Line,
 					Column: packet.LengthField.Column,
 					Msg:    "Length field refers to unknown field " + packet.LengthField.LengthOfField,
@@ -169,8 +169,8 @@ type Packet struct {
 	Name        string                 // Name of the packet
 	IsRoot      bool                   // True if the packet declaration included the 'root' keyword
 	LengthField *Field                 // Length field for root packet (only one allowed and only applies to root packet)
-	Fields      []Field                // List of fields belonging to this packet
-	FieldMap    map[string]Field       // Map of fields belonging to this packet
+	Fields      []*Field               // List of fields belonging to this packet
+	FieldMap    map[string]*Field      // Map of fields belonging to this packet
 	MatchFields map[string][]MatchPair // Map of match field names to their key-value pairs
 	Line        int                    // Line number where the packet is defined
 	Column      int                    // Column number where the packet is defined

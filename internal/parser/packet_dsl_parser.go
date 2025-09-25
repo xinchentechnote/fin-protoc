@@ -81,7 +81,7 @@ func (v *PacketDslVisitorImpl) VisitPacket(ctx *gen.PacketContext) interface{} {
 	fmt.Println("Options:", v.BinModel.Options)
 
 	for _, def := range ctx.AllPacketDefinition() {
-		packet := def.Accept(v).(model.Packet)
+		packet := def.Accept(v).(*model.Packet)
 		v.BinModel.AddPacket(packet) // Store in PacketMap
 	}
 	return v.BinModel
@@ -95,8 +95,8 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 	isRoot := ctx.ROOT() != nil
 
 	// Iterate over all fieldDefinition children
-	var fields []model.Field
-	var fieldMap = make(map[string]model.Field)
+	var fields []*model.Field
+	var fieldMap = make(map[string]*model.Field)
 	var lengthField *model.Field
 	var matchFields = make(map[string][]model.MatchPair)
 	for _, fctx := range ctx.AllFieldDefinitionWithAttribute() {
@@ -105,10 +105,10 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 			if fd == nil {
 				continue
 			}
-			fld := fd.(model.Field) // Ensure type assertion
+			fld := fd.(*model.Field) // Ensure type assertion
 			if fld.LengthOfField != "" {
 				if !isRoot {
-					v.BinModel.AddSyntaxError(model.SyntaxError{
+					v.BinModel.AddSyntaxError(&model.SyntaxError{
 						Line:            fctx.GetStart().GetLine(),
 						Column:          fctx.GetStart().GetTokenSource().GetCharPositionInLine(),
 						Msg:             "LengthOfField can only be declared in the root packet",
@@ -117,7 +117,7 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 					continue
 				}
 				if lengthField != nil {
-					v.BinModel.AddSyntaxError(model.SyntaxError{
+					v.BinModel.AddSyntaxError(&model.SyntaxError{
 						Line:            fctx.GetStart().GetLine(),
 						Column:          fctx.GetStart().GetTokenSource().GetCharPositionInLine(),
 						Msg:             "Duplicate LengthOfField declaration",
@@ -125,7 +125,7 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 					})
 					continue
 				}
-				lengthField = &fld
+				lengthField = fld
 			}
 
 			fields = append(fields, fld)
@@ -137,7 +137,7 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 		}
 	}
 
-	return model.Packet{
+	return &model.Packet{
 		Name:        name,
 		IsRoot:      isRoot,
 		LengthField: lengthField,
@@ -154,9 +154,16 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinitionWithAttribute(ctx *gen.FieldD
 
 	fd := v.VisitFieldDefinition(ctx.FieldDefinition())
 
-	//if len(ctx.AllFieldAttribute()) > 0 {
-	//TODO
-	//}
+	f := fd.(*model.Field)
+
+	for _, fieldAttr := range ctx.AllFieldAttribute() {
+		switch {
+		case fieldAttr.CalculatedFromAttribute() != nil:
+			f.CheckSumType = fieldAttr.CalculatedFromAttribute().GetFrom().GetText()
+		case fieldAttr.LengthOfAttribute() != nil:
+			f.LengthOfField = fieldAttr.LengthOfAttribute().GetFrom().GetText()
+		}
+	}
 	return fd
 
 }
@@ -172,7 +179,7 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinition(ctx interface{}) interface{}
 			// If metadata exists, use its basic type
 			typ = v.BinModel.MetaDataMap[name].BasicType
 		}
-		return model.Field{
+		return &model.Field{
 			Name:     name,
 			Type:     typ,
 			IsRepeat: c.REPEAT() != nil,
@@ -182,16 +189,15 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinition(ctx interface{}) interface{}
 
 	// Nested object field: REPEAT? IDENTIFIER '{' fieldDefinition+ '}'
 	case *gen.InerObjectFieldContext:
-		return v.VisitInerObjectField(c).(model.Field)
+		return v.VisitInerObjectField(c)
 	case *gen.LengthFieldContext:
-		return v.VisitLengthFieldDeclaration(c.LengthFieldDeclaration().(*gen.LengthFieldDeclarationContext)).(model.Field)
+		return v.VisitLengthFieldDeclaration(c.LengthFieldDeclaration().(*gen.LengthFieldDeclarationContext))
 	case *gen.CheckSumFieldContext:
-		return v.VisitCheckSumFieldDeclaration(c.CheckSumFieldDeclaration().(*gen.CheckSumFieldDeclarationContext)).(model.Field)
-
+		return v.VisitCheckSumFieldDeclaration(c.CheckSumFieldDeclaration().(*gen.CheckSumFieldDeclarationContext))
 	// Metadata field: REPEAT? metaDataDeclaration
 	case *gen.MetaFieldContext:
 		mctx := c.MetaDataDeclaration().(*gen.MetaDataDeclarationContext)
-		fld := v.VisitMetaDataDeclaration(mctx).(model.Field)
+		fld := v.VisitMetaDataDeclaration(mctx).(*model.Field)
 		if c.REPEAT() != nil {
 			fld.IsRepeat = true
 		}
@@ -199,10 +205,9 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinition(ctx interface{}) interface{}
 
 	// Match field: match IDENTIFIER '{' matchPair+ '}'
 	case *gen.MatchFieldContext:
-		return v.VisitMatchFieldDeclaration(c.MatchFieldDeclaration().(*gen.MatchFieldDeclarationContext)).(model.Field)
-
+		return v.VisitMatchFieldDeclaration(c.MatchFieldDeclaration().(*gen.MatchFieldDeclarationContext))
 	default:
-		v.BinModel.AddSyntaxError(model.SyntaxError{
+		v.BinModel.AddSyntaxError(&model.SyntaxError{
 			Line:            ctx.(*gen.FieldDefinitionContext).GetStart().GetLine(),
 			Column:          ctx.(*gen.FieldDefinitionContext).GetStart().GetTokenSource().GetCharPositionInLine(),
 			Msg:             "Unexpected field definition type",
@@ -227,7 +232,7 @@ func (v *PacketDslVisitorImpl) VisitLengthFieldDeclaration(ctx *gen.LengthFieldD
 		// If metadata exists, use its basic type
 		typ = v.BinModel.MetaDataMap[name].BasicType
 	}
-	return model.Field{
+	return &model.Field{
 		Name:          name,
 		Type:          typ,
 		IsRepeat:      false,
@@ -253,7 +258,7 @@ func (v *PacketDslVisitorImpl) VisitCheckSumFieldDeclaration(ctx *gen.CheckSumFi
 		// If metadata exists, use its basic type
 		typ = v.BinModel.MetaDataMap[name].BasicType
 	}
-	return model.Field{
+	return &model.Field{
 		Name:         ctx.GetName().GetText(),
 		Type:         typ,
 		IsRepeat:     false,
@@ -268,14 +273,14 @@ func (v *PacketDslVisitorImpl) VisitCheckSumFieldDeclaration(ctx *gen.CheckSumFi
 func (v *PacketDslVisitorImpl) VisitInerObjectField(ctx *gen.InerObjectFieldContext) interface{} {
 	decl := ctx.InerObjectDeclaration()
 	name := decl.IDENTIFIER().GetText()
-	var subFields []model.Field
+	var subFields []*model.Field
 	// Iterate all sub-field definitions inside the nested object
 	for _, fctx := range decl.AllFieldDefinition() {
 		fld := v.VisitFieldDefinition(fctx)
 		if fld == nil {
 			continue
 		}
-		subFields = append(subFields, fld.(model.Field))
+		subFields = append(subFields, fld.(*model.Field))
 	}
 	// Construct nested Packet model
 	p := model.Packet{
@@ -283,7 +288,7 @@ func (v *PacketDslVisitorImpl) VisitInerObjectField(ctx *gen.InerObjectFieldCont
 		IsRoot: false,
 		Fields: subFields,
 	}
-	return model.Field{
+	return &model.Field{
 		Name:       name,
 		Type:       name, // nested objects do not have a basic Type
 		IsRepeat:   ctx.REPEAT() != nil,
@@ -314,7 +319,7 @@ func (v *PacketDslVisitorImpl) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclara
 		raw := ctx.STRING_LITERAL().GetText()
 		doc = raw[1 : len(raw)-1]
 	}
-	return model.Field{
+	return &model.Field{
 		Name:     name,
 		Type:     typ,
 		IsRepeat: false,
@@ -336,7 +341,7 @@ func (v *PacketDslVisitorImpl) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDec
 	var pairsMap = make(map[string]interface{})
 	for _, pair := range pairs {
 		if _, exists := pairsMap[pair.Key]; exists {
-			v.BinModel.AddSyntaxError(model.SyntaxError{
+			v.BinModel.AddSyntaxError(&model.SyntaxError{
 				Line:            pair.Line,
 				Column:          pair.Column,
 				Msg:             "Duplicate match key: " + pair.Key,
@@ -345,7 +350,7 @@ func (v *PacketDslVisitorImpl) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDec
 			continue
 		}
 	}
-	return model.Field{
+	return &model.Field{
 		Name:       matchName,
 		Type:       "match",
 		MatchKey:   matchKey,

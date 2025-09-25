@@ -78,7 +78,7 @@ func (g CppGenerator) generateHppFile(binModel *model.BinaryModel) string {
 	b.WriteString("\n")
 	for _, pkt := range binModel.Packets {
 		if !pkt.IsRoot {
-			code := g.generateCodeForPacket(&pkt)
+			code := g.generateCodeForPacket(pkt)
 			b.WriteString(code)
 			b.WriteString("\n")
 		}
@@ -103,13 +103,13 @@ func (g CppGenerator) generateCodeForPacket(p *model.Packet) string {
 			b.WriteString("\n")
 		}
 		if mp, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-			b.WriteString(g.generateCodeForPacket(&mp))
+			b.WriteString(g.generateCodeForPacket(mp))
 			b.WriteString("\n")
 		}
 		if f.GetType() == "match" {
 			for _, pair := range f.MatchPairs {
 				mp := g.binModel.PacketsMap[pair.Value]
-				packetCode := g.generateCodeForPacket(&mp)
+				packetCode := g.generateCodeForPacket(mp)
 				if packetCode != "" {
 					b.WriteString(packetCode)
 					b.WriteString("\n")
@@ -121,7 +121,7 @@ func (g CppGenerator) generateCodeForPacket(p *model.Packet) string {
 	for key, pairs := range p.MatchFields {
 		f := p.FieldMap[key]
 		b.WriteString(fmt.Sprintf("struct %sTag{};\n", strcase.ToCamel(p.Name)))
-		b.WriteString(fmt.Sprintf("using %sMessageFactory = MessageFactory<%s, codec::BinaryCodec, %sTag>;\n", strcase.ToCamel(p.Name), g.getFieldType(&f), strcase.ToCamel(p.Name)))
+		b.WriteString(fmt.Sprintf("using %sMessageFactory = MessageFactory<%s, codec::BinaryCodec, %sTag>;\n", strcase.ToCamel(p.Name), g.getFieldType(f), strcase.ToCamel(p.Name)))
 		for _, pair := range pairs {
 			b.WriteString(fmt.Sprintf("REGISTER_MESSAGE(%sMessageFactory, %s, %s);\n", strcase.ToCamel(p.Name), pair.Key, pair.Value))
 		}
@@ -132,7 +132,7 @@ func (g CppGenerator) generateCodeForPacket(p *model.Packet) string {
 	//struct
 	b.WriteString(fmt.Sprintf("struct %s : public codec::BinaryCodec {\n", p.Name))
 	for _, field := range p.Fields {
-		b.WriteString("    " + g.getFieldType(&field) + " " + strcase.ToLowerCamel(field.Name) + ";\n")
+		b.WriteString("    " + g.getFieldType(field) + " " + strcase.ToLowerCamel(field.Name) + ";\n")
 	}
 
 	b.WriteString("\n")
@@ -473,7 +473,7 @@ func (g CppGenerator) generateTestFile(binModel *model.BinaryModel) string {
 	b.WriteString("\n")
 
 	for _, p := range binModel.Packets {
-		b.WriteString(g.generateUnitestForPacket(&p))
+		b.WriteString(g.generateUnitestForPacket(p))
 		b.WriteString("\n")
 	}
 
@@ -508,11 +508,11 @@ func (g CppGenerator) generateNewInstance(name string, p *model.Packet) string {
 			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, f.InerObject))
 			b.WriteString("\n")
 		} else if mp, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, &mp))
+			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, mp))
 			b.WriteString("\n")
 		} else if f.GetType() == "match" {
 			mp := g.binModel.PacketsMap[f.MatchPairs[0].Value]
-			b.WriteString(g.generateMakeUniqueInstance(fieldNameLowerCamel, &mp))
+			b.WriteString(g.generateMakeUniqueInstance(fieldNameLowerCamel, mp))
 			b.WriteString("\n")
 		}
 	}
@@ -521,12 +521,12 @@ func (g CppGenerator) generateNewInstance(name string, p *model.Packet) string {
 		fieldNameLowerCamel := strcase.ToLowerCamel(f.Name)
 		if f.GetType() == "match" {
 			b.WriteString(fmt.Sprintf("%s.%s = %s;\n", name, strcase.ToLowerCamel(f.MatchKey), f.MatchPairs[0].Key))
-			b.WriteString(fmt.Sprintf("%s.%s = std::move(%s);\n", name, fieldNameLowerCamel, g.generateTestValue(&f)))
+			b.WriteString(fmt.Sprintf("%s.%s = std::move(%s);\n", name, fieldNameLowerCamel, g.generateTestValue(f)))
 		} else {
 			if _, ok := p.MatchFields[f.Name]; ok {
 				continue
 			}
-			b.WriteString(fmt.Sprintf("%s.%s = %s;\n", name, fieldNameLowerCamel, g.generateTestValue(&f)))
+			b.WriteString(fmt.Sprintf("%s.%s = %s;\n", name, fieldNameLowerCamel, g.generateTestValue(f)))
 		}
 	}
 	return b.String()
@@ -540,10 +540,10 @@ func (g CppGenerator) generateMakeUniqueInstance(name string, p *model.Packet) s
 			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, f.InerObject))
 			b.WriteString("\n")
 		} else if mp, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, &mp))
+			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, mp))
 			b.WriteString("\n")
 		} else if f.GetType() == "match" {
-			b.WriteString(g.generateMakeUniqueInstance(fieldNameLowerCamel, &mp))
+			b.WriteString(g.generateMakeUniqueInstance(fieldNameLowerCamel, mp))
 			b.WriteString("\n")
 		}
 	}
@@ -551,9 +551,9 @@ func (g CppGenerator) generateMakeUniqueInstance(name string, p *model.Packet) s
 	for _, f := range p.Fields {
 		fieldNameLowerCamel := strcase.ToLowerCamel(f.Name)
 		if f.GetType() == "match" {
-			b.WriteString(fmt.Sprintf("%s->%s = std::move(%s);\n", name, fieldNameLowerCamel, g.generateTestValue(&f)))
+			b.WriteString(fmt.Sprintf("%s->%s = std::move(%s);\n", name, fieldNameLowerCamel, g.generateTestValue(f)))
 		} else {
-			b.WriteString(fmt.Sprintf("%s->%s = %s;\n", name, fieldNameLowerCamel, g.generateTestValue(&f)))
+			b.WriteString(fmt.Sprintf("%s->%s = %s;\n", name, fieldNameLowerCamel, g.generateTestValue(f)))
 		}
 	}
 	return b.String()

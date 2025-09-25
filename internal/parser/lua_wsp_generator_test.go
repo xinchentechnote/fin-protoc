@@ -13,7 +13,7 @@ func TestNewLuaWspGenerator(t *testing.T) {
 		StringLenPrefixLenType: "u8",
 	}
 	binModel := &model.BinaryModel{
-		PacketsMap: make(map[string]model.Packet),
+		PacketsMap: make(map[string]*model.Packet),
 	}
 
 	generator := NewLuaWspGenerator(config, binModel)
@@ -28,10 +28,10 @@ func TestGenerateLua(t *testing.T) {
 		ListLenPrefixLenType:   "u16",
 		StringLenPrefixLenType: "u8",
 	}
-	rootPacket := model.Packet{
+	rootPacket := &model.Packet{
 		Name:   "TestProtocol",
 		IsRoot: true,
-		Fields: []model.Field{
+		Fields: []*model.Field{
 			{
 				Name: "testField",
 				Type: "u32",
@@ -39,8 +39,8 @@ func TestGenerateLua(t *testing.T) {
 		},
 	}
 	binModel := &model.BinaryModel{
-		RootPacket: &rootPacket,
-		PacketsMap: map[string]model.Packet{
+		RootPacket: rootPacket,
+		PacketsMap: map[string]*model.Packet{
 			"TestProtocol": rootPacket,
 		},
 	}
@@ -60,9 +60,9 @@ func TestGenerateSubDissector(t *testing.T) {
 		ListLenPrefixLenType:   "u16",
 		StringLenPrefixLenType: "u8",
 	}
-	packet := model.Packet{
+	packet := &model.Packet{
 		Name: "TestPacket",
-		Fields: []model.Field{
+		Fields: []*model.Field{
 			{
 				Name: "testField",
 				Type: "u32",
@@ -70,7 +70,7 @@ func TestGenerateSubDissector(t *testing.T) {
 		},
 	}
 	binModel := &model.BinaryModel{
-		PacketsMap: map[string]model.Packet{
+		PacketsMap: map[string]*model.Packet{
 			"TestPacket": packet,
 		},
 	}
@@ -88,10 +88,10 @@ func TestGenerateMainDissector(t *testing.T) {
 		ListLenPrefixLenType:   "u16",
 		StringLenPrefixLenType: "u8",
 	}
-	rootPacket := model.Packet{
+	rootPacket := &model.Packet{
 		Name:   "TestProtocol",
 		IsRoot: true,
-		Fields: []model.Field{
+		Fields: []*model.Field{
 			{
 				Name: "testField",
 				Type: "u32",
@@ -99,14 +99,14 @@ func TestGenerateMainDissector(t *testing.T) {
 		},
 	}
 	binModel := &model.BinaryModel{
-		RootPacket: &rootPacket,
-		PacketsMap: map[string]model.Packet{
+		RootPacket: rootPacket,
+		PacketsMap: map[string]*model.Packet{
 			"TestProtocol": rootPacket,
 		},
 	}
 
 	generator := NewLuaWspGenerator(config, binModel)
-	code := generator.generateMainDissector(&rootPacket)
+	code := generator.generateMainDissector(rootPacket)
 
 	assert.Contains(t, code, "function test_protocol_proto.dissector")
 	assert.Contains(t, code, "pinfo.cols.protocol = \"test_protocol\"")
@@ -118,22 +118,22 @@ func TestDecodeList(t *testing.T) {
 		ListLenPrefixLenType:   "u16",
 		StringLenPrefixLenType: "u8",
 	}
-	packet := model.Packet{
+	packet := &model.Packet{
 		Name: "TestPacket",
 	}
-	field := model.Field{
+	field := &model.Field{
 		Name:     "testList",
 		Type:     "u32",
 		IsRepeat: true,
 	}
 	binModel := &model.BinaryModel{
-		PacketsMap: map[string]model.Packet{
+		PacketsMap: map[string]*model.Packet{
 			"TestPacket": packet,
 		},
 	}
 
 	generator := NewLuaWspGenerator(config, binModel)
-	code := generator.decodeList("tree", &packet, field)
+	code := generator.decodeList("tree", packet, field)
 
 	assert.Contains(t, code, "local test_packet_test_list_size = buf(offset, 2):uint()")
 	assert.Contains(t, code, "tree:add(\"testList Size: \".. test_packet_test_list_size")
@@ -147,26 +147,26 @@ func TestLuaDecodeField(t *testing.T) {
 		StringLenPrefixLenType: "u8",
 	}
 	binModel := &model.BinaryModel{
-		PacketsMap: make(map[string]model.Packet),
+		PacketsMap: make(map[string]*model.Packet),
 	}
 
 	tests := []struct {
 		name     string
 		packet   model.Packet
-		field    model.Field
+		field    *model.Field
 		expected string
 	}{
 		{
 			name:   "u32 field",
 			packet: model.Packet{Name: "TestPacket"},
-			field:  model.Field{Name: "testField", Type: "u32"},
+			field:  &model.Field{Name: "testField", Type: "u32"},
 			expected: `tree:add(fields.test_packet_test_field, buf(offset, 4))
 offset = offset + 4`,
 		},
 		{
 			name:   "string field",
 			packet: model.Packet{Name: "TestPacket"},
-			field:  model.Field{Name: "testField", Type: "string"},
+			field:  &model.Field{Name: "testField", Type: "string"},
 			expected: `local test_packet_test_field_len = buf(offset, 1):uint()
 tree:add("testField Len: ".. test_packet_test_field_len, buf(offset, 1))
 offset = offset + 1
@@ -176,7 +176,7 @@ offset = offset + test_packet_test_field_len`,
 		{
 			name:   "match field",
 			packet: model.Packet{Name: "TestPacket"},
-			field: model.Field{
+			field: &model.Field{
 				Name:     "testField",
 				Type:     "match",
 				MatchKey: "msgType",
@@ -192,7 +192,7 @@ end`,
 		{
 			name:   "char array",
 			packet: model.Packet{Name: "TestPacket"},
-			field:  model.Field{Name: "testField", Type: "char[10]"},
+			field:  &model.Field{Name: "testField", Type: "char[10]"},
 			expected: `tree:add(fields.test_packet_test_field, buf(offset, 10))
 offset = offset + 10`,
 		},
@@ -212,16 +212,16 @@ func TestDecodeListSize(t *testing.T) {
 		ListLenPrefixLenType:   "u16",
 		StringLenPrefixLenType: "u8",
 	}
-	packet := model.Packet{
+	packet := &model.Packet{
 		Name: "TestPacket",
 	}
-	field := model.Field{
+	field := &model.Field{
 		Name:     "testList",
 		Type:     "u32",
 		IsRepeat: true,
 	}
 	binModel := &model.BinaryModel{
-		PacketsMap: map[string]model.Packet{
+		PacketsMap: map[string]*model.Packet{
 			"TestPacket": packet,
 		},
 	}
@@ -256,7 +256,7 @@ offset = offset + 4`,
 		t.Run(tt.name, func(t *testing.T) {
 			config.ListLenPrefixLenType = tt.prefix
 			generator := NewLuaWspGenerator(config, binModel)
-			result := generator.decodeListSize("tree", &packet, field)
+			result := generator.decodeListSize("tree", packet, field)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -267,15 +267,15 @@ func TestDecodeStringLen(t *testing.T) {
 		ListLenPrefixLenType:   "u16",
 		StringLenPrefixLenType: "u8",
 	}
-	packet := model.Packet{
+	packet := &model.Packet{
 		Name: "TestPacket",
 	}
-	field := model.Field{
+	field := &model.Field{
 		Name: "testString",
 		Type: "string",
 	}
 	binModel := &model.BinaryModel{
-		PacketsMap: map[string]model.Packet{
+		PacketsMap: map[string]*model.Packet{
 			"TestPacket": packet,
 		},
 	}
@@ -310,7 +310,7 @@ offset = offset + 2`,
 		t.Run(tt.name, func(t *testing.T) {
 			config.StringLenPrefixLenType = tt.prefix
 			generator := NewLuaWspGenerator(config, binModel)
-			result := generator.decodeStringLen("tree", &packet, field)
+			result := generator.decodeStringLen("tree", packet, field)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -321,9 +321,9 @@ func TestGenerateFieldDefinition(t *testing.T) {
 		ListLenPrefixLenType:   "u16",
 		StringLenPrefixLenType: "u8",
 	}
-	packet := model.Packet{
+	packet := &model.Packet{
 		Name: "TestPacket",
-		Fields: []model.Field{
+		Fields: []*model.Field{
 			{
 				Name: "testField",
 				Type: "u32",
@@ -351,9 +351,9 @@ func TestGenerateFieldDefinitionFromPacket(t *testing.T) {
 		ListLenPrefixLenType:   "u16",
 		StringLenPrefixLenType: "u8",
 	}
-	packet := model.Packet{
+	packet := &model.Packet{
 		Name: "TestPacket",
-		Fields: []model.Field{
+		Fields: []*model.Field{
 			{
 				Name: "test",
 				Type: "u32",
@@ -380,7 +380,7 @@ func TestGenerateFieldDefinitionFromPacket(t *testing.T) {
 	binModel.AddPacket(packet)
 
 	generator := NewLuaWspGenerator(config, binModel)
-	code := generator.generateFieldDefinitionFromPacket(binModel, &packet)
+	code := generator.generateFieldDefinitionFromPacket(binModel, packet)
 
 	assert.Contains(t, code, "-- Field from TestPacket")
 	assert.Contains(t, code, "test_packet_test = ProtoField.uint32(\"test_packet.test\", \"test\", base.DEC),")
@@ -393,17 +393,17 @@ func TestGenerateFieldDefinitionFromPacket(t *testing.T) {
 func TestIsMatchField(t *testing.T) {
 	tests := []struct {
 		name       string
-		field      model.Field
+		field      *model.Field
 		rootPacket model.Packet
 		expected   bool
 	}{
 		{
 			name: "is match field",
-			field: model.Field{
+			field: &model.Field{
 				Name: "msgType",
 			},
 			rootPacket: model.Packet{
-				Fields: []model.Field{
+				Fields: []*model.Field{
 					{
 						Name:     "testField",
 						Type:     "match",
@@ -415,11 +415,11 @@ func TestIsMatchField(t *testing.T) {
 		},
 		{
 			name: "not match field",
-			field: model.Field{
+			field: &model.Field{
 				Name: "otherField",
 			},
 			rootPacket: model.Packet{
-				Fields: []model.Field{
+				Fields: []*model.Field{
 					{
 						Name:     "testField",
 						Type:     "match",

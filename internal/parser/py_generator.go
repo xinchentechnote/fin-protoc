@@ -73,7 +73,7 @@ from codec import *`)
 		if pkt.IsRoot {
 			continue
 		}
-		code.WriteString(g.generateCodeForPacket(&pkt))
+		code.WriteString(g.generateCodeForPacket(pkt))
 		code.WriteString("\n\n")
 	}
 
@@ -95,13 +95,13 @@ func (g PythonGenerator) generateCodeForPacket(p *model.Packet) string {
 			b.WriteString("\n")
 		}
 		if mp, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-			b.WriteString(g.generateCodeForPacket(&mp))
+			b.WriteString(g.generateCodeForPacket(mp))
 			b.WriteString("\n")
 		}
 		if f.GetType() == "match" {
 			for _, pair := range f.MatchPairs {
 				mp := g.binModel.PacketsMap[pair.Value]
-				packetCode := g.generateCodeForPacket(&mp)
+				packetCode := g.generateCodeForPacket(mp)
 				if packetCode != "" {
 					b.WriteString(packetCode)
 					b.WriteString("\n")
@@ -187,9 +187,9 @@ func (g PythonGenerator) generateDecodeMethod(p *model.Packet) string {
 				b.WriteString(fmt.Sprintf("    size = get_len(buffer, '%s')\n", g.config.ListLenPrefixLenType))
 			}
 			b.WriteString("    for i in range(size):\n")
-			b.WriteString(AddIndent4ln(g.generateDecodeField(p, &f)))
+			b.WriteString(AddIndent4ln(g.generateDecodeField(p, f)))
 		} else {
-			b.WriteString(g.generateDecodeField(p, &f))
+			b.WriteString(g.generateDecodeField(p, f))
 		}
 	}
 	return b.String()
@@ -302,9 +302,9 @@ func (g PythonGenerator) generateEncodeMethod(p *model.Packet) string {
 				b.WriteString(fmt.Sprintf("    buffer.write_%s(size)\n", typ.BasicType))
 			}
 			b.WriteString("    for i in range(size):\n")
-			b.WriteString(AddIndent4ln(g.generateEncodeField(&f)))
+			b.WriteString(AddIndent4ln(g.generateEncodeField(f)))
 		} else {
-			b.WriteString(g.generateEncodeField(&f))
+			b.WriteString(g.generateEncodeField(f))
 		}
 	}
 	return b.String()
@@ -383,7 +383,7 @@ func (g PythonGenerator) generateTestCode(binModel *model.BinaryModel) string {
 	b.WriteString("import unittest\n\n")
 	b.WriteString(fmt.Sprintf("from %s import *\n\n", strcase.ToSnake(binModel.RootPacket.Name)))
 	for _, pkt := range binModel.Packets {
-		b.WriteString(g.generateTestCodeForPacket(&pkt))
+		b.WriteString(g.generateTestCodeForPacket(pkt))
 		b.WriteString("\n\n")
 	}
 	b.WriteString("if __name__ == '__main__':\n")
@@ -416,11 +416,11 @@ func (g PythonGenerator) generateNewInstance(name string, packet *model.Packet) 
 		}
 		fieldName := strcase.ToSnake(f.Name)
 		if rp, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-			b.WriteString(g.generateNewInstance(fieldName, &rp))
+			b.WriteString(g.generateNewInstance(fieldName, rp))
 		}
 		if f.GetType() == "match" {
 			mp := g.binModel.PacketsMap[f.MatchPairs[0].Value]
-			b.WriteString(g.generateNewInstance(fieldName, &mp))
+			b.WriteString(g.generateNewInstance(fieldName, mp))
 		}
 	}
 	b.WriteString(fmt.Sprintf("%s = %s()\n", name, strcase.ToCamel(packet.Name)))
@@ -430,14 +430,14 @@ func (g PythonGenerator) generateNewInstance(name string, packet *model.Packet) 
 			if len(f.MatchPairs) > 0 {
 				key := f.MatchPairs[0].Key
 				b.WriteString(fmt.Sprintf("%s.%s = %s\n", name, strcase.ToSnake(f.MatchKey), key))
-				b.WriteString(fmt.Sprintf("%s.%s = %s\n", name, fieldName, g.generateTestValue(&f)))
+				b.WriteString(fmt.Sprintf("%s.%s = %s\n", name, fieldName, g.generateTestValue(f)))
 			}
 			continue
 		}
 		if packet.MatchFields[f.Name] != nil {
 			continue
 		}
-		b.WriteString(fmt.Sprintf("%s.%s = %s\n", name, fieldName, g.generateTestValue(&f)))
+		b.WriteString(fmt.Sprintf("%s.%s = %s\n", name, fieldName, g.generateTestValue(f)))
 	}
 
 	return b.String()

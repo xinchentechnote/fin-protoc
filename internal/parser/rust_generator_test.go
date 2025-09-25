@@ -13,7 +13,7 @@ func TestNewRustGenerator(t *testing.T) {
 		StringLenPrefixLenType: "u8",
 	}
 	binModel := &model.BinaryModel{
-		PacketsMap: make(map[string]model.Packet),
+		PacketsMap: make(map[string]*model.Packet),
 	}
 
 	generator := NewRustGenerator(config, binModel)
@@ -28,9 +28,9 @@ func TestGenerateRust(t *testing.T) {
 		ListLenPrefixLenType:   "u16",
 		StringLenPrefixLenType: "u8",
 	}
-	packet := model.Packet{
+	packet := &model.Packet{
 		Name: "TestPacket",
-		Fields: []model.Field{
+		Fields: []*model.Field{
 			{
 				Name: "testField",
 				Type: "u32",
@@ -38,7 +38,7 @@ func TestGenerateRust(t *testing.T) {
 		},
 	}
 	binModel := &model.BinaryModel{
-		PacketsMap: map[string]model.Packet{
+		PacketsMap: map[string]*model.Packet{
 			"TestPacket": packet,
 		},
 	}
@@ -57,9 +57,9 @@ func TestGenerateRustFileForPacket(t *testing.T) {
 		ListLenPrefixLenType:   "u16",
 		StringLenPrefixLenType: "u8",
 	}
-	packet := model.Packet{
+	packet := &model.Packet{
 		Name: "TestPacket",
-		Fields: []model.Field{
+		Fields: []*model.Field{
 			{
 				Name: "testField",
 				Type: "u32",
@@ -67,13 +67,13 @@ func TestGenerateRustFileForPacket(t *testing.T) {
 		},
 	}
 	binModel := &model.BinaryModel{
-		PacketsMap: map[string]model.Packet{
+		PacketsMap: map[string]*model.Packet{
 			"TestPacket": packet,
 		},
 	}
 
 	generator := NewRustGenerator(config, binModel)
-	code := generator.generateRustFileForPacket(&packet)
+	code := generator.generateRustFileForPacket(packet)
 
 	assert.Contains(t, code, "pub struct TestPacket")
 	assert.Contains(t, code, "impl BinaryCodec for TestPacket")
@@ -85,11 +85,11 @@ func TestGenerateLibCode(t *testing.T) {
 		ListLenPrefixLenType:   "u16",
 		StringLenPrefixLenType: "u8",
 	}
-	packet := model.Packet{
+	packet := &model.Packet{
 		Name: "TestPacket",
 	}
 	binModel := &model.BinaryModel{
-		PacketsMap: map[string]model.Packet{
+		PacketsMap: map[string]*model.Packet{
 			"TestPacket": packet,
 		},
 	}
@@ -105,9 +105,9 @@ func TestGenerateUseCode(t *testing.T) {
 		ListLenPrefixLenType:   "u16",
 		StringLenPrefixLenType: "u8",
 	}
-	packet := model.Packet{
+	packet := &model.Packet{
 		Name: "TestPacket",
-		Fields: []model.Field{
+		Fields: []*model.Field{
 			{
 				Name: "testField",
 				Type: "OtherPacket",
@@ -125,7 +125,7 @@ func TestGenerateUseCode(t *testing.T) {
 		},
 	}
 	binModel := &model.BinaryModel{
-		PacketsMap: map[string]model.Packet{
+		PacketsMap: map[string]*model.Packet{
 			"OtherPacket":   {Name: "OtherPacket"},
 			"MatchedPacket": {Name: "MatchedPacket"},
 			"TestPacket":    packet,
@@ -133,7 +133,7 @@ func TestGenerateUseCode(t *testing.T) {
 	}
 
 	generator := NewRustGenerator(config, binModel)
-	code := generator.generateUseCode(&packet)
+	code := generator.generateUseCode(packet)
 
 	assert.Contains(t, code, "use crate::other_packet::*;")
 	assert.Contains(t, code, "use crate::matched_packet::*;")
@@ -144,9 +144,9 @@ func TestGenerateStructCode(t *testing.T) {
 		ListLenPrefixLenType:   "u16",
 		StringLenPrefixLenType: "u8",
 	}
-	packet := model.Packet{
+	packet := &model.Packet{
 		Name: "TestPacket",
-		Fields: []model.Field{
+		Fields: []*model.Field{
 			{
 				Name: "testField",
 				Type: "u32",
@@ -154,13 +154,13 @@ func TestGenerateStructCode(t *testing.T) {
 		},
 	}
 	binModel := &model.BinaryModel{
-		PacketsMap: map[string]model.Packet{
+		PacketsMap: map[string]*model.Packet{
 			"TestPacket": packet,
 		},
 	}
 
 	generator := NewRustGenerator(config, binModel)
-	code := generator.generateStructCode(&packet)
+	code := generator.generateStructCode(packet)
 
 	assert.Contains(t, code, "pub struct TestPacket {")
 	assert.Contains(t, code, "pub test_field: u32,")
@@ -172,31 +172,31 @@ func TestGetFieldType(t *testing.T) {
 	tests := []struct {
 		name     string
 		parent   string
-		field    model.Field
+		field    *model.Field
 		expected string
 	}{
 		{
 			name:     "string type",
 			parent:   "Parent",
-			field:    model.Field{Type: "string"},
+			field:    &model.Field{Type: "string"},
 			expected: "String",
 		},
 		{
 			name:     "match type",
 			parent:   "Parent",
-			field:    model.Field{Type: "match", MatchKey: "Match"},
+			field:    &model.Field{Type: "match", MatchKey: "Match"},
 			expected: "ParentEnum",
 		},
 		{
 			name:     "char array",
 			parent:   "Parent",
-			field:    model.Field{Type: "char[10]"},
+			field:    &model.Field{Type: "char[10]"},
 			expected: "String",
 		},
 		{
 			name:     "primitive type",
 			parent:   "Parent",
-			field:    model.Field{Type: "u32"},
+			field:    &model.Field{Type: "u32"},
 			expected: "u32",
 		},
 	}
@@ -212,17 +212,17 @@ func TestGetFieldType(t *testing.T) {
 func TestGetFieldName(t *testing.T) {
 	tests := []struct {
 		name     string
-		field    model.Field
+		field    *model.Field
 		expected string
 	}{
 		{
 			name:     "match field",
-			field:    model.Field{Name: "MatchField", Type: "match"},
+			field:    &model.Field{Name: "MatchField", Type: "match"},
 			expected: "match_field",
 		},
 		{
 			name:     "regular field",
-			field:    model.Field{Name: "RegularField", Type: "u32"},
+			field:    &model.Field{Name: "RegularField", Type: "u32"},
 			expected: "regular_field",
 		},
 	}
@@ -241,43 +241,43 @@ func TestRustDecodeField(t *testing.T) {
 		StringLenPrefixLenType: "u8",
 	}
 	binModel := &model.BinaryModel{
-		PacketsMap: make(map[string]model.Packet),
+		PacketsMap: make(map[string]*model.Packet),
 	}
 
 	tests := []struct {
 		name     string
 		parent   string
-		field    model.Field
+		field    *model.Field
 		expected string
 	}{
 		{
 			name:     "string list",
 			parent:   "Parent",
-			field:    model.Field{Name: "strings", Type: "string", IsRepeat: true},
+			field:    &model.Field{Name: "strings", Type: "string", IsRepeat: true},
 			expected: "let strings = get_string_list::<u16,u8>(buf)?;",
 		},
 		{
 			name:     "primitive list",
 			parent:   "Parent",
-			field:    model.Field{Name: "numbers", Type: "u32", IsRepeat: true},
+			field:    &model.Field{Name: "numbers", Type: "u32", IsRepeat: true},
 			expected: "let numbers = get_list::<u32,u16>(buf)?;",
 		},
 		{
 			name:     "string",
 			parent:   "Parent",
-			field:    model.Field{Name: "text", Type: "string"},
+			field:    &model.Field{Name: "text", Type: "string"},
 			expected: "let text = get_string::<u8>(buf)?;",
 		},
 		{
 			name:     "primitive",
 			parent:   "Parent",
-			field:    model.Field{Name: "number", Type: "u32"},
+			field:    &model.Field{Name: "number", Type: "u32"},
 			expected: "let number = buf.get_u32();",
 		},
 		{
 			name:   "match field",
 			parent: "Parent",
-			field: model.Field{
+			field: &model.Field{
 				Name:     "matchField",
 				Type:     "match",
 				MatchKey: "matchField",
@@ -306,9 +306,9 @@ func TestGenerateMatchFieldEnumCode(t *testing.T) {
 		ListLenPrefixLenType:   "u16",
 		StringLenPrefixLenType: "u8",
 	}
-	packet := model.Packet{
+	packet := &model.Packet{
 		Name: "TestPacket",
-		Fields: []model.Field{
+		Fields: []*model.Field{
 			{
 				Name:     "Body",
 				Type:     "match",
@@ -327,13 +327,13 @@ func TestGenerateMatchFieldEnumCode(t *testing.T) {
 		},
 	}
 	binModel := &model.BinaryModel{
-		PacketsMap: map[string]model.Packet{
+		PacketsMap: map[string]*model.Packet{
 			"TestPacket": packet,
 		},
 	}
 
 	generator := NewRustGenerator(config, binModel)
-	code := generator.generateMatchFieldEnumCode(&packet)
+	code := generator.generateMatchFieldEnumCode(packet)
 
 	assert.Contains(t, code, "pub enum TestPacketBodyEnum")
 	assert.Contains(t, code, "FirstValue(FirstValue)")
@@ -345,9 +345,9 @@ func TestGenerateUnitTestCode(t *testing.T) {
 		ListLenPrefixLenType:   "u16",
 		StringLenPrefixLenType: "u8",
 	}
-	packet := model.Packet{
+	packet := &model.Packet{
 		Name: "TestPacket",
-		Fields: []model.Field{
+		Fields: []*model.Field{
 			{
 				Name: "testField",
 				Type: "u32",
@@ -355,13 +355,13 @@ func TestGenerateUnitTestCode(t *testing.T) {
 		},
 	}
 	binModel := &model.BinaryModel{
-		PacketsMap: map[string]model.Packet{
+		PacketsMap: map[string]*model.Packet{
 			"TestPacket": packet,
 		},
 	}
 
 	generator := NewRustGenerator(config, binModel)
-	code := generator.generateUnitTestCode(&packet)
+	code := generator.generateUnitTestCode(packet)
 
 	assert.Contains(t, code, "mod test_packet_tests")
 	assert.Contains(t, code, "fn test_test_packet_codec()")
@@ -375,43 +375,43 @@ func TestTestValue(t *testing.T) {
 		StringLenPrefixLenType: "u8",
 	}
 	binModel := &model.BinaryModel{
-		PacketsMap: make(map[string]model.Packet),
+		PacketsMap: make(map[string]*model.Packet),
 	}
 
 	tests := []struct {
 		name     string
 		parent   string
-		field    model.Field
+		field    *model.Field
 		expected string
 	}{
 		{
 			name:     "string list",
 			parent:   "Parent",
-			field:    model.Field{Name: "strings", Type: "string", IsRepeat: true},
+			field:    &model.Field{Name: "strings", Type: "string", IsRepeat: true},
 			expected: `vec!["example".to_string(), "test".to_string()]`,
 		},
 		{
 			name:     "u32 list",
 			parent:   "Parent",
-			field:    model.Field{Name: "numbers", Type: "u32", IsRepeat: true},
+			field:    &model.Field{Name: "numbers", Type: "u32", IsRepeat: true},
 			expected: "vec![123456,654321]",
 		},
 		{
 			name:     "string",
 			parent:   "Parent",
-			field:    model.Field{Name: "text", Type: "string"},
+			field:    &model.Field{Name: "text", Type: "string"},
 			expected: `"example".to_string()`,
 		},
 		{
 			name:     "u32",
 			parent:   "Parent",
-			field:    model.Field{Name: "number", Type: "u32"},
+			field:    &model.Field{Name: "number", Type: "u32"},
 			expected: "123456",
 		},
 		{
 			name:     "char array",
 			parent:   "Parent",
-			field:    model.Field{Name: "chars", Type: "char[10]"},
+			field:    &model.Field{Name: "chars", Type: "char[10]"},
 			expected: "vec!['a'; 10].into_iter().collect::<String>()",
 		},
 	}

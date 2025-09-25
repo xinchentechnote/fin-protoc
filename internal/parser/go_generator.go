@@ -48,9 +48,9 @@ func NewGoGenerator(config *GeneratorConfig, binModel *model.BinaryModel) *GoGen
 func (g GoGenerator) Generate(binModel *model.BinaryModel) (map[string][]byte, error) {
 	output := make(map[string][]byte)
 	for _, pkt := range binModel.PacketsMap {
-		code := g.generateGoFileForPacket(&pkt, false)
+		code := g.generateGoFileForPacket(pkt, false)
 		output[strcase.ToSnake(pkt.Name)+".go"] = []byte(code)
-		code = g.generateGoTestFileForPacket(&pkt, false)
+		code = g.generateGoTestFileForPacket(pkt, false)
 		output[strcase.ToSnake(pkt.Name)+"_test.go"] = []byte(code)
 	}
 	return output, nil
@@ -76,7 +76,7 @@ func (g GoGenerator) generateGoFileForPacket(p *model.Packet, isIner bool) strin
 	b.WriteString("func init() {\n")
 	for _, f := range p.Fields {
 		if f.GetType() == "match" {
-			b.WriteString(g.generateInit(p, &f))
+			b.WriteString(g.generateInit(p, f))
 		}
 	}
 	b.WriteString("}\n")
@@ -85,7 +85,7 @@ func (g GoGenerator) generateGoFileForPacket(p *model.Packet, isIner bool) strin
 	// gen MessageFactory
 	for _, f := range p.Fields {
 		if f.GetType() == "match" {
-			b.WriteString(g.generateMessageFactory(p, &f))
+			b.WriteString(g.generateMessageFactory(p, f))
 		}
 	}
 
@@ -172,7 +172,7 @@ func (g GoGenerator) generateStructCode(p *model.Packet) string {
 	b.WriteString("// " + p.Name + " represents the packet structure.\n")
 	b.WriteString("type " + p.Name + " struct {\n")
 	for _, field := range p.Fields {
-		typ := g.getFieldType(&field)
+		typ := g.getFieldType(field)
 		if field.InerObject != nil {
 			typ = "*" + typ
 		} else if _, ok := g.binModel.PacketsMap[field.GetType()]; ok {
@@ -217,9 +217,9 @@ func (g GoGenerator) generateDecodingCode(p *model.Packet) string {
 	b.WriteString("func (p *" + p.Name + ") Decode(buf *bytes.Buffer) error {\n")
 	for _, field := range p.Fields {
 		if field.IsRepeat {
-			b.WriteString(g.generateDecodingListField(&field))
+			b.WriteString(g.generateDecodingListField(field))
 		} else {
-			b.WriteString(g.generateDecodingField(p, &field))
+			b.WriteString(g.generateDecodingField(p, field))
 		}
 	}
 	b.WriteString("    return nil\n")
@@ -343,9 +343,9 @@ func (g GoGenerator) generateEncodingCode(p *model.Packet) string {
 	b.WriteString("    // Implement encoding logic here.\n")
 	for _, field := range p.Fields {
 		if field.IsRepeat {
-			b.WriteString(g.generateEncodingListField(&field))
+			b.WriteString(g.generateEncodingListField(field))
 		} else {
-			b.WriteString(g.generateEncodingField(p, &field))
+			b.WriteString(g.generateEncodingField(p, field))
 		}
 	}
 	b.WriteString("    return nil\n")
@@ -504,11 +504,11 @@ func (g GoGenerator) generateNewInstance(name string, p *model.Packet) string {
 		if f.InerObject != nil {
 			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, f.InerObject))
 		} else if fp, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, &fp))
+			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, fp))
 		} else if f.GetType() == "match" {
 			mp := f.MatchPairs[0]
 			valuePackage := g.binModel.PacketsMap[mp.Value]
-			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, &valuePackage))
+			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, valuePackage))
 		}
 	}
 	b.WriteString(fmt.Sprintf("    %s := &msg.%s{\n", name, strcase.ToCamel(p.Name)))
@@ -517,14 +517,14 @@ func (g GoGenerator) generateNewInstance(name string, p *model.Packet) string {
 			if len(f.MatchPairs) > 0 {
 				key := f.MatchPairs[0].Key
 				b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", strcase.ToCamel(f.MatchKey), key)))))
-				b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", strcase.ToCamel(f.Name), g.generateTestValue(&f))))))
+				b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", strcase.ToCamel(f.Name), g.generateTestValue(f))))))
 			}
 			continue
 		}
 		if p.MatchFields[f.Name] != nil {
 			continue
 		}
-		b.WriteString(fmt.Sprintf("    %s : %s,\n", strcase.ToCamel(f.Name), g.generateTestValue(&f)))
+		b.WriteString(fmt.Sprintf("    %s : %s,\n", strcase.ToCamel(f.Name), g.generateTestValue(f)))
 	}
 	b.WriteString("}\n")
 	return b.String()

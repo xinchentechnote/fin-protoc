@@ -27,7 +27,7 @@ func NewRustGenerator(config *GeneratorConfig, binModel *model.BinaryModel) *Rus
 func (g RustGenerator) Generate(binModel *model.BinaryModel) (map[string][]byte, error) {
 	output := make(map[string][]byte)
 	for _, pkt := range binModel.PacketsMap {
-		code := g.generateRustFileForPacket(&pkt)
+		code := g.generateRustFileForPacket(pkt)
 		output[strcase.ToSnake(pkt.Name)+".rs"] = []byte(code)
 	}
 	output["lib.rs"] = []byte(g.generateLibCode())
@@ -148,7 +148,7 @@ func (g RustGenerator) generateStructCode(pkt *model.Packet) string {
 }
 
 // GetFieldType convert field type for rust
-func (g RustGenerator) GetFieldType(parentName string, f model.Field) string {
+func (g RustGenerator) GetFieldType(parentName string, f *model.Field) string {
 	switch f.GetType() {
 	case "string":
 		return "String"
@@ -166,12 +166,12 @@ func (g RustGenerator) GetFieldType(parentName string, f model.Field) string {
 }
 
 // GetFieldName returns the field name in snake_case format.
-func (g RustGenerator) GetFieldName(f model.Field) string {
+func (g RustGenerator) GetFieldName(f *model.Field) string {
 	return strcase.ToSnake(f.Name)
 }
 
 // EncodeField encoding field
-func (g RustGenerator) EncodeField(p *model.Packet, f model.Field) string {
+func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 	parentName := strcase.ToCamel(p.Name)
 	if f.LengthOfField != "" {
 		// auto calculate length field
@@ -287,7 +287,7 @@ func (g RustGenerator) EncodeField(p *model.Packet, f model.Field) string {
 }
 
 // EncoderMatchField encodes match field
-func (g RustGenerator) EncoderMatchField(parentName string, bufName string, f model.Field) string {
+func (g RustGenerator) EncoderMatchField(parentName string, bufName string, f *model.Field) string {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("match &self.%s {\n", g.GetFieldName(f)))
 	pairs := make(map[string]struct{})
@@ -303,7 +303,7 @@ func (g RustGenerator) EncoderMatchField(parentName string, bufName string, f mo
 }
 
 // DecodeField decoding field
-func (g RustGenerator) DecodeField(parentName string, f model.Field) string {
+func (g RustGenerator) DecodeField(parentName string, f *model.Field) string {
 	name := strcase.ToSnake(f.Name)
 	if f.IsRepeat {
 		if f.GetType() == "string" {
@@ -384,7 +384,7 @@ func (g RustGenerator) HasQuotes(s string) bool {
 }
 
 // DecodeMatchField decodes match field
-func (g RustGenerator) DecodeMatchField(parentName string, f model.Field) string {
+func (g RustGenerator) DecodeMatchField(parentName string, f *model.Field) string {
 	var b strings.Builder
 	matchKey := strcase.ToSnake(f.MatchKey)
 	if g.HasQuotes(f.MatchPairs[0].Key) {
@@ -480,7 +480,7 @@ func (g RustGenerator) generateUnitTestCode(pkt *model.Packet) string {
 }
 
 // testValue gen test value for deferent field type
-func (g RustGenerator) testValue(parentName string, f model.Field) string {
+func (g RustGenerator) testValue(parentName string, f *model.Field) string {
 	if f.IsRepeat {
 		return g.testValueList(f.GetType())
 	}
@@ -499,7 +499,7 @@ func (g RustGenerator) testValueList(typ string) string {
 	return "vec![]"
 }
 
-func (g RustGenerator) testValueSingle(parentName string, f model.Field) string {
+func (g RustGenerator) testValueSingle(parentName string, f *model.Field) string {
 	typ := f.GetType()
 	if f.LengthOfField != "" {
 		return "0"
@@ -571,7 +571,7 @@ func (g RustGenerator) primitiveSingleValues() map[string]string {
 	}
 }
 
-func (g RustGenerator) testMatchValue(parentName string, f model.Field) string {
+func (g RustGenerator) testMatchValue(parentName string, f *model.Field) string {
 	if len(f.MatchPairs) == 0 {
 		return fmt.Sprintf("%s%s::default()", parentName, f.MatchKey)
 	}
