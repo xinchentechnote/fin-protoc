@@ -58,6 +58,9 @@ type PacketDslVisitor interface {
 	// Visit a parse tree produced by PacketDslParser#calculatedFromAttribute.
 	VisitCalculatedFromAttribute(ctx *CalculatedFromAttributeContext) interface{}
 
+	// Visit a parse tree produced by PacketDslParser#paddingAttribute.
+	VisitPaddingAttribute(ctx *PaddingAttributeContext) interface{}
+
 	// Visit a parse tree produced by PacketDslParser#metaDataDeclaration.
 	VisitMetaDataDeclaration(ctx *MetaDataDeclarationContext) interface{}
 

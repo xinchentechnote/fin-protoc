@@ -4,7 +4,7 @@
 
 ## v0.2.0
 [ ] support attributes @lengthOf, @calculatedFrom
-[ ] support attributes @leftPading, @rightPadding for fixed length string(char[n])
+[ ] support attributes @leftPadding, @rightPadding for fixed length string(char[n])
 
 
 

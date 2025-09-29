@@ -35,11 +35,17 @@ lengthFieldDeclaration:
 checkSumFieldDeclaration:
 	type? name = IDENTIFIER (calculatedFromAttribute) STRING_LITERAL? COMMA;
 
-fieldAttribute: lengthOfAttribute | calculatedFromAttribute;
+fieldAttribute:
+	lengthOfAttribute
+	| calculatedFromAttribute
+	| paddingAttribute;
 
 lengthOfAttribute: '@lengthOf(' from = IDENTIFIER ')';
 
 calculatedFromAttribute: '@calculatedFrom(' from = STRING ')';
+
+paddingAttribute:
+	'@' dir = ('left' | 'right') 'Padding(' padding = PADDING_CHAR ')';
 
 // Metadata declaration with type and description
 metaDataDeclaration:
@@ -91,6 +97,8 @@ FLOAT64: 'float64' | 'f64';
 DIGITS: [0-9]+;
 
 STRING: '"' ( ~["\\\r\n] | '\\' .)* '"';
+
+PADDING_CHAR: '"0"' | '" "';
 
 // Root and Packet keywords
 ROOT: 'root';

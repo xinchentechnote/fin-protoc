@@ -75,6 +75,10 @@ func (v *BasePacketDslVisitor) VisitCalculatedFromAttribute(ctx *CalculatedFromA
 	return v.VisitChildren(ctx)
 }
 
+func (v *BasePacketDslVisitor) VisitPaddingAttribute(ctx *PaddingAttributeContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BasePacketDslVisitor) VisitMetaDataDeclaration(ctx *MetaDataDeclarationContext) interface{} {
 	return v.VisitChildren(ctx)
 }
