@@ -33,7 +33,7 @@ lengthFieldDeclaration:
 	type? name = IDENTIFIER lengthOfAttribute STRING_LITERAL? COMMA;
 
 checkSumFieldDeclaration:
-	type? name = IDENTIFIER (calculatedFromAttribute) STRING_LITERAL? COMMA;
+	type? name = IDENTIFIER calculatedFromAttribute STRING_LITERAL? COMMA;
 
 fieldAttribute:
 	lengthOfAttribute
