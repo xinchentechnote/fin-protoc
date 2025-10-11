@@ -44,8 +44,7 @@ calculatedFromAttribute: '@calculatedFrom(' from = STRING ')';
 
 lengthOfAttribute: '@lengthOf(' from = IDENTIFIER ')';
 
-paddingAttribute:
-	'@' dir = ('left' | 'right') 'Padding(' padding = PADDING_CHAR ')';
+paddingAttribute: PADDING_ATTR '(' padding = PADDING_CHAR ')';
 
 // Metadata declaration with type and description
 metaDataDeclaration:
@@ -98,7 +97,9 @@ DIGITS: [0-9]+;
 
 STRING: '"' ( ~["\\\r\n] | '\\' .)* '"';
 
-PADDING_CHAR: '\'0\'' | '\' \'';
+PADDING_ATTR: '@' ('left' | 'right') 'Padding';
+
+PADDING_CHAR: '\'' ('0' | ' ') '\'';
 
 // Root and Packet keywords
 ROOT: 'root';
