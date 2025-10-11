@@ -52,11 +52,11 @@ type PacketDslVisitor interface {
 	// Visit a parse tree produced by PacketDslParser#fieldAttribute.
 	VisitFieldAttribute(ctx *FieldAttributeContext) interface{}
 
-	// Visit a parse tree produced by PacketDslParser#lengthOfAttribute.
-	VisitLengthOfAttribute(ctx *LengthOfAttributeContext) interface{}
-
 	// Visit a parse tree produced by PacketDslParser#calculatedFromAttribute.
 	VisitCalculatedFromAttribute(ctx *CalculatedFromAttributeContext) interface{}
+
+	// Visit a parse tree produced by PacketDslParser#lengthOfAttribute.
+	VisitLengthOfAttribute(ctx *LengthOfAttributeContext) interface{}
 
 	// Visit a parse tree produced by PacketDslParser#paddingAttribute.
 	VisitPaddingAttribute(ctx *PaddingAttributeContext) interface{}

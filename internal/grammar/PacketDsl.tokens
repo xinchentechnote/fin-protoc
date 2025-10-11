@@ -44,9 +44,9 @@ WS=42
 '{'=2
 '}'=3
 '='=4
-'@lengthOf('=5
+'@calculatedFrom('=5
 ')'=6
-'@calculatedFrom('=7
+'@lengthOf('=7
 '@'=8
 'left'=9
 'right'=10

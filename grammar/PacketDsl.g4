@@ -40,9 +40,9 @@ fieldAttribute:
 	| calculatedFromAttribute
 	| paddingAttribute;
 
-lengthOfAttribute: '@lengthOf(' from = IDENTIFIER ')';
-
 calculatedFromAttribute: '@calculatedFrom(' from = STRING ')';
+
+lengthOfAttribute: '@lengthOf(' from = IDENTIFIER ')';
 
 paddingAttribute:
 	'@' dir = ('left' | 'right') 'Padding(' padding = PADDING_CHAR ')';
@@ -98,7 +98,7 @@ DIGITS: [0-9]+;
 
 STRING: '"' ( ~["\\\r\n] | '\\' .)* '"';
 
-PADDING_CHAR: '"0"' | '" "';
+PADDING_CHAR: '\'0\'' | '\' \'';
 
 // Root and Packet keywords
 ROOT: 'root';

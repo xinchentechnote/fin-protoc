@@ -67,11 +67,11 @@ func (v *BasePacketDslVisitor) VisitFieldAttribute(ctx *FieldAttributeContext) i
 	return v.VisitChildren(ctx)
 }
 
-func (v *BasePacketDslVisitor) VisitLengthOfAttribute(ctx *LengthOfAttributeContext) interface{} {
+func (v *BasePacketDslVisitor) VisitCalculatedFromAttribute(ctx *CalculatedFromAttributeContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BasePacketDslVisitor) VisitCalculatedFromAttribute(ctx *CalculatedFromAttributeContext) interface{} {
+func (v *BasePacketDslVisitor) VisitLengthOfAttribute(ctx *LengthOfAttributeContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

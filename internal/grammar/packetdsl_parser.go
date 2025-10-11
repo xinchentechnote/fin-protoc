@@ -32,7 +32,7 @@ var PacketDslParserStaticData struct {
 func packetdslParserInit() {
 	staticData := &PacketDslParserStaticData
 	staticData.LiteralNames = []string{
-		"", "'options'", "'{'", "'}'", "'='", "'@lengthOf('", "')'", "'@calculatedFrom('",
+		"", "'options'", "'{'", "'}'", "'='", "'@calculatedFrom('", "')'", "'@lengthOf('",
 		"'@'", "'left'", "'right'", "'Padding('", "'string'", "'char'", "'char['",
 		"']'", "'as'", "'['", "", "", "", "", "", "", "", "", "", "", "", "",
 		"", "'root'", "'packet'", "'repeat'", "'MetaData'", "'match'", "':'",
@@ -49,7 +49,7 @@ func packetdslParserInit() {
 		"packet", "optionDefinition", "optionDeclaration", "packetDefinition",
 		"fieldDefinitionWithAttribute", "fieldDefinition", "metaDataDefinition",
 		"lengthFieldDeclaration", "checkSumFieldDeclaration", "fieldAttribute",
-		"lengthOfAttribute", "calculatedFromAttribute", "paddingAttribute",
+		"calculatedFromAttribute", "lengthOfAttribute", "paddingAttribute",
 		"metaDataDeclaration", "value", "type", "matchFieldDeclaration", "matchPair",
 		"inerObjectDeclaration", "list",
 	}
@@ -115,16 +115,16 @@ func packetdslParserInit() {
 		114, 115, 1, 0, 0, 0, 115, 117, 1, 0, 0, 0, 116, 114, 1, 0, 0, 0, 117,
 		118, 5, 3, 0, 0, 118, 13, 1, 0, 0, 0, 119, 121, 3, 30, 15, 0, 120, 119,
 		1, 0, 0, 0, 120, 121, 1, 0, 0, 0, 121, 122, 1, 0, 0, 0, 122, 123, 5, 39,
-		0, 0, 123, 125, 3, 20, 10, 0, 124, 126, 5, 40, 0, 0, 125, 124, 1, 0, 0,
+		0, 0, 123, 125, 3, 22, 11, 0, 124, 126, 5, 40, 0, 0, 125, 124, 1, 0, 0,
 		0, 125, 126, 1, 0, 0, 0, 126, 127, 1, 0, 0, 0, 127, 128, 5, 37, 0, 0, 128,
 		15, 1, 0, 0, 0, 129, 131, 3, 30, 15, 0, 130, 129, 1, 0, 0, 0, 130, 131,
-		1, 0, 0, 0, 131, 132, 1, 0, 0, 0, 132, 133, 5, 39, 0, 0, 133, 135, 3, 22,
-		11, 0, 134, 136, 5, 40, 0, 0, 135, 134, 1, 0, 0, 0, 135, 136, 1, 0, 0,
+		1, 0, 0, 0, 131, 132, 1, 0, 0, 0, 132, 133, 5, 39, 0, 0, 133, 135, 3, 20,
+		10, 0, 134, 136, 5, 40, 0, 0, 135, 134, 1, 0, 0, 0, 135, 136, 1, 0, 0,
 		0, 136, 137, 1, 0, 0, 0, 137, 138, 5, 37, 0, 0, 138, 17, 1, 0, 0, 0, 139,
-		143, 3, 20, 10, 0, 140, 143, 3, 22, 11, 0, 141, 143, 3, 24, 12, 0, 142,
+		143, 3, 22, 11, 0, 140, 143, 3, 20, 10, 0, 141, 143, 3, 24, 12, 0, 142,
 		139, 1, 0, 0, 0, 142, 140, 1, 0, 0, 0, 142, 141, 1, 0, 0, 0, 143, 19, 1,
-		0, 0, 0, 144, 145, 5, 5, 0, 0, 145, 146, 5, 39, 0, 0, 146, 147, 5, 6, 0,
-		0, 147, 21, 1, 0, 0, 0, 148, 149, 5, 7, 0, 0, 149, 150, 5, 29, 0, 0, 150,
+		0, 0, 0, 144, 145, 5, 5, 0, 0, 145, 146, 5, 29, 0, 0, 146, 147, 5, 6, 0,
+		0, 147, 21, 1, 0, 0, 0, 148, 149, 5, 7, 0, 0, 149, 150, 5, 39, 0, 0, 150,
 		151, 5, 6, 0, 0, 151, 23, 1, 0, 0, 0, 152, 153, 5, 8, 0, 0, 153, 154, 7,
 		0, 0, 0, 154, 155, 5, 11, 0, 0, 155, 156, 5, 30, 0, 0, 156, 157, 5, 6,
 		0, 0, 157, 25, 1, 0, 0, 0, 158, 160, 3, 30, 15, 0, 159, 158, 1, 0, 0, 0,
@@ -255,8 +255,8 @@ const (
 	PacketDslParserRULE_lengthFieldDeclaration       = 7
 	PacketDslParserRULE_checkSumFieldDeclaration     = 8
 	PacketDslParserRULE_fieldAttribute               = 9
-	PacketDslParserRULE_lengthOfAttribute            = 10
-	PacketDslParserRULE_calculatedFromAttribute      = 11
+	PacketDslParserRULE_calculatedFromAttribute      = 10
+	PacketDslParserRULE_lengthOfAttribute            = 11
 	PacketDslParserRULE_paddingAttribute             = 12
 	PacketDslParserRULE_metaDataDeclaration          = 13
 	PacketDslParserRULE_value                        = 14
@@ -2107,9 +2107,9 @@ type ICheckSumFieldDeclarationContext interface {
 	SetName(antlr.Token)
 
 	// Getter signatures
+	CalculatedFromAttribute() ICalculatedFromAttributeContext
 	COMMA() antlr.TerminalNode
 	IDENTIFIER() antlr.TerminalNode
-	CalculatedFromAttribute() ICalculatedFromAttributeContext
 	Type_() ITypeContext
 	STRING_LITERAL() antlr.TerminalNode
 
@@ -2154,14 +2154,6 @@ func (s *CheckSumFieldDeclarationContext) GetName() antlr.Token { return s.name 
 
 func (s *CheckSumFieldDeclarationContext) SetName(v antlr.Token) { s.name = v }
 
-func (s *CheckSumFieldDeclarationContext) COMMA() antlr.TerminalNode {
-	return s.GetToken(PacketDslParserCOMMA, 0)
-}
-
-func (s *CheckSumFieldDeclarationContext) IDENTIFIER() antlr.TerminalNode {
-	return s.GetToken(PacketDslParserIDENTIFIER, 0)
-}
-
 func (s *CheckSumFieldDeclarationContext) CalculatedFromAttribute() ICalculatedFromAttributeContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
@@ -2176,6 +2168,14 @@ func (s *CheckSumFieldDeclarationContext) CalculatedFromAttribute() ICalculatedF
 	}
 
 	return t.(ICalculatedFromAttributeContext)
+}
+
+func (s *CheckSumFieldDeclarationContext) COMMA() antlr.TerminalNode {
+	return s.GetToken(PacketDslParserCOMMA, 0)
+}
+
+func (s *CheckSumFieldDeclarationContext) IDENTIFIER() antlr.TerminalNode {
+	return s.GetToken(PacketDslParserIDENTIFIER, 0)
 }
 
 func (s *CheckSumFieldDeclarationContext) Type_() ITypeContext {
@@ -2245,12 +2245,10 @@ func (p *PacketDslParser) CheckSumFieldDeclaration() (localctx ICheckSumFieldDec
 			goto errorExit
 		}
 	}
-
 	{
 		p.SetState(133)
 		p.CalculatedFromAttribute()
 	}
-
 	p.SetState(135)
 	p.GetErrorHandler().Sync(p)
 	if p.HasError() {
@@ -2415,14 +2413,14 @@ func (p *PacketDslParser) FieldAttribute() (localctx IFieldAttributeContext) {
 	}
 
 	switch p.GetTokenStream().LA(1) {
-	case PacketDslParserT__4:
+	case PacketDslParserT__6:
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(139)
 			p.LengthOfAttribute()
 		}
 
-	case PacketDslParserT__6:
+	case PacketDslParserT__4:
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(140)
@@ -2439,130 +2437,6 @@ func (p *PacketDslParser) FieldAttribute() (localctx IFieldAttributeContext) {
 	default:
 		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
 		goto errorExit
-	}
-
-errorExit:
-	if p.HasError() {
-		v := p.GetError()
-		localctx.SetException(v)
-		p.GetErrorHandler().ReportError(p, v)
-		p.GetErrorHandler().Recover(p, v)
-		p.SetError(nil)
-	}
-	p.ExitRule()
-	return localctx
-	goto errorExit // Trick to prevent compiler error if the label is not used
-}
-
-// ILengthOfAttributeContext is an interface to support dynamic dispatch.
-type ILengthOfAttributeContext interface {
-	antlr.ParserRuleContext
-
-	// GetParser returns the parser.
-	GetParser() antlr.Parser
-
-	// GetFrom returns the from token.
-	GetFrom() antlr.Token
-
-	// SetFrom sets the from token.
-	SetFrom(antlr.Token)
-
-	// Getter signatures
-	IDENTIFIER() antlr.TerminalNode
-
-	// IsLengthOfAttributeContext differentiates from other interfaces.
-	IsLengthOfAttributeContext()
-}
-
-type LengthOfAttributeContext struct {
-	antlr.BaseParserRuleContext
-	parser antlr.Parser
-	from   antlr.Token
-}
-
-func NewEmptyLengthOfAttributeContext() *LengthOfAttributeContext {
-	var p = new(LengthOfAttributeContext)
-	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
-	p.RuleIndex = PacketDslParserRULE_lengthOfAttribute
-	return p
-}
-
-func InitEmptyLengthOfAttributeContext(p *LengthOfAttributeContext) {
-	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
-	p.RuleIndex = PacketDslParserRULE_lengthOfAttribute
-}
-
-func (*LengthOfAttributeContext) IsLengthOfAttributeContext() {}
-
-func NewLengthOfAttributeContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *LengthOfAttributeContext {
-	var p = new(LengthOfAttributeContext)
-
-	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
-
-	p.parser = parser
-	p.RuleIndex = PacketDslParserRULE_lengthOfAttribute
-
-	return p
-}
-
-func (s *LengthOfAttributeContext) GetParser() antlr.Parser { return s.parser }
-
-func (s *LengthOfAttributeContext) GetFrom() antlr.Token { return s.from }
-
-func (s *LengthOfAttributeContext) SetFrom(v antlr.Token) { s.from = v }
-
-func (s *LengthOfAttributeContext) IDENTIFIER() antlr.TerminalNode {
-	return s.GetToken(PacketDslParserIDENTIFIER, 0)
-}
-
-func (s *LengthOfAttributeContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *LengthOfAttributeContext) ToStringTree(ruleNames []string, recog antlr.Recognizer) string {
-	return antlr.TreesStringTree(s, ruleNames, recog)
-}
-
-func (s *LengthOfAttributeContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case PacketDslVisitor:
-		return t.VisitLengthOfAttribute(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-func (p *PacketDslParser) LengthOfAttribute() (localctx ILengthOfAttributeContext) {
-	localctx = NewLengthOfAttributeContext(p, p.GetParserRuleContext(), p.GetState())
-	p.EnterRule(localctx, 20, PacketDslParserRULE_lengthOfAttribute)
-	p.EnterOuterAlt(localctx, 1)
-	{
-		p.SetState(144)
-		p.Match(PacketDslParserT__4)
-		if p.HasError() {
-			// Recognition error - abort rule
-			goto errorExit
-		}
-	}
-	{
-		p.SetState(145)
-
-		var _m = p.Match(PacketDslParserIDENTIFIER)
-
-		localctx.(*LengthOfAttributeContext).from = _m
-		if p.HasError() {
-			// Recognition error - abort rule
-			goto errorExit
-		}
-	}
-	{
-		p.SetState(146)
-		p.Match(PacketDslParserT__5)
-		if p.HasError() {
-			// Recognition error - abort rule
-			goto errorExit
-		}
 	}
 
 errorExit:
@@ -2659,7 +2533,131 @@ func (s *CalculatedFromAttributeContext) Accept(visitor antlr.ParseTreeVisitor) 
 
 func (p *PacketDslParser) CalculatedFromAttribute() (localctx ICalculatedFromAttributeContext) {
 	localctx = NewCalculatedFromAttributeContext(p, p.GetParserRuleContext(), p.GetState())
-	p.EnterRule(localctx, 22, PacketDslParserRULE_calculatedFromAttribute)
+	p.EnterRule(localctx, 20, PacketDslParserRULE_calculatedFromAttribute)
+	p.EnterOuterAlt(localctx, 1)
+	{
+		p.SetState(144)
+		p.Match(PacketDslParserT__4)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+	{
+		p.SetState(145)
+
+		var _m = p.Match(PacketDslParserSTRING)
+
+		localctx.(*CalculatedFromAttributeContext).from = _m
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+	{
+		p.SetState(146)
+		p.Match(PacketDslParserT__5)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
+	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
+}
+
+// ILengthOfAttributeContext is an interface to support dynamic dispatch.
+type ILengthOfAttributeContext interface {
+	antlr.ParserRuleContext
+
+	// GetParser returns the parser.
+	GetParser() antlr.Parser
+
+	// GetFrom returns the from token.
+	GetFrom() antlr.Token
+
+	// SetFrom sets the from token.
+	SetFrom(antlr.Token)
+
+	// Getter signatures
+	IDENTIFIER() antlr.TerminalNode
+
+	// IsLengthOfAttributeContext differentiates from other interfaces.
+	IsLengthOfAttributeContext()
+}
+
+type LengthOfAttributeContext struct {
+	antlr.BaseParserRuleContext
+	parser antlr.Parser
+	from   antlr.Token
+}
+
+func NewEmptyLengthOfAttributeContext() *LengthOfAttributeContext {
+	var p = new(LengthOfAttributeContext)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = PacketDslParserRULE_lengthOfAttribute
+	return p
+}
+
+func InitEmptyLengthOfAttributeContext(p *LengthOfAttributeContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = PacketDslParserRULE_lengthOfAttribute
+}
+
+func (*LengthOfAttributeContext) IsLengthOfAttributeContext() {}
+
+func NewLengthOfAttributeContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *LengthOfAttributeContext {
+	var p = new(LengthOfAttributeContext)
+
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
+
+	p.parser = parser
+	p.RuleIndex = PacketDslParserRULE_lengthOfAttribute
+
+	return p
+}
+
+func (s *LengthOfAttributeContext) GetParser() antlr.Parser { return s.parser }
+
+func (s *LengthOfAttributeContext) GetFrom() antlr.Token { return s.from }
+
+func (s *LengthOfAttributeContext) SetFrom(v antlr.Token) { s.from = v }
+
+func (s *LengthOfAttributeContext) IDENTIFIER() antlr.TerminalNode {
+	return s.GetToken(PacketDslParserIDENTIFIER, 0)
+}
+
+func (s *LengthOfAttributeContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LengthOfAttributeContext) ToStringTree(ruleNames []string, recog antlr.Recognizer) string {
+	return antlr.TreesStringTree(s, ruleNames, recog)
+}
+
+func (s *LengthOfAttributeContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case PacketDslVisitor:
+		return t.VisitLengthOfAttribute(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+func (p *PacketDslParser) LengthOfAttribute() (localctx ILengthOfAttributeContext) {
+	localctx = NewLengthOfAttributeContext(p, p.GetParserRuleContext(), p.GetState())
+	p.EnterRule(localctx, 22, PacketDslParserRULE_lengthOfAttribute)
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(148)
@@ -2672,9 +2670,9 @@ func (p *PacketDslParser) CalculatedFromAttribute() (localctx ICalculatedFromAtt
 	{
 		p.SetState(149)
 
-		var _m = p.Match(PacketDslParserSTRING)
+		var _m = p.Match(PacketDslParserIDENTIFIER)
 
-		localctx.(*CalculatedFromAttributeContext).from = _m
+		localctx.(*LengthOfAttributeContext).from = _m
 		if p.HasError() {
 			// Recognition error - abort rule
 			goto errorExit
