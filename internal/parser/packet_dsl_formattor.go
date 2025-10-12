@@ -147,9 +147,11 @@ func (v *PacketDslFormattor) VisitFieldDefinitionWithAttribute(ctx *gen.FieldDef
 		for _, fieldAttr := range ctx.AllFieldAttribute() {
 			switch {
 			case fieldAttr.CalculatedFromAttribute() != nil:
-				formattedDsl.WriteString(v.Visit(fieldAttr.CalculatedFromAttribute()).(string))
+				formattedDsl.WriteString(v.VisitCalculatedFromAttribute(fieldAttr.CalculatedFromAttribute().(*gen.CalculatedFromAttributeContext)).(string))
 			case fieldAttr.LengthOfAttribute() != nil:
-				formattedDsl.WriteString(v.Visit(fieldAttr.LengthOfAttribute()).(string))
+				formattedDsl.WriteString(v.VisitLengthOfAttribute(fieldAttr.LengthOfAttribute().(*gen.LengthOfAttributeContext)).(string))
+			case fieldAttr.PaddingAttribute() != nil:
+				formattedDsl.WriteString(v.VisitPaddingAttribute(fieldAttr.PaddingAttribute().(*gen.PaddingAttributeContext)).(string))
 			default:
 				formattedDsl.WriteString(fieldAttr.GetText())
 			}
@@ -158,6 +160,21 @@ func (v *PacketDslFormattor) VisitFieldDefinitionWithAttribute(ctx *gen.FieldDef
 	}
 	formattedDsl.WriteString(v.VisitFieldDefinition(ctx.FieldDefinition()).(string))
 	return formattedDsl.String()
+}
+
+// VisitLengthOfAttribute formats lengthOf attribute
+func (v *PacketDslFormattor) VisitLengthOfAttribute(ctx *gen.LengthOfAttributeContext) interface{} {
+	return fmt.Sprintf("@lengthOf(%s)", ctx.GetFrom().GetText())
+}
+
+// VisitCalculatedFromAttribute formats calculatedFrom attribute
+func (v *PacketDslFormattor) VisitCalculatedFromAttribute(ctx *gen.CalculatedFromAttributeContext) interface{} {
+	return fmt.Sprintf("@calculatedFrom(%s)", ctx.GetFrom().GetText())
+}
+
+// VisitPaddingAttribute formats padding attribute
+func (v *PacketDslFormattor) VisitPaddingAttribute(ctx *gen.PaddingAttributeContext) interface{} {
+	return fmt.Sprintf("%s(%s)", ctx.PADDING_ATTR().GetText(), ctx.PADDING_CHAR().GetText())
 }
 
 // VisitOptionDefinition overrides the default implementation for option definitions.

@@ -1,6 +1,6 @@
 options {
-    string_pre_fix_len_type = u16;
-    repeat_pre_fix_size_type = u16;
+    StringPreFixLenType = u16;
+    RepeatPreFixSizeType = u16;
 }
 
 packet SampleBinary {
@@ -13,9 +13,12 @@ packet SampleBinary {
         4 : RiskControlRequest,
         5 : RiskControlResponse,
     },
+    @calculatedFrom("CRC32")
+    u32 Ckecksum `校验和`,
 }
 
 packet Logon {
+    @leftPadding('0')
     char[10] UserName `用户名`,
     string Password `密码`,
     uint64 ClientId `客户端ID`,
@@ -23,6 +26,7 @@ packet Logon {
 }
 
 packet Logout {
+    @rightPadding('0')
     char[10] UserName `用户名`,
     uint64 ClientId `客户端ID`,
 }
