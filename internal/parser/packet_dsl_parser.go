@@ -162,6 +162,11 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinitionWithAttribute(ctx *gen.FieldD
 			f.CheckSumType = fieldAttr.CalculatedFromAttribute().GetFrom().GetText()
 		case fieldAttr.LengthOfAttribute() != nil:
 			f.LengthOfField = fieldAttr.LengthOfAttribute().GetFrom().GetText()
+		case fieldAttr.PaddingAttribute() != nil:
+			f.Padding = &model.Padding{
+				PadChar:  fieldAttr.PaddingAttribute().PADDING_CHAR().GetText(),
+				FromLeft: strings.Contains(fieldAttr.PaddingAttribute().PADDING_ATTR().GetText(), "left"),
+			}
 		}
 	}
 	return fd
