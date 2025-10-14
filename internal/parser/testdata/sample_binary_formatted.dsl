@@ -1,6 +1,6 @@
 options {
-    StringPreFixLenType = u16;
-    RepeatPreFixSizeType = u16;
+    StringPrefixLenType = u16;
+    ArrayPrefixLenType = u16;
 }
 
 packet SampleBinary {
@@ -18,7 +18,7 @@ packet SampleBinary {
 }
 
 packet Logon {
-    @leftPadding('0')
+    @leftPad('0')
     char[10] UserName `用户名`,
     string Password `密码`,
     uint64 ClientId `客户端ID`,
@@ -26,7 +26,7 @@ packet Logon {
 }
 
 packet Logout {
-    @rightPadding('0')
+    @rightPad('0')
     char[10] UserName `用户名`,
     uint64 ClientId `客户端ID`,
 }

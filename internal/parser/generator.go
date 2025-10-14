@@ -13,12 +13,13 @@ type Generator interface {
 
 // GeneratorConfig config
 type GeneratorConfig struct {
-	ListLenPrefixLenType   string //default u16
-	StringLenPrefixLenType string //default u16
-	JavaPackage            string //default empty
-	GoPackage              string //default empty
-	GoModule               string //default empty
-	LittleEndian           bool   //default false
+	ListLenPrefixLenType   string         //default u16
+	StringLenPrefixLenType string         //default u16
+	JavaPackage            string         //default empty
+	GoPackage              string         //default empty
+	GoModule               string         //default empty
+	LittleEndian           bool           //default false
+	Padding                *model.Padding //default nil
 }
 
 // NewGeneratorConfig new config
@@ -52,6 +53,19 @@ func NewGeneratorConfig(options map[string]string) *GeneratorConfig {
 	if val, ok := options["GoModule"]; ok {
 		config.GoModule = val
 	}
-
+	fromLeft := false
+	padChar := " "
+	if val, ok := options["FixStringPadFromLeft"]; ok {
+		fromLeft = strings.ToLower(val) == "true"
+	}
+	if val, ok := options["FixStringPadChar"]; ok {
+		padChar = val
+	}
+	if fromLeft || padChar != " " {
+		config.Padding = &model.Padding{
+			FromLeft: fromLeft,
+			PadChar:  padChar,
+		}
+	}
 	return config
 }

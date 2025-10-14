@@ -50,7 +50,7 @@ paddingAttribute: PADDING_ATTR '(' padding = PADDING_CHAR ')';
 metaDataDeclaration:
 	type? name = IDENTIFIER STRING_LITERAL? COMMA;
 
-value: type | STRING | DIGITS;
+value: type | STRING | DIGITS | PADDING_CHAR;
 
 // Types for fields
 type:
@@ -97,7 +97,7 @@ DIGITS: [0-9]+;
 
 STRING: '"' ( ~["\\\r\n] | '\\' .)* '"';
 
-PADDING_ATTR: '@' ('left' | 'right') 'Padding';
+PADDING_ATTR: '@' ('left' | 'right') 'Pad';
 
 PADDING_CHAR: '\'' ('0' | ' ') '\'';
 
