@@ -49,12 +49,14 @@ var _ = map[string]struct{}{
 }
 
 var options = map[string][]string{
-	"StringPreFixLenType":  {"u8", "u16", "u32", "u64"},
-	"RepeatPreFixSizeType": {"u8", "u16", "u32", "u64"},
-	"LittleEndian":         {"true", "false"},
-	"JavaPackage":          {},
-	"GoPackage":            {},
-	"GoModule":             {},
+	"StringPrefixLenType":    {"u8", "u16", "u32", "u64"},
+	"ArrayPrefixLenType":     {"u8", "u16", "u32", "u64"},
+	"LittleEndian":           {"true", "false"},
+	"JavaPackage":            {},
+	"GoPackage":              {},
+	"GoModule":               {},
+	"FixedStringPadFromLeft": {"true", "false"},
+	"FixedStringPadChar":     {"'0'", "' '"},
 }
 
 // BinaryModel contains metaData, options,and packets
