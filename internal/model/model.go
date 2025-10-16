@@ -5,6 +5,25 @@ import (
 	"strings"
 )
 
+const (
+	// StringPrefixLenType prefix length type for dynamic string
+	StringPrefixLenType = "StringPrefixLenType"
+	// ArrayPrefixLenType prefix length type for dynamic array(list)
+	ArrayPrefixLenType = "ArrayPrefixLenType"
+	// LittleEndian option for endianness
+	LittleEndian = "LittleEndian"
+	// JavaPackage java package name
+	JavaPackage = "JavaPackage"
+	// GoPackage go package name
+	GoPackage = "GoPackage"
+	// GoModule go module name
+	GoModule = "GoModule"
+	// FixedStringPadFromLeft pad from left if true, otherwise pad from right
+	FixedStringPadFromLeft = "FixedStringPadFromLeft"
+	// FixedStringPadChar pad char, default is space
+	FixedStringPadChar = "FixedStringPadChar"
+)
+
 func contains(slice []string, target string) bool {
 	for _, v := range slice {
 		if v == target {
@@ -49,14 +68,14 @@ var _ = map[string]struct{}{
 }
 
 var options = map[string][]string{
-	"StringPrefixLenType":    {"u8", "u16", "u32", "u64"},
-	"ArrayPrefixLenType":     {"u8", "u16", "u32", "u64"},
-	"LittleEndian":           {"true", "false"},
-	"JavaPackage":            {},
-	"GoPackage":              {},
-	"GoModule":               {},
-	"FixedStringPadFromLeft": {"true", "false"},
-	"FixedStringPadChar":     {"'0'", "' '"},
+	StringPrefixLenType:    {"u8", "u16", "u32", "u64"},
+	ArrayPrefixLenType:     {"u8", "u16", "u32", "u64"},
+	LittleEndian:           {"true", "false"},
+	JavaPackage:            {},
+	GoPackage:              {},
+	GoModule:               {},
+	FixedStringPadFromLeft: {"true", "false"},
+	FixedStringPadChar:     {"'0'", "' '"},
 }
 
 // BinaryModel contains metaData, options,and packets

@@ -35,30 +35,30 @@ func NewGeneratorConfig(options map[string]string) *GeneratorConfig {
 	}
 
 	// Override with provided options
-	if val, ok := options["RepeatPreFixSizeType"]; ok {
+	if val, ok := options[model.ArrayPrefixLenType]; ok {
 		config.ListLenPrefixLenType = val
 	}
-	if val, ok := options["StringPreFixLenType"]; ok {
+	if val, ok := options[model.StringPrefixLenType]; ok {
 		config.StringLenPrefixLenType = val
 	}
-	if val, ok := options["JavaPackage"]; ok {
+	if val, ok := options[model.JavaPackage]; ok {
 		config.JavaPackage = val
 	}
-	if val, ok := options["GoPackage"]; ok {
+	if val, ok := options[model.GoPackage]; ok {
 		config.GoPackage = val
 	}
-	if val, ok := options["LittleEndian"]; ok {
+	if val, ok := options[model.LittleEndian]; ok {
 		config.LittleEndian = strings.ToLower(val) == "true"
 	}
-	if val, ok := options["GoModule"]; ok {
+	if val, ok := options[model.GoModule]; ok {
 		config.GoModule = val
 	}
 	fromLeft := false
 	padChar := " "
-	if val, ok := options["FixStringPadFromLeft"]; ok {
+	if val, ok := options[model.FixedStringPadFromLeft]; ok {
 		fromLeft = strings.ToLower(val) == "true"
 	}
-	if val, ok := options["FixStringPadChar"]; ok {
+	if val, ok := options[model.FixedStringPadChar]; ok {
 		padChar = val
 	}
 	if fromLeft || padChar != " " {
