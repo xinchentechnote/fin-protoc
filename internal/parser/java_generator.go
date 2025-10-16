@@ -287,6 +287,14 @@ func (g JavaGenerator) GetFieldNameLower(f *model.Field) string {
 	return strcase.ToLowerCamel(g.GetFieldName(f))
 }
 
+// GetPadding field.Padding or config.Padding
+func (g JavaGenerator) GetPadding(f *model.Field) *model.Padding {
+	if f.Padding != nil {
+		return f.Padding
+	}
+	return g.config.Padding
+}
+
 // GetFieldType get java type
 func (g JavaGenerator) GetFieldType(f *model.Field) string {
 	switch f.GetType() {
@@ -476,6 +484,13 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 		len, ok := ParseCharArrayType(f.Type)
 		if ok {
 			//fixed string
+			padding := g.GetPadding(f)
+			if padding != nil {
+				if f.IsRepeat {
+					return fmt.Sprintf("this.%s.add(readFixedString(byteBuf, %s, %s, %t));", fieldNameLowerCamel, len, padding.PadChar, padding.FromLeft)
+				}
+				return fmt.Sprintf("this.%s = readFixedString(byteBuf, %s, %s, %t);", fieldNameLowerCamel, len, padding.PadChar, padding.FromLeft)
+			}
 			if f.IsRepeat {
 				return fmt.Sprintf("this.%s.add(readFixedString(byteBuf, %s));", fieldNameLowerCamel, len)
 			}
@@ -616,6 +631,10 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 		}
 		len, ok := ParseCharArrayType(f.Type)
 		if ok {
+			padding := g.GetPadding(f)
+			if padding != nil {
+				return fmt.Sprintf("writeFixedString(byteBuf, this.%s, %s, %s, %t);", fieldNameLowerCamel, len, padding.PadChar, padding.FromLeft)
+			}
 			return fmt.Sprintf("writeFixedString(byteBuf, this.%s, %s);", fieldNameLowerCamel, len)
 		}
 
