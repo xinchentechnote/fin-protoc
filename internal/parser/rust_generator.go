@@ -147,6 +147,14 @@ func (g RustGenerator) generateStructCode(pkt *model.Packet) string {
 	return b.String()
 }
 
+// GetPadding field.Padding or config.Padding
+func (g RustGenerator) GetPadding(f *model.Field) *model.Padding {
+	if f.Padding != nil {
+		return f.Padding
+	}
+	return g.config.Padding
+}
+
 // GetFieldType convert field type for rust
 func (g RustGenerator) GetFieldType(parentName string, f *model.Field) string {
 	switch f.GetType() {
@@ -198,6 +206,7 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 	}
 
 	name := strcase.ToSnake(f.Name)
+	padding := g.GetPadding(f)
 	if f.IsRepeat {
 		if f.GetType() == "string" {
 			if g.config.LittleEndian {
@@ -220,6 +229,9 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 		}
 		size, ok := ParseCharArrayType(f.GetType())
 		if ok {
+			if padding != nil {
+				return fmt.Sprintf("put_fixed_string_list_with_padding::<%s>(buf, &self.%s, %s, %s, %t);", g.config.ListLenPrefixLenType, name, size, padding.PadChar, padding.FromLeft)
+			}
 			return fmt.Sprintf("put_fixed_string_list::<%s>(buf, &self.%s, %s);", g.config.ListLenPrefixLenType, name, size)
 		}
 		if f.GetType() == "char" {
@@ -272,6 +284,9 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 	default:
 		size, ok := ParseCharArrayType(f.GetType())
 		if ok {
+			if padding != nil {
+				return fmt.Sprintf("put_char_array_with_padding(buf, &self.%s, %s, %s, %t);", name, size, padding.PadChar, padding.FromLeft)
+			}
 			return fmt.Sprintf("put_char_array(buf, &self.%s, %s);", name, size)
 		}
 		if f.InerObject != nil {
@@ -305,6 +320,7 @@ func (g RustGenerator) EncoderMatchField(parentName string, bufName string, f *m
 // DecodeField decoding field
 func (g RustGenerator) DecodeField(parentName string, f *model.Field) string {
 	name := strcase.ToSnake(f.Name)
+	padding := g.GetPadding(f)
 	if f.IsRepeat {
 		if f.GetType() == "string" {
 			if g.config.LittleEndian {
@@ -326,6 +342,9 @@ func (g RustGenerator) DecodeField(parentName string, f *model.Field) string {
 		}
 		size, ok := ParseCharArrayType(f.GetType())
 		if ok {
+			if padding != nil {
+				return fmt.Sprintf("let %s = get_fixed_string_list_trim_padding::<%s>(buf, %s, %s, %t)?;", name, g.config.ListLenPrefixLenType, size, padding.PadChar, padding.FromLeft)
+			}
 			return fmt.Sprintf("let %s = get_fixed_string_list::<%s>(buf, %s)?;", name, g.config.ListLenPrefixLenType, size)
 		}
 		if f.GetType() == "char" {
@@ -355,11 +374,11 @@ func (g RustGenerator) DecodeField(parentName string, f *model.Field) string {
 	case "match":
 		return g.DecodeMatchField(parentName, f)
 	default:
-		pattern := `^char\[(\d+)\]$`
-		re := regexp.MustCompile(pattern)
-		matches := re.FindStringSubmatch(f.GetType())
-		if len(matches) == 2 {
-			size := matches[1]
+		size, ok := ParseCharArrayType(f.GetType())
+		if ok {
+			if padding != nil {
+				return fmt.Sprintf("let %s = get_char_array_trim_padding(buf, %s, %s, %t)?;", name, size, padding.PadChar, padding.FromLeft)
+			}
 			return fmt.Sprintf("let %s = get_char_array(buf, %s)?;", name, size)
 		}
 		if f.InerObject != nil {
