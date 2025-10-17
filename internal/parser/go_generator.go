@@ -234,19 +234,33 @@ func (g GoGenerator) getOrder() string {
 	}
 	return order
 }
+
+// GetPadding get padding config
+func (g GoGenerator) GetPadding(field *model.Field) *model.Padding {
+	if field.Padding != nil {
+		return field.Padding
+	}
+	return g.config.Padding
+}
+
 func (g GoGenerator) generateDecodingField(p *model.Packet, field *model.Field) string {
 	var b strings.Builder
 	order := g.getOrder()
 	fieldNameCamel := strcase.ToCamel(field.Name)
+	padding := g.GetPadding(field)
 	if bt, ok := goBasicTypeMap[field.GetType()]; ok {
 		b.WriteString(fmt.Sprintf("    if val, err := codec.GetBasicType%s[%s](buf); err != nil {\n", order, bt.BasicType))
 		b.WriteString("        return err\n")
 		b.WriteString("    }  else {\n")
 		b.WriteString(fmt.Sprintf("        p.%s = val\n", fieldNameCamel))
 		b.WriteString("    }\n")
-	} else if l, ok := ParseCharArrayType(field.GetType()); ok {
+	} else if size, ok := ParseCharArrayType(field.GetType()); ok {
 		// fixed string
-		b.WriteString(fmt.Sprintf("    if val,err := codec.GetFixedString(buf, %s); err != nil {\n", l))
+		if padding != nil {
+			b.WriteString(fmt.Sprintf("    if val,err := codec.GetFixedStringTrimPadding(buf, %s, %s, %t); err != nil {\n", size, padding.PadChar, padding.FromLeft))
+		} else {
+			b.WriteString(fmt.Sprintf("    if val,err := codec.GetFixedString(buf, %s); err != nil {\n", size))
+		}
 		b.WriteString("        return err\n")
 		b.WriteString("    }  else {\n")
 		b.WriteString(fmt.Sprintf("        p.%s = val\n", fieldNameCamel))
@@ -297,6 +311,7 @@ func (g GoGenerator) generateDecodingListField(field *model.Field) string {
 	listLenType := goBasicTypeMap[g.config.ListLenPrefixLenType]
 	order := g.getOrder()
 	fieldNameCamel := strcase.ToCamel(field.Name)
+	padding := g.GetPadding(field)
 	if bt, ok := goBasicTypeMap[field.GetType()]; ok {
 		b.WriteString(fmt.Sprintf("    if val, err := codec.GetBasicTypeList%s[%s,%s](buf); err != nil {\n", order, listLenType.BasicType, bt.BasicType))
 		b.WriteString("        return err\n")
@@ -305,7 +320,11 @@ func (g GoGenerator) generateDecodingListField(field *model.Field) string {
 		b.WriteString("    }\n")
 	} else if l, ok := ParseCharArrayType(field.GetType()); ok {
 		// fixed string
-		b.WriteString(fmt.Sprintf("    if val,err := codec.GetFixedStringList%s[%s](buf, %s); err != nil {\n", order, listLenType.BasicType, l))
+		if padding != nil {
+			b.WriteString(fmt.Sprintf("    if val,err := codec.GetFixedStringListTrimPadding%s[%s](buf, %s, %s, %t); err != nil {\n", order, listLenType.BasicType, l, padding.PadChar, padding.FromLeft))
+		} else {
+			b.WriteString(fmt.Sprintf("    if val,err := codec.GetFixedStringList%s[%s](buf, %s); err != nil {\n", order, listLenType.BasicType, l))
+		}
 		b.WriteString("        return err\n")
 		b.WriteString("    }  else {\n")
 		b.WriteString(fmt.Sprintf("        p.%s = val\n", fieldNameCamel))
@@ -356,6 +375,7 @@ func (g GoGenerator) generateEncodingCode(p *model.Packet) string {
 func (g GoGenerator) generateEncodingField(p *model.Packet, field *model.Field) string {
 	var b strings.Builder
 	fieldNameCamel := strcase.ToCamel(field.Name)
+	padding := g.GetPadding(field)
 	if field.CheckSumType != "" {
 		typ := goBasicTypeMap[field.GetType()]
 		b.WriteString(fmt.Sprintf("if checksumService, ok := codec.Get(%s); ok {\n", field.CheckSumType))
@@ -391,7 +411,11 @@ func (g GoGenerator) generateEncodingField(p *model.Packet, field *model.Field) 
 		}
 	} else if l, ok := ParseCharArrayType(field.GetType()); ok {
 		// fixed string
-		b.WriteString(fmt.Sprintf("    if err := codec.PutFixedString(buf, p.%s, %s); err != nil {\n", fieldNameCamel, l))
+		if padding != nil {
+			b.WriteString(fmt.Sprintf("    if err := codec.PutFixedStringWithPadding(buf, p.%s, %s, %s, %t); err != nil {\n", fieldNameCamel, l, padding.PadChar, padding.FromLeft))
+		} else {
+			b.WriteString(fmt.Sprintf("    if err := codec.PutFixedString(buf, p.%s, %s); err != nil {\n", fieldNameCamel, l))
+		}
 		b.WriteString("        return err\n")
 		b.WriteString("    }\n")
 	} else if field.InerObject != nil {
@@ -431,13 +455,18 @@ func (g GoGenerator) generateEncodingListField(field *model.Field) string {
 	listLenType := goBasicTypeMap[g.config.ListLenPrefixLenType]
 	order := g.getOrder()
 	fieldNameCamel := strcase.ToCamel(field.Name)
+	padding := g.GetPadding(field)
 	if _, ok := goBasicTypeMap[field.GetType()]; ok {
 		b.WriteString(fmt.Sprintf("    if err := codec.PutBasicTypeList%s[%s](buf, p.%s); err != nil {\n", order, listLenType.BasicType, fieldNameCamel))
 		b.WriteString("        return fmt.Errorf(\"failed to encode %s: %w\", \"" + field.Name + "\", err)\n")
 		b.WriteString("    }\n")
 	} else if l, ok := ParseCharArrayType(field.GetType()); ok {
 		// fixed string
-		b.WriteString(fmt.Sprintf("    if err := codec.PutFixedStringList%s[%s](buf, p.%s, %s); err != nil {\n", order, listLenType.BasicType, fieldNameCamel, l))
+		if padding != nil {
+			b.WriteString(fmt.Sprintf("    if err := codec.PutFixedStringListWithPadding%s[%s](buf, p.%s, %s, %s, %t); err != nil {\n", order, listLenType.BasicType, fieldNameCamel, l, padding.PadChar, padding.FromLeft))
+		} else {
+			b.WriteString(fmt.Sprintf("    if err := codec.PutFixedStringList%s[%s](buf, p.%s, %s); err != nil {\n", order, listLenType.BasicType, fieldNameCamel, l))
+		}
 		b.WriteString("        return err\n")
 		b.WriteString("    }\n")
 	} else if field.InerObject != nil {
