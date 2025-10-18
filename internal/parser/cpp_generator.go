@@ -191,6 +191,14 @@ func (g CppGenerator) generateEquals(p *model.Packet) string {
 	return b.String()
 }
 
+// GetPadding field.Padding or config.Padding
+func (g CppGenerator) GetPadding(f *model.Field) *model.Padding {
+	if f.Padding != nil {
+		return f.Padding
+	}
+	return g.config.Padding
+}
+
 func (g CppGenerator) generateEncode(p *model.Packet) string {
 	var b strings.Builder
 	b.WriteString("void encode(ByteBuf& buf) const override {\n")
@@ -198,6 +206,7 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 	listLenTyp := cppBasicTypeMap[g.config.ListLenPrefixLenType]
 	for _, f := range p.Fields {
 		fieldNameLowerCamel := strcase.ToLowerCamel(f.Name)
+		padding := g.GetPadding(f)
 		if f.LengthOfField != "" {
 			typ := cppBasicTypeMap[f.GetType()]
 			b.WriteString(fmt.Sprintf("    auto %sPos = buf.writer_index();\n", fieldNameLowerCamel))
@@ -247,15 +256,28 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 				}
 			}
 		} else if size, ok := ParseCharArrayType(f.GetType()); ok {
-			if f.IsRepeat {
-				if g.config.LittleEndian {
-					b.WriteString(fmt.Sprintf("    codec::put_fixed_string_list_le<%s>(buf, %s, %s);\n", listLenTyp.Name, fieldNameLowerCamel, size))
+			if padding != nil {
+				if f.IsRepeat {
+					if g.config.LittleEndian {
+						b.WriteString(fmt.Sprintf("    codec::put_fixed_string_list_le<%s>(buf, %s, %s, %s, %t);\n", listLenTyp.Name, fieldNameLowerCamel, size, padding.PadChar, padding.FromLeft))
+					} else {
+						b.WriteString(fmt.Sprintf("    codec::put_fixed_string_list<%s>(buf, %s, %s, %s, %t);\n", listLenTyp.Name, fieldNameLowerCamel, size, padding.PadChar, padding.FromLeft))
+					}
 				} else {
-					b.WriteString(fmt.Sprintf("    codec::put_fixed_string_list<%s>(buf, %s, %s);\n", listLenTyp.Name, fieldNameLowerCamel, size))
+					b.WriteString(fmt.Sprintf("    codec::put_fixed_string(buf, %s, %s, %s, %t);\n", fieldNameLowerCamel, size, padding.PadChar, padding.FromLeft))
 				}
 			} else {
-				b.WriteString(fmt.Sprintf("    codec::put_fixed_string(buf, %s, %s);\n", fieldNameLowerCamel, size))
+				if f.IsRepeat {
+					if g.config.LittleEndian {
+						b.WriteString(fmt.Sprintf("    codec::put_fixed_string_list_le<%s>(buf, %s, %s);\n", listLenTyp.Name, fieldNameLowerCamel, size))
+					} else {
+						b.WriteString(fmt.Sprintf("    codec::put_fixed_string_list<%s>(buf, %s, %s);\n", listLenTyp.Name, fieldNameLowerCamel, size))
+					}
+				} else {
+					b.WriteString(fmt.Sprintf("    codec::put_fixed_string(buf, %s, %s);\n", fieldNameLowerCamel, size))
+				}
 			}
+
 		} else if f.GetType() == "string" || f.GetType() == "char[]" {
 			if f.IsRepeat {
 				if g.config.LittleEndian {
@@ -307,6 +329,7 @@ func (g CppGenerator) generateDecode(p *model.Packet) string {
 	b.WriteString("void decode(ByteBuf& buf) override {\n")
 	for _, f := range p.Fields {
 		fieldNameLowerCamel := strcase.ToLowerCamel(f.Name)
+		padding := g.GetPadding(f)
 		if typ, ok := cppBasicTypeMap[f.GetType()]; ok {
 			if f.IsRepeat {
 				if g.config.LittleEndian {
@@ -324,15 +347,28 @@ func (g CppGenerator) generateDecode(p *model.Packet) string {
 			}
 
 		} else if size, ok := ParseCharArrayType(f.GetType()); ok {
-			if f.IsRepeat {
-				if g.config.LittleEndian {
-					b.WriteString(fmt.Sprintf("    %s = codec::get_fixed_string_list_le<%s>(buf, %s);\n", fieldNameLowerCamel, listLenTyp.Name, size))
+			if padding != nil {
+				if f.IsRepeat {
+					if g.config.LittleEndian {
+						b.WriteString(fmt.Sprintf("    %s = codec::get_fixed_string_list_le<%s>(buf, %s, %s, %t);\n", fieldNameLowerCamel, listLenTyp.Name, size, padding.PadChar, padding.FromLeft))
+					} else {
+						b.WriteString(fmt.Sprintf("    %s = codec::get_fixed_string_list<%s>(buf, %s, %s, %t);\n", fieldNameLowerCamel, listLenTyp.Name, size, padding.PadChar, padding.FromLeft))
+					}
 				} else {
-					b.WriteString(fmt.Sprintf("    %s = codec::get_fixed_string_list<%s>(buf, %s);\n", fieldNameLowerCamel, listLenTyp.Name, size))
+					b.WriteString(fmt.Sprintf("    %s = codec::get_fixed_string(buf, %s, %s, %t);\n", fieldNameLowerCamel, size, padding.PadChar, padding.FromLeft))
 				}
 			} else {
-				b.WriteString(fmt.Sprintf("    %s = codec::get_fixed_string(buf, %s);\n", fieldNameLowerCamel, size))
+				if f.IsRepeat {
+					if g.config.LittleEndian {
+						b.WriteString(fmt.Sprintf("    %s = codec::get_fixed_string_list_le<%s>(buf, %s);\n", fieldNameLowerCamel, listLenTyp.Name, size))
+					} else {
+						b.WriteString(fmt.Sprintf("    %s = codec::get_fixed_string_list<%s>(buf, %s);\n", fieldNameLowerCamel, listLenTyp.Name, size))
+					}
+				} else {
+					b.WriteString(fmt.Sprintf("    %s = codec::get_fixed_string(buf, %s);\n", fieldNameLowerCamel, size))
+				}
 			}
+
 		} else if f.GetType() == "string" || f.GetType() == "char[]" {
 			if f.IsRepeat {
 				if g.config.LittleEndian {
