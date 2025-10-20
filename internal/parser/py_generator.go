@@ -182,9 +182,9 @@ func (g PythonGenerator) generateDecodeMethod(p *model.Packet) string {
 	for _, f := range p.Fields {
 		if f.IsRepeat {
 			if g.config.LittleEndian {
-				b.WriteString(fmt.Sprintf("    size = get_len_le(buffer, '%s')\n", g.config.ListLenPrefixLenType))
+				b.WriteString(fmt.Sprintf("    size = read_len_le(buffer, '%s')\n", g.config.ListLenPrefixLenType))
 			} else {
-				b.WriteString(fmt.Sprintf("    size = get_len(buffer, '%s')\n", g.config.ListLenPrefixLenType))
+				b.WriteString(fmt.Sprintf("    size = read_len(buffer, '%s')\n", g.config.ListLenPrefixLenType))
 			}
 			b.WriteString("    for i in range(size):\n")
 			b.WriteString(AddIndent4ln(g.generateDecodeField(p, f)))
@@ -225,15 +225,15 @@ func (g PythonGenerator) generateDecodeField(p *model.Packet, f *model.Field) st
 				fromLeft = "True"
 			}
 			if f.IsRepeat {
-				b.WriteString(fmt.Sprintf("    self.%s.append(get_fixed_string(buffer, %s, 'utf-8', %s, %s))\n", fieldName, size, padding.PadChar, fromLeft))
+				b.WriteString(fmt.Sprintf("    self.%s.append(read_fixed_string(buffer, %s, 'utf-8', %s, %s))\n", fieldName, size, padding.PadChar, fromLeft))
 			} else {
-				b.WriteString(fmt.Sprintf("    self.%s = get_fixed_string(buffer, %s, 'utf-8', %s, %s)\n", fieldName, size, padding.PadChar, fromLeft))
+				b.WriteString(fmt.Sprintf("    self.%s = read_fixed_string(buffer, %s, 'utf-8', %s, %s)\n", fieldName, size, padding.PadChar, fromLeft))
 			}
 		} else {
 			if f.IsRepeat {
-				b.WriteString(fmt.Sprintf("    self.%s.append(get_fixed_string(buffer,  %s, 'utf-8'))\n", fieldName, size))
+				b.WriteString(fmt.Sprintf("    self.%s.append(read_fixed_string(buffer,  %s, 'utf-8'))\n", fieldName, size))
 			} else {
-				b.WriteString(fmt.Sprintf("    self.%s = get_fixed_string(buffer, %s, 'utf-8')\n", fieldName, size))
+				b.WriteString(fmt.Sprintf("    self.%s = read_fixed_string(buffer, %s, 'utf-8')\n", fieldName, size))
 			}
 		}
 
@@ -244,9 +244,9 @@ func (g PythonGenerator) generateDecodeField(p *model.Packet, f *model.Field) st
 			le = "_le"
 		}
 		if f.IsRepeat {
-			b.WriteString(fmt.Sprintf("    self.%s.append(get_string%s(buffer,'%s'))\n", fieldName, le, g.config.StringLenPrefixLenType))
+			b.WriteString(fmt.Sprintf("    self.%s.append(read_string%s(buffer,'%s'))\n", fieldName, le, g.config.StringLenPrefixLenType))
 		} else {
-			b.WriteString(fmt.Sprintf("    self.%s = get_string%s(buffer,'%s')\n", fieldName, le, g.config.StringLenPrefixLenType))
+			b.WriteString(fmt.Sprintf("    self.%s = read_string%s(buffer,'%s')\n", fieldName, le, g.config.StringLenPrefixLenType))
 		}
 	}
 	if f.InerObject != nil {
@@ -357,9 +357,9 @@ func (g PythonGenerator) generateEncodeField(f *model.Field) string {
 		}
 	} else if f.GetType() == "string" || f.GetType() == "char[]" {
 		if g.config.LittleEndian {
-			b.WriteString(fmt.Sprintf("    put_string_le(buffer, self.%s, '%s')\n", fieldName, g.config.StringLenPrefixLenType))
+			b.WriteString(fmt.Sprintf("    write_string_le(buffer, self.%s, '%s')\n", fieldName, g.config.StringLenPrefixLenType))
 		} else {
-			b.WriteString(fmt.Sprintf("    put_string(buffer, self.%s, '%s')\n", fieldName, g.config.StringLenPrefixLenType))
+			b.WriteString(fmt.Sprintf("    write_string(buffer, self.%s, '%s')\n", fieldName, g.config.StringLenPrefixLenType))
 		}
 	} else if f.InerObject != nil {
 		b.WriteString(fmt.Sprintf("    self.%s.encode(buffer)\n", fieldName))
