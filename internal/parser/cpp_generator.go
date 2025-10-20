@@ -259,12 +259,12 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 			if padding != nil {
 				if f.IsRepeat {
 					if g.config.LittleEndian {
-						b.WriteString(fmt.Sprintf("    codec::write_fixed_string_list_le<%s>(buf, %s, %s, %s, %t);\n", listLenTyp.Name, fieldNameLowerCamel, size, padding.PadChar, padding.FromLeft))
+						b.WriteString(fmt.Sprintf("    codec::write_fixed_string_list_le<%s>(buf, %s, %s, %s, %t);\n", listLenTyp.Name, fieldNameLowerCamel, size, padding.PadChar, padding.PadLeft))
 					} else {
-						b.WriteString(fmt.Sprintf("    codec::write_fixed_string_list<%s>(buf, %s, %s, %s, %t);\n", listLenTyp.Name, fieldNameLowerCamel, size, padding.PadChar, padding.FromLeft))
+						b.WriteString(fmt.Sprintf("    codec::write_fixed_string_list<%s>(buf, %s, %s, %s, %t);\n", listLenTyp.Name, fieldNameLowerCamel, size, padding.PadChar, padding.PadLeft))
 					}
 				} else {
-					b.WriteString(fmt.Sprintf("    codec::write_fixed_string(buf, %s, %s, %s, %t);\n", fieldNameLowerCamel, size, padding.PadChar, padding.FromLeft))
+					b.WriteString(fmt.Sprintf("    codec::write_fixed_string(buf, %s, %s, %s, %t);\n", fieldNameLowerCamel, size, padding.PadChar, padding.PadLeft))
 				}
 			} else {
 				if f.IsRepeat {
@@ -350,12 +350,12 @@ func (g CppGenerator) generateDecode(p *model.Packet) string {
 			if padding != nil {
 				if f.IsRepeat {
 					if g.config.LittleEndian {
-						b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string_list_le<%s>(buf, %s, %s, %t);\n", fieldNameLowerCamel, listLenTyp.Name, size, padding.PadChar, padding.FromLeft))
+						b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string_list_le<%s>(buf, %s, %s, %t);\n", fieldNameLowerCamel, listLenTyp.Name, size, padding.PadChar, padding.PadLeft))
 					} else {
-						b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string_list<%s>(buf, %s, %s, %t);\n", fieldNameLowerCamel, listLenTyp.Name, size, padding.PadChar, padding.FromLeft))
+						b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string_list<%s>(buf, %s, %s, %t);\n", fieldNameLowerCamel, listLenTyp.Name, size, padding.PadChar, padding.PadLeft))
 					}
 				} else {
-					b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string(buf, %s, %s, %t);\n", fieldNameLowerCamel, size, padding.PadChar, padding.FromLeft))
+					b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string(buf, %s, %s, %t);\n", fieldNameLowerCamel, size, padding.PadChar, padding.PadLeft))
 				}
 			} else {
 				if f.IsRepeat {

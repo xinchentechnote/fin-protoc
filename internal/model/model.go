@@ -199,8 +199,8 @@ type Packet struct {
 
 // Padding represents padding configuration for a field.
 type Padding struct {
-	PadChar  string // Character used for padding
-	FromLeft bool   // True if padding is applied from the left, false if from the right
+	PadChar string // Character used for padding
+	PadLeft bool   // True if padding is applied from the left, false if from the right
 }
 
 // Field represents a single field within a packet. It can be a basic field, nested object, or match field.

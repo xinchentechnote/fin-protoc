@@ -487,9 +487,9 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 			padding := g.GetPadding(f)
 			if padding != nil {
 				if f.IsRepeat {
-					return fmt.Sprintf("this.%s.add(readFixedString(byteBuf, %s, %s, %t));", fieldNameLowerCamel, len, padding.PadChar, padding.FromLeft)
+					return fmt.Sprintf("this.%s.add(readFixedString(byteBuf, %s, %s, %t));", fieldNameLowerCamel, len, padding.PadChar, padding.PadLeft)
 				}
-				return fmt.Sprintf("this.%s = readFixedString(byteBuf, %s, %s, %t);", fieldNameLowerCamel, len, padding.PadChar, padding.FromLeft)
+				return fmt.Sprintf("this.%s = readFixedString(byteBuf, %s, %s, %t);", fieldNameLowerCamel, len, padding.PadChar, padding.PadLeft)
 			}
 			if f.IsRepeat {
 				return fmt.Sprintf("this.%s.add(readFixedString(byteBuf, %s));", fieldNameLowerCamel, len)
@@ -633,7 +633,7 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 		if ok {
 			padding := g.GetPadding(f)
 			if padding != nil {
-				return fmt.Sprintf("writeFixedString(byteBuf, this.%s, %s, %s, %t);", fieldNameLowerCamel, len, padding.PadChar, padding.FromLeft)
+				return fmt.Sprintf("writeFixedString(byteBuf, this.%s, %s, %s, %t);", fieldNameLowerCamel, len, padding.PadChar, padding.PadLeft)
 			}
 			return fmt.Sprintf("writeFixedString(byteBuf, this.%s, %s);", fieldNameLowerCamel, len)
 		}

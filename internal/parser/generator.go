@@ -63,8 +63,8 @@ func NewGeneratorConfig(options map[string]string) *GeneratorConfig {
 	}
 	if fromLeft || padChar != " " {
 		config.Padding = &model.Padding{
-			FromLeft: fromLeft,
-			PadChar:  padChar,
+			PadLeft: fromLeft,
+			PadChar: padChar,
 		}
 	}
 	return config

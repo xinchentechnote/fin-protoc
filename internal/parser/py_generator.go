@@ -221,7 +221,7 @@ func (g PythonGenerator) generateDecodeField(p *model.Packet, f *model.Field) st
 	if size, ok := ParseCharArrayType(f.GetType()); ok {
 		if padding != nil {
 			fromLeft := "False"
-			if padding.FromLeft {
+			if padding.PadLeft {
 				fromLeft = "True"
 			}
 			if f.IsRepeat {
@@ -347,7 +347,7 @@ func (g PythonGenerator) generateEncodeField(f *model.Field) string {
 		}
 	} else if size, ok := ParseCharArrayType(f.GetType()); ok {
 		fromLeft := "False"
-		if padding != nil && padding.FromLeft {
+		if padding != nil && padding.PadLeft {
 			fromLeft = "True"
 		}
 		if padding != nil {
