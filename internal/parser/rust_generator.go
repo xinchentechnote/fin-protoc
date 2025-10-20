@@ -231,12 +231,12 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 		if ok {
 			if g.config.LittleEndian {
 				if padding != nil {
-					return fmt.Sprintf("put_fixed_string_list_with_padding_le::<%s>(buf, &self.%s, %s, %s, %t);", g.config.ListLenPrefixLenType, name, size, padding.PadChar, padding.PadLeft)
+					return fmt.Sprintf("put_fixed_string_list_with_pad_char_le::<%s>(buf, &self.%s, %s, %s, %t);", g.config.ListLenPrefixLenType, name, size, padding.PadChar, padding.PadLeft)
 				}
 				return fmt.Sprintf("put_fixed_string_list_le::<%s>(buf, &self.%s, %s);", g.config.ListLenPrefixLenType, name, size)
 			}
 			if padding != nil {
-				return fmt.Sprintf("put_fixed_string_list_with_padding::<%s>(buf, &self.%s, %s, %s, %t);", g.config.ListLenPrefixLenType, name, size, padding.PadChar, padding.PadLeft)
+				return fmt.Sprintf("put_fixed_string_list_with_pad_char::<%s>(buf, &self.%s, %s, %s, %t);", g.config.ListLenPrefixLenType, name, size, padding.PadChar, padding.PadLeft)
 			}
 			return fmt.Sprintf("put_fixed_string_list::<%s>(buf, &self.%s, %s);", g.config.ListLenPrefixLenType, name, size)
 		}
@@ -291,7 +291,7 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 		size, ok := ParseCharArrayType(f.GetType())
 		if ok {
 			if padding != nil {
-				return fmt.Sprintf("put_char_array_with_padding(buf, &self.%s, %s, %s, %t);", name, size, padding.PadChar, padding.PadLeft)
+				return fmt.Sprintf("put_char_array_with_pad_char(buf, &self.%s, %s, %s, %t);", name, size, padding.PadChar, padding.PadLeft)
 			}
 			return fmt.Sprintf("put_char_array(buf, &self.%s, %s);", name, size)
 		}
@@ -350,12 +350,12 @@ func (g RustGenerator) DecodeField(parentName string, f *model.Field) string {
 		if ok {
 			if g.config.LittleEndian {
 				if padding != nil {
-					return fmt.Sprintf("let %s = get_fixed_string_list_trim_padding_le::<%s>(buf, %s, %s, %t)?;", name, g.config.ListLenPrefixLenType, size, padding.PadChar, padding.PadLeft)
+					return fmt.Sprintf("let %s = get_fixed_string_list_trim_pad_char_le::<%s>(buf, %s, %s, %t)?;", name, g.config.ListLenPrefixLenType, size, padding.PadChar, padding.PadLeft)
 				}
 				return fmt.Sprintf("let %s = get_fixed_string_list_le::<%s>(buf, %s)?;", name, g.config.ListLenPrefixLenType, size)
 			}
 			if padding != nil {
-				return fmt.Sprintf("let %s = get_fixed_string_list_trim_padding::<%s>(buf, %s, %s, %t)?;", name, g.config.ListLenPrefixLenType, size, padding.PadChar, padding.PadLeft)
+				return fmt.Sprintf("let %s = get_fixed_string_list_trim_pad_char::<%s>(buf, %s, %s, %t)?;", name, g.config.ListLenPrefixLenType, size, padding.PadChar, padding.PadLeft)
 			}
 			return fmt.Sprintf("let %s = get_fixed_string_list::<%s>(buf, %s)?;", name, g.config.ListLenPrefixLenType, size)
 		}
@@ -389,7 +389,7 @@ func (g RustGenerator) DecodeField(parentName string, f *model.Field) string {
 		size, ok := ParseCharArrayType(f.GetType())
 		if ok {
 			if padding != nil {
-				return fmt.Sprintf("let %s = get_char_array_trim_padding(buf, %s, %s, %t)?;", name, size, padding.PadChar, padding.PadLeft)
+				return fmt.Sprintf("let %s = get_char_array_trim_pad_char(buf, %s, %s, %t)?;", name, size, padding.PadChar, padding.PadLeft)
 			}
 			return fmt.Sprintf("let %s = get_char_array(buf, %s)?;", name, size)
 		}
