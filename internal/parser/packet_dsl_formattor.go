@@ -152,6 +152,9 @@ func (v *PacketDslFormattor) VisitFieldDefinitionWithAttribute(ctx *gen.FieldDef
 				formattedDsl.WriteString(v.VisitLengthOfAttribute(fieldAttr.LengthOfAttribute().(*gen.LengthOfAttributeContext)).(string))
 			case fieldAttr.PaddingAttribute() != nil:
 				formattedDsl.WriteString(v.VisitPaddingAttribute(fieldAttr.PaddingAttribute().(*gen.PaddingAttributeContext)).(string))
+			case fieldAttr.TagAttribute() != nil:
+				tagValue := fieldAttr.TagAttribute().(*gen.TagAttributeContext).DIGITS().GetText()
+				formattedDsl.WriteString(fmt.Sprintf("@tag(%s)", tagValue))
 			default:
 				formattedDsl.WriteString(fieldAttr.GetText())
 			}

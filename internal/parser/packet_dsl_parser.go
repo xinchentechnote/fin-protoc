@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	gen "github.com/xinchentechnote/fin-protoc/internal/grammar"
@@ -167,7 +168,12 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinitionWithAttribute(ctx *gen.FieldD
 				PadChar: fieldAttr.PaddingAttribute().PADDING_CHAR().GetText(),
 				PadLeft: strings.Contains(fieldAttr.PaddingAttribute().PADDING_ATTR().GetText(), "left"),
 			}
+		case fieldAttr.TagAttribute() != nil:
+			tagValue := fieldAttr.TagAttribute().DIGITS().GetText()
+			tagInt, _ := strconv.Atoi(tagValue)
+			f.Tag = tagInt
 		}
+
 	}
 	return fd
 

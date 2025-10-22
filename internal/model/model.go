@@ -215,6 +215,7 @@ type Field struct {
 	Doc           string      // Optional documentation string (from STRING_LITERAL), currently unused
 	MatchKey      string      // If the field is a match field, this holds the typeName of match
 	MatchPairs    []MatchPair // If the field is a match field, holds all match key-value pairs
+	Tag           int         // Tag value for step or fix protocols
 	Line          int         // Line number where the field is defined
 	Column        int         // Column number where the field is defined
 }
