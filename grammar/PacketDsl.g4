@@ -38,6 +38,7 @@ checkSumFieldDeclaration:
 fieldAttribute:
 	lengthOfAttribute
 	| calculatedFromAttribute
+	| tagAttribute
 	| paddingAttribute;
 
 calculatedFromAttribute: '@calculatedFrom(' from = STRING ')';
@@ -45,6 +46,8 @@ calculatedFromAttribute: '@calculatedFrom(' from = STRING ')';
 lengthOfAttribute: '@lengthOf(' from = IDENTIFIER ')';
 
 paddingAttribute: PADDING_ATTR '(' padding = PADDING_CHAR ')';
+
+tagAttribute: '@tag(' DIGITS ')';
 
 // Metadata declaration with type and description
 metaDataDeclaration:
