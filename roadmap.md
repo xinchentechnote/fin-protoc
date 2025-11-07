@@ -13,6 +13,9 @@
 
 - [x] support attributes @leftPad, @rightPad for fixed length string(char[n])
 
+- [ ] support zchar[n] type, fixed length zstring type (null-terminated string)
+- [ ] support bit field
+
 ## v0.3.0
 
 - [ ] support @tag attribute for fields

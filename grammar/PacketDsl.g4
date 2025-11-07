@@ -70,7 +70,8 @@ type:
 	| FLOAT64
 	| 'string'
 	| 'char'
-	| 'char[' DIGITS? ']';
+	| 'char[' DIGITS? ']'
+	| 'zchar[' DIGITS ']';
 
 // Match field rule for defining match criteria
 matchFieldDeclaration:
