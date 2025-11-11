@@ -2,7 +2,6 @@ package parser
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/iancoleman/strcase"
@@ -487,14 +486,14 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 			padding := g.GetPadding(f)
 			if padding != nil {
 				if f.IsRepeat {
-					return fmt.Sprintf("this.%s.add(readFixedString(byteBuf, %s, %s, %t));", fieldNameLowerCamel, len, padding.PadChar, padding.PadLeft)
+					return fmt.Sprintf("this.%s.add(readFixedString(byteBuf, %d, %s, %t));", fieldNameLowerCamel, len, padding.PadChar, padding.PadLeft)
 				}
-				return fmt.Sprintf("this.%s = readFixedString(byteBuf, %s, %s, %t);", fieldNameLowerCamel, len, padding.PadChar, padding.PadLeft)
+				return fmt.Sprintf("this.%s = readFixedString(byteBuf, %d, %s, %t);", fieldNameLowerCamel, len, padding.PadChar, padding.PadLeft)
 			}
 			if f.IsRepeat {
-				return fmt.Sprintf("this.%s.add(readFixedString(byteBuf, %s));", fieldNameLowerCamel, len)
+				return fmt.Sprintf("this.%s.add(readFixedString(byteBuf, %d));", fieldNameLowerCamel, len)
 			}
-			return fmt.Sprintf("this.%s = readFixedString(byteBuf, %s);", fieldNameLowerCamel, len)
+			return fmt.Sprintf("this.%s = readFixedString(byteBuf, %d);", fieldNameLowerCamel, len)
 		}
 		if f.InerObject != nil {
 			//iner object
@@ -633,9 +632,9 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 		if ok {
 			padding := g.GetPadding(f)
 			if padding != nil {
-				return fmt.Sprintf("writeFixedString(byteBuf, this.%s, %s, %s, %t);", fieldNameLowerCamel, len, padding.PadChar, padding.PadLeft)
+				return fmt.Sprintf("writeFixedString(byteBuf, this.%s, %d, %s, %t);", fieldNameLowerCamel, len, padding.PadChar, padding.PadLeft)
 			}
-			return fmt.Sprintf("writeFixedString(byteBuf, this.%s, %s);", fieldNameLowerCamel, len)
+			return fmt.Sprintf("writeFixedString(byteBuf, this.%s, %d);", fieldNameLowerCamel, len)
 		}
 
 		if p.LengthField != nil && f.Name == p.LengthField.LengthOfField {
@@ -741,12 +740,11 @@ func (g JavaGenerator) GenerateNewInstance(instanceName string, parent string, p
 			} else {
 				b.WriteString(fmt.Sprintf("%s.set%s(%s);\n", instanceName, fieldNameCamel, typ.TestValue))
 			}
-		} else if len, ok := ParseCharArrayType(f.GetType()); ok {
-			l, _ := strconv.Atoi(len)
+		} else if size, ok := ParseCharArrayType(f.GetType()); ok {
 			if f.IsRepeat {
-				b.WriteString(fmt.Sprintf("%s.set%s(Arrays.asList(\"%s\"));\n", instanceName, fieldNameCamel, strings.Repeat("1", l)))
+				b.WriteString(fmt.Sprintf("%s.set%s(Arrays.asList(\"%s\"));\n", instanceName, fieldNameCamel, strings.Repeat("1", size)))
 			} else {
-				b.WriteString(fmt.Sprintf("%s.set%s(\"%s\");\n", instanceName, fieldNameCamel, strings.Repeat("1", l)))
+				b.WriteString(fmt.Sprintf("%s.set%s(\"%s\");\n", instanceName, fieldNameCamel, strings.Repeat("1", size)))
 			}
 		} else if f.GetType() == "string" {
 			if f.IsRepeat {

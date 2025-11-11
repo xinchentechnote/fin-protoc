@@ -2,7 +2,6 @@ package parser
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -259,22 +258,22 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 			if padding != nil {
 				if f.IsRepeat {
 					if g.config.LittleEndian {
-						b.WriteString(fmt.Sprintf("    codec::write_fixed_string_list_le<%s>(buf, %s, %s, %s, %t);\n", listLenTyp.Name, fieldNameLowerCamel, size, padding.PadChar, padding.PadLeft))
+						b.WriteString(fmt.Sprintf("    codec::write_fixed_string_list_le<%s>(buf, %s, %d, %s, %t);\n", listLenTyp.Name, fieldNameLowerCamel, size, padding.PadChar, padding.PadLeft))
 					} else {
-						b.WriteString(fmt.Sprintf("    codec::write_fixed_string_list<%s>(buf, %s, %s, %s, %t);\n", listLenTyp.Name, fieldNameLowerCamel, size, padding.PadChar, padding.PadLeft))
+						b.WriteString(fmt.Sprintf("    codec::write_fixed_string_list<%s>(buf, %s, %d, %s, %t);\n", listLenTyp.Name, fieldNameLowerCamel, size, padding.PadChar, padding.PadLeft))
 					}
 				} else {
-					b.WriteString(fmt.Sprintf("    codec::write_fixed_string(buf, %s, %s, %s, %t);\n", fieldNameLowerCamel, size, padding.PadChar, padding.PadLeft))
+					b.WriteString(fmt.Sprintf("    codec::write_fixed_string(buf, %s, %d, %s, %t);\n", fieldNameLowerCamel, size, padding.PadChar, padding.PadLeft))
 				}
 			} else {
 				if f.IsRepeat {
 					if g.config.LittleEndian {
-						b.WriteString(fmt.Sprintf("    codec::write_fixed_string_list_le<%s>(buf, %s, %s);\n", listLenTyp.Name, fieldNameLowerCamel, size))
+						b.WriteString(fmt.Sprintf("    codec::write_fixed_string_list_le<%s>(buf, %s, %d);\n", listLenTyp.Name, fieldNameLowerCamel, size))
 					} else {
-						b.WriteString(fmt.Sprintf("    codec::write_fixed_string_list<%s>(buf, %s, %s);\n", listLenTyp.Name, fieldNameLowerCamel, size))
+						b.WriteString(fmt.Sprintf("    codec::write_fixed_string_list<%s>(buf, %s, %d);\n", listLenTyp.Name, fieldNameLowerCamel, size))
 					}
 				} else {
-					b.WriteString(fmt.Sprintf("    codec::write_fixed_string(buf, %s, %s);\n", fieldNameLowerCamel, size))
+					b.WriteString(fmt.Sprintf("    codec::write_fixed_string(buf, %s, %d);\n", fieldNameLowerCamel, size))
 				}
 			}
 
@@ -350,22 +349,22 @@ func (g CppGenerator) generateDecode(p *model.Packet) string {
 			if padding != nil {
 				if f.IsRepeat {
 					if g.config.LittleEndian {
-						b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string_list_le<%s>(buf, %s, %s, %t);\n", fieldNameLowerCamel, listLenTyp.Name, size, padding.PadChar, padding.PadLeft))
+						b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string_list_le<%s>(buf, %d, %s, %t);\n", fieldNameLowerCamel, listLenTyp.Name, size, padding.PadChar, padding.PadLeft))
 					} else {
-						b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string_list<%s>(buf, %s, %s, %t);\n", fieldNameLowerCamel, listLenTyp.Name, size, padding.PadChar, padding.PadLeft))
+						b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string_list<%s>(buf, %d, %s, %t);\n", fieldNameLowerCamel, listLenTyp.Name, size, padding.PadChar, padding.PadLeft))
 					}
 				} else {
-					b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string(buf, %s, %s, %t);\n", fieldNameLowerCamel, size, padding.PadChar, padding.PadLeft))
+					b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string(buf, %d, %s, %t);\n", fieldNameLowerCamel, size, padding.PadChar, padding.PadLeft))
 				}
 			} else {
 				if f.IsRepeat {
 					if g.config.LittleEndian {
-						b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string_list_le<%s>(buf, %s);\n", fieldNameLowerCamel, listLenTyp.Name, size))
+						b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string_list_le<%s>(buf, %d);\n", fieldNameLowerCamel, listLenTyp.Name, size))
 					} else {
-						b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string_list<%s>(buf, %s);\n", fieldNameLowerCamel, listLenTyp.Name, size))
+						b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string_list<%s>(buf, %d);\n", fieldNameLowerCamel, listLenTyp.Name, size))
 					}
 				} else {
-					b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string(buf, %s);\n", fieldNameLowerCamel, size))
+					b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string(buf, %d);\n", fieldNameLowerCamel, size))
 				}
 			}
 
@@ -601,8 +600,7 @@ func (g CppGenerator) generateTestValue(f *model.Field) any {
 	if typ, ok := cppBasicTypeMap[f.GetType()]; ok {
 		tv = typ.TestValue
 	} else if size, ok := ParseCharArrayType(f.GetType()); ok {
-		l, _ := strconv.Atoi(size)
-		tv = "\"" + strings.Repeat("x", l) + "\""
+		tv = "\"" + strings.Repeat("x", size) + "\""
 	} else if f.GetType() == "string" || f.GetType() == "char[]" {
 		tv = "\"hello\""
 	} else if f.InerObject != nil {

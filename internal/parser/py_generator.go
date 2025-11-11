@@ -2,7 +2,6 @@ package parser
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/iancoleman/strcase"
@@ -225,15 +224,15 @@ func (g PythonGenerator) generateDecodeField(p *model.Packet, f *model.Field) st
 				fromLeft = "True"
 			}
 			if f.IsRepeat {
-				b.WriteString(fmt.Sprintf("    self.%s.append(read_fixed_string(buffer, %s, 'utf-8', %s, %s))\n", fieldName, size, padding.PadChar, fromLeft))
+				b.WriteString(fmt.Sprintf("    self.%s.append(read_fixed_string(buffer, %d, 'utf-8', %s, %s))\n", fieldName, size, padding.PadChar, fromLeft))
 			} else {
-				b.WriteString(fmt.Sprintf("    self.%s = read_fixed_string(buffer, %s, 'utf-8', %s, %s)\n", fieldName, size, padding.PadChar, fromLeft))
+				b.WriteString(fmt.Sprintf("    self.%s = read_fixed_string(buffer, %d, 'utf-8', %s, %s)\n", fieldName, size, padding.PadChar, fromLeft))
 			}
 		} else {
 			if f.IsRepeat {
-				b.WriteString(fmt.Sprintf("    self.%s.append(read_fixed_string(buffer,  %s, 'utf-8'))\n", fieldName, size))
+				b.WriteString(fmt.Sprintf("    self.%s.append(read_fixed_string(buffer,  %d, 'utf-8'))\n", fieldName, size))
 			} else {
-				b.WriteString(fmt.Sprintf("    self.%s = read_fixed_string(buffer, %s, 'utf-8')\n", fieldName, size))
+				b.WriteString(fmt.Sprintf("    self.%s = read_fixed_string(buffer, %d, 'utf-8')\n", fieldName, size))
 			}
 		}
 
@@ -351,9 +350,9 @@ func (g PythonGenerator) generateEncodeField(f *model.Field) string {
 			fromLeft = "True"
 		}
 		if padding != nil {
-			b.WriteString(fmt.Sprintf("    write_fixed_string(buffer, self.%s, %s, 'utf-8', %s, %s)\n", fieldName, size, padding.PadChar, fromLeft))
+			b.WriteString(fmt.Sprintf("    write_fixed_string(buffer, self.%s, %d, 'utf-8', %s, %s)\n", fieldName, size, padding.PadChar, fromLeft))
 		} else {
-			b.WriteString(fmt.Sprintf("    write_fixed_string(buffer, self.%s, %s, 'utf-8')\n", fieldName, size))
+			b.WriteString(fmt.Sprintf("    write_fixed_string(buffer, self.%s, %d, 'utf-8')\n", fieldName, size))
 		}
 	} else if f.GetType() == "string" || f.GetType() == "char[]" {
 		if g.config.LittleEndian {
@@ -489,8 +488,7 @@ func (g PythonGenerator) generateTestValue(f *model.Field) string {
 		testValue = "\"hello\""
 	}
 	if size, ok := ParseCharArrayType(f.GetType()); ok {
-		s, _ := strconv.Atoi(size)
-		testValue = "\"" + strings.Repeat("x", s) + "\""
+		testValue = "\"" + strings.Repeat("x", size) + "\""
 	}
 	if f.GetType() == "match" {
 		testValue = fieldName

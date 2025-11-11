@@ -228,31 +228,31 @@ func TestParseCharArrayType(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
-		expected string
+		expected int
 		ok       bool
 	}{
 		{
 			name:     "valid char array",
 			input:    "char[10]",
-			expected: "10",
+			expected: 10,
 			ok:       true,
 		},
 		{
 			name:     "invalid format",
 			input:    "char10]",
-			expected: "",
+			expected: 0,
 			ok:       false,
 		},
 		{
 			name:     "not a char array",
 			input:    "string",
-			expected: "",
+			expected: 0,
 			ok:       false,
 		},
 		{
 			name:     "empty brackets",
 			input:    "char[]",
-			expected: "",
+			expected: 0,
 			ok:       false,
 		},
 	}

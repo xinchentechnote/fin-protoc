@@ -175,8 +175,18 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinitionWithAttribute(ctx *gen.FieldD
 		}
 
 	}
+
+	creatFieldAttribute(f)
 	return fd
 
+}
+
+func creatFieldAttribute(f *model.Field) {
+	if size, ok := ParseCharArrayType(f.Type); ok {
+		f.Attr = &model.FixedStringFieldAttribute{
+			Length: size,
+		}
+	}
 }
 
 // VisitFieldDefinition dispatches to specific handlers based on field type.

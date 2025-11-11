@@ -322,7 +322,7 @@ func (g LuaWspGenerator) decodeFieldForLocal(f *model.Field) string {
 		return b.String()
 	default:
 		if size, ok := ParseCharArrayType(f.GetType()); ok {
-			return fmt.Sprintf("local %s = buf(offset, %s):string()", strcase.ToSnake(f.Name), size)
+			return fmt.Sprintf("local %s = buf(offset, %d):string()", strcase.ToSnake(f.Name), size)
 		}
 		return "-- unsupported type: " + f.GetType() + "\n"
 	}
@@ -377,8 +377,8 @@ func (g LuaWspGenerator) decodeField(treeName string, p *model.Packet, f *model.
 	default:
 		var b strings.Builder
 		if size, ok := ParseCharArrayType(f.GetType()); ok {
-			b.WriteString(fmt.Sprintf("%s:add(fields.%s_%s, buf(offset, %s))\n", treeName, packageName, fieldName, size))
-			b.WriteString(fmt.Sprintf("offset = offset + %s", size))
+			b.WriteString(fmt.Sprintf("%s:add(fields.%s_%s, buf(offset, %d))\n", treeName, packageName, fieldName, size))
+			b.WriteString(fmt.Sprintf("offset = offset + %d", size))
 			return b.String()
 		} else if f.InerObject != nil {
 			b.WriteString(fmt.Sprintf("dissect_%s(buf, pinfo, subtree, offset)", fieldName))
