@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/xinchentechnote/fin-protoc/internal/model"
 )
 
 func TestAndIndent4ln(t *testing.T) {
@@ -259,7 +260,7 @@ func TestParseCharArrayType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			size, ok := ParseCharArrayType(tt.input)
+			size, ok := model.ParseCharArrayType(tt.input)
 			assert.Equal(t, tt.ok, ok)
 			if ok {
 				assert.Equal(t, tt.expected, size)

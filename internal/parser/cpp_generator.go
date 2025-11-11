@@ -254,7 +254,7 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 					b.WriteString(fmt.Sprintf("    buf.write_%s(%s);\n", f.GetType(), fieldNameLowerCamel))
 				}
 			}
-		} else if size, ok := ParseCharArrayType(f.GetType()); ok {
+		} else if size, ok := model.ParseCharArrayType(f.GetType()); ok {
 			if padding != nil {
 				if f.IsRepeat {
 					if g.config.LittleEndian {
@@ -345,7 +345,7 @@ func (g CppGenerator) generateDecode(p *model.Packet) string {
 				}
 			}
 
-		} else if size, ok := ParseCharArrayType(f.GetType()); ok {
+		} else if size, ok := model.ParseCharArrayType(f.GetType()); ok {
 			if padding != nil {
 				if f.IsRepeat {
 					if g.config.LittleEndian {
@@ -428,7 +428,7 @@ func (g CppGenerator) generateToString(p *model.Packet) string {
 			t := field.GetType()
 			if typ, ok := cppBasicTypeMap[field.GetType()]; ok {
 				t = typ.Name
-			} else if _, ok := ParseCharArrayType(field.GetType()); ok {
+			} else if _, ok := model.ParseCharArrayType(field.GetType()); ok {
 				t = "std::string"
 			} else if field.GetType() == "string" || field.GetType() == "char[]" {
 				t = "std::string"
@@ -481,7 +481,7 @@ func (g CppGenerator) getFieldType(f *model.Field) string {
 	typ := ""
 	if t, ok := cppBasicTypeMap[f.GetType()]; ok {
 		typ = t.Name
-	} else if _, ok := ParseCharArrayType(f.GetType()); ok {
+	} else if _, ok := model.ParseCharArrayType(f.GetType()); ok {
 		typ = "std::string"
 	} else {
 		switch f.GetType() {
@@ -599,7 +599,7 @@ func (g CppGenerator) generateTestValue(f *model.Field) any {
 	fieldNameLowerCamel := strcase.ToLowerCamel(f.Name)
 	if typ, ok := cppBasicTypeMap[f.GetType()]; ok {
 		tv = typ.TestValue
-	} else if size, ok := ParseCharArrayType(f.GetType()); ok {
+	} else if size, ok := model.ParseCharArrayType(f.GetType()); ok {
 		tv = "\"" + strings.Repeat("x", size) + "\""
 	} else if f.GetType() == "string" || f.GetType() == "char[]" {
 		tv = "\"hello\""

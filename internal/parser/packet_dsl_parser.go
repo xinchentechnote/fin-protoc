@@ -182,9 +182,29 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinitionWithAttribute(ctx *gen.FieldD
 }
 
 func creatFieldAttribute(f *model.Field) {
-	if size, ok := ParseCharArrayType(f.Type); ok {
+	if size, ok := model.ParseCharArrayType(f.Type); ok {
+		padChar := " "
+		padLeft := false
+		if f.Padding != nil {
+			padChar = f.Padding.PadChar
+			padLeft = f.Padding.PadLeft
+		}
 		f.Attr = &model.FixedStringFieldAttribute{
-			Length: size,
+			Length:  size,
+			PadChar: padChar,
+			PadLeft: padLeft,
+		}
+	} else if size, ok := model.ParseZCharArrayType(f.Type); ok {
+		padChar := "\x00"
+		padLeft := false
+		if f.Padding != nil {
+			padChar = f.Padding.PadChar
+			padLeft = f.Padding.PadLeft
+		}
+		f.Attr = &model.FixedStringFieldAttribute{
+			Length:  size,
+			PadChar: padChar,
+			PadLeft: padLeft,
 		}
 	}
 }

@@ -236,8 +236,7 @@ func (g JavaGenerator) GenerateMessageFactory(p *model.Packet, f *model.Field) s
 		typ = matchKeyTyp.BoxType
 		cast = fmt.Sprintf("(%s) ", matchKeyTyp.BasicType)
 	}
-	_, ok = ParseCharArrayType(typ)
-	if ok {
+	if _, ok = model.ParseCharArrayType(typ); ok {
 		typ = "String"
 	}
 	b.WriteString(fmt.Sprintf("private final Map<%s, Supplier<BinaryCodec>> %sMap = new HashMap<>();", typ, g.GetFieldNameLower(f)))
@@ -308,7 +307,7 @@ func (g JavaGenerator) GetFieldType(f *model.Field) string {
 		}
 		return javaBasicTypeMap[f.GetType()].BasicType
 	default:
-		_, ok := ParseCharArrayType(f.Type)
+		_, ok := model.ParseCharArrayType(f.Type)
 		if ok {
 			if f.IsRepeat {
 				return "List<String>"
@@ -480,7 +479,7 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 			}
 			return fmt.Sprintf("this.%s = byteBuf.read%s();", fieldNameLowerCamel, readMethod)
 		}
-		len, ok := ParseCharArrayType(f.Type)
+		len, ok := model.ParseCharArrayType(f.Type)
 		if ok {
 			//fixed string
 			padding := g.GetPadding(f)
@@ -628,7 +627,7 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 			}
 			return fmt.Sprintf("byteBuf.write%s(this.%s);", strcase.ToCamel(typ.BasicType), fieldNameLowerCamel)
 		}
-		len, ok := ParseCharArrayType(f.Type)
+		len, ok := model.ParseCharArrayType(f.Type)
 		if ok {
 			padding := g.GetPadding(f)
 			if padding != nil {
@@ -740,7 +739,7 @@ func (g JavaGenerator) GenerateNewInstance(instanceName string, parent string, p
 			} else {
 				b.WriteString(fmt.Sprintf("%s.set%s(%s);\n", instanceName, fieldNameCamel, typ.TestValue))
 			}
-		} else if size, ok := ParseCharArrayType(f.GetType()); ok {
+		} else if size, ok := model.ParseCharArrayType(f.GetType()); ok {
 			if f.IsRepeat {
 				b.WriteString(fmt.Sprintf("%s.set%s(Arrays.asList(\"%s\"));\n", instanceName, fieldNameCamel, strings.Repeat("1", size)))
 			} else {

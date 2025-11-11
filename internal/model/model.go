@@ -1,7 +1,9 @@
 package model
 
 import (
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -306,6 +308,30 @@ type Field struct {
 	Column        int            // Column number where the field is defined
 }
 
+// ParseZCharArrayType parse char[\d]
+func ParseZCharArrayType(fieldType string) (size int, ok bool) {
+	pattern := `^zchar\[(\d+)\]$`
+	matches := regexp.MustCompile(pattern).FindStringSubmatch(fieldType)
+	if len(matches) == 2 {
+		//must is number
+		result, _ := strconv.Atoi(matches[1])
+		return result, true
+	}
+	return 0, false
+}
+
+// ParseCharArrayType parse char[\d]
+func ParseCharArrayType(fieldType string) (size int, ok bool) {
+	pattern := `^char\[(\d+)\]$`
+	matches := regexp.MustCompile(pattern).FindStringSubmatch(fieldType)
+	if len(matches) == 2 {
+		//must is number
+		result, _ := strconv.Atoi(matches[1])
+		return result, true
+	}
+	return 0, false
+}
+
 // GetType return field type
 func (f Field) GetType() string {
 	if f.Type != "" {
@@ -333,6 +359,12 @@ func (f Field) GetType() string {
 		case "string", "char[]":
 			return "string"
 		default:
+			if _, ok := ParseCharArrayType(f.Type); ok {
+				return "string"
+			}
+			if _, ok := ParseZCharArrayType(f.Type); ok {
+				return "string"
+			}
 			return f.Type // Return the type as is if it doesn't match any known types
 		}
 	}

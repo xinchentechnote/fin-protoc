@@ -149,6 +149,14 @@ func (g RustGenerator) generateStructCode(pkt *model.Packet) string {
 
 // GetPadding field.Padding or config.Padding
 func (g RustGenerator) GetPadding(f *model.Field) *model.Padding {
+	if f.Attr != nil {
+		if fs := f.Attr.(*model.FixedStringFieldAttribute); fs != nil {
+			return &model.Padding{
+				PadChar: fs.PadChar,
+				PadLeft: fs.PadLeft,
+			}
+		}
+	}
 	if f.Padding != nil {
 		return f.Padding
 	}
@@ -227,8 +235,9 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 			}
 			return fmt.Sprintf("put_object_list::<%s,%s>(buf, &self.%s);", f.GetType(), g.config.ListLenPrefixLenType, name)
 		}
-		size, ok := ParseCharArrayType(f.GetType())
-		if ok {
+
+		if fs := f.Attr.(*model.FixedStringFieldAttribute); fs != nil {
+			size := fs.Length
 			if g.config.LittleEndian {
 				if padding != nil {
 					return fmt.Sprintf("put_fixed_string_list_with_pad_char_le::<%s>(buf, &self.%s, %d, %s, %t);", g.config.ListLenPrefixLenType, name, size, padding.PadChar, padding.PadLeft)
@@ -288,7 +297,7 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 
 		return b.String()
 	default:
-		size, ok := ParseCharArrayType(f.GetType())
+		size, ok := model.ParseCharArrayType(f.GetType())
 		if ok {
 			if padding != nil {
 				return fmt.Sprintf("put_char_array_with_pad_char(buf, &self.%s, %d, %s, %t);", name, size, padding.PadChar, padding.PadLeft)
@@ -346,7 +355,7 @@ func (g RustGenerator) DecodeField(parentName string, f *model.Field) string {
 			}
 			return fmt.Sprintf("let %s = get_object_list::<%s,%s>(buf)?;", name, f.GetType(), g.config.ListLenPrefixLenType)
 		}
-		size, ok := ParseCharArrayType(f.GetType())
+		size, ok := model.ParseCharArrayType(f.GetType())
 		if ok {
 			if g.config.LittleEndian {
 				if padding != nil {
@@ -386,7 +395,7 @@ func (g RustGenerator) DecodeField(parentName string, f *model.Field) string {
 	case "match":
 		return g.DecodeMatchField(parentName, f)
 	default:
-		size, ok := ParseCharArrayType(f.GetType())
+		size, ok := model.ParseCharArrayType(f.GetType())
 		if ok {
 			if padding != nil {
 				return fmt.Sprintf("let %s = get_char_array_trim_pad_char(buf, %d, %s, %t)?;", name, size, padding.PadChar, padding.PadLeft)
@@ -523,7 +532,7 @@ func (g RustGenerator) testValueList(typ string) string {
 	if val, ok := g.primitiveListValues()[typ]; ok {
 		return val
 	}
-	size, ok := ParseCharArrayType(typ)
+	size, ok := model.ParseCharArrayType(typ)
 	if ok {
 		return fmt.Sprintf("vec![\"a\".to_string(); %d]", size)
 	}
@@ -541,7 +550,7 @@ func (g RustGenerator) testValueSingle(parentName string, f *model.Field) string
 	}
 
 	// handle char[n]
-	size, ok := ParseCharArrayType(f.GetType())
+	size, ok := model.ParseCharArrayType(f.Type)
 	if ok {
 		return fmt.Sprintf("vec!['a'; %d].into_iter().collect::<String>()", size)
 	}

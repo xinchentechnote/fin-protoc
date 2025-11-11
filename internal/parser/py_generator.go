@@ -153,7 +153,7 @@ func (g PythonGenerator) generateEqMethod(p *model.Packet) string {
 		fieldName := strcase.ToSnake(f.Name)
 		if _, ok := pyBasicTypeMap[f.GetType()]; ok {
 			b.WriteString(fmt.Sprintf("        self.%s == other.%s", fieldName, fieldName))
-		} else if _, ok := ParseCharArrayType(f.GetType()); ok {
+		} else if _, ok := model.ParseCharArrayType(f.GetType()); ok {
 			b.WriteString(fmt.Sprintf("        self.%s == other.%s", fieldName, fieldName))
 		} else if f.InerObject != nil || (f.GetType() != "string" && f.GetType() != "char[]") {
 			b.WriteString(fmt.Sprintf("        self.%s == other.%s", fieldName, fieldName))
@@ -217,7 +217,7 @@ func (g PythonGenerator) generateDecodeField(p *model.Packet, f *model.Field) st
 			b.WriteString(fmt.Sprintf("    self.%s = buffer.read_%s()\n", fieldName, read))
 		}
 	}
-	if size, ok := ParseCharArrayType(f.GetType()); ok {
+	if size, ok := model.ParseCharArrayType(f.GetType()); ok {
 		if padding != nil {
 			fromLeft := "False"
 			if padding.PadLeft {
@@ -344,7 +344,7 @@ func (g PythonGenerator) generateEncodeField(f *model.Field) string {
 		} else {
 			b.WriteString(fmt.Sprintf("    buffer.write_%s(self.%s)\n", typ.BasicType, fieldName))
 		}
-	} else if size, ok := ParseCharArrayType(f.GetType()); ok {
+	} else if size, ok := model.ParseCharArrayType(f.GetType()); ok {
 		fromLeft := "False"
 		if padding != nil && padding.PadLeft {
 			fromLeft = "True"
@@ -390,7 +390,7 @@ func (g PythonGenerator) generateInitMethod(p *model.Packet) string {
 			b.WriteString(fmt.Sprintf("    self.%s = %s\n", fieldName, pyBasicTypeMap[f.GetType()].DefaultValue))
 			continue
 		}
-		if _, ok := ParseCharArrayType(f.GetType()); ok {
+		if _, ok := model.ParseCharArrayType(f.GetType()); ok {
 			b.WriteString(fmt.Sprintf("    self.%s = ''\n", fieldName))
 			continue
 		}
@@ -487,7 +487,7 @@ func (g PythonGenerator) generateTestValue(f *model.Field) string {
 	if f.GetType() == "string" || f.GetType() == "char[]" {
 		testValue = "\"hello\""
 	}
-	if size, ok := ParseCharArrayType(f.GetType()); ok {
+	if size, ok := model.ParseCharArrayType(f.GetType()); ok {
 		testValue = "\"" + strings.Repeat("x", size) + "\""
 	}
 	if f.GetType() == "match" {

@@ -6,8 +6,6 @@ import (
 	"html/template"
 	"os"
 	filepathpkg "path/filepath"
-	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/antlr4-go/antlr/v4"
@@ -114,18 +112,6 @@ func NewPacketDslParserByContent(data string) (*gen.PacketDslParser, *antlr.Comm
 
 	parser := gen.NewPacketDslParser(stream)
 	return parser, stream, nil
-}
-
-// ParseCharArrayType parse char[\d]
-func ParseCharArrayType(fieldType string) (size int, ok bool) {
-	pattern := `^char\[(\d+)\]$`
-	matches := regexp.MustCompile(pattern).FindStringSubmatch(fieldType)
-	if len(matches) == 2 {
-		//must is number
-		result, _ := strconv.Atoi(matches[1])
-		return result, true
-	}
-	return 0, false
 }
 
 // RenderToString render tmpl
