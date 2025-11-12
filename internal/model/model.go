@@ -205,6 +205,11 @@ type Padding struct {
 	PadLeft bool   // True if padding is applied from the left, false if from the right
 }
 
+// IsDefault checks if the padding configuration is the default (space character, pad from right)
+func (p Padding) IsDefault() bool {
+	return p.PadChar == "' '" && !p.PadLeft
+}
+
 // FieldAttribute interface for field attributes
 type FieldAttribute interface {
 	GetType() string
@@ -244,8 +249,7 @@ func (c CheckSumFieldAttribute) GetType() string {
 // FixedStringFieldAttribute fixed string field attribute
 type FixedStringFieldAttribute struct {
 	Length  int
-	PadChar string
-	PadLeft bool
+	Padding *Padding
 }
 
 // GetType return field type

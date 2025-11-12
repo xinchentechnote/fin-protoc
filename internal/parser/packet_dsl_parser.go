@@ -183,19 +183,12 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinitionWithAttribute(ctx *gen.FieldD
 
 func creatFieldAttribute(f *model.Field) {
 	if size, ok := model.ParseCharArrayType(f.Type); ok {
-		padChar := " "
-		padLeft := false
-		if f.Padding != nil {
-			padChar = f.Padding.PadChar
-			padLeft = f.Padding.PadLeft
-		}
 		f.Attr = &model.FixedStringFieldAttribute{
 			Length:  size,
-			PadChar: padChar,
-			PadLeft: padLeft,
+			Padding: f.Padding,
 		}
 	} else if size, ok := model.ParseZCharArrayType(f.Type); ok {
-		padChar := "\x00"
+		padChar := "'\x00'"
 		padLeft := false
 		if f.Padding != nil {
 			padChar = f.Padding.PadChar
@@ -203,8 +196,7 @@ func creatFieldAttribute(f *model.Field) {
 		}
 		f.Attr = &model.FixedStringFieldAttribute{
 			Length:  size,
-			PadChar: padChar,
-			PadLeft: padLeft,
+			Padding: &model.Padding{PadChar: padChar, PadLeft: padLeft},
 		}
 	}
 }
@@ -321,7 +313,9 @@ func (v *PacketDslVisitorImpl) VisitInerObjectField(ctx *gen.InerObjectFieldCont
 		if fld == nil {
 			continue
 		}
-		subFields = append(subFields, fld.(*model.Field))
+		f := fld.(*model.Field)
+		creatFieldAttribute(f)
+		subFields = append(subFields, f)
 	}
 	// Construct nested Packet model
 	p := model.Packet{

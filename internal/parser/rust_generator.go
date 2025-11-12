@@ -149,16 +149,10 @@ func (g RustGenerator) generateStructCode(pkt *model.Packet) string {
 
 // GetPadding field.Padding or config.Padding
 func (g RustGenerator) GetPadding(f *model.Field) *model.Padding {
-	if f.Attr != nil {
-		if fs := f.Attr.(*model.FixedStringFieldAttribute); fs != nil {
-			return &model.Padding{
-				PadChar: fs.PadChar,
-				PadLeft: fs.PadLeft,
-			}
+	if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
+		if fs.Padding != nil {
+			return fs.Padding
 		}
-	}
-	if f.Padding != nil {
-		return f.Padding
 	}
 	return g.config.Padding
 }

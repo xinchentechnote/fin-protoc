@@ -32,6 +32,10 @@ func NewGeneratorConfig(options map[string]string) *GeneratorConfig {
 		GoPackage:              "",
 		GoModule:               "",
 		LittleEndian:           false,
+		Padding: &model.Padding{
+			PadLeft: false,
+			PadChar: "' '",
+		},
 	}
 
 	// Override with provided options
