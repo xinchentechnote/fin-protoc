@@ -293,6 +293,9 @@ func (g JavaGenerator) GetPadding(f *model.Field) *model.Padding {
 			padding = fs.Padding
 		}
 	}
+	if padding == nil {
+		return nil
+	}
 	// if PadChar is '\x00' or '\u0000' or "\0"，convert in Java '\0'
 	if padding.PadChar == "'\x00'" || padding.PadChar == "'\u0000'" || padding.PadChar == "'\\x00'" {
 		padding.PadChar = "'\\0'"

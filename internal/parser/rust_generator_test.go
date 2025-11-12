@@ -409,9 +409,12 @@ func TestTestValue(t *testing.T) {
 			expected: "123456",
 		},
 		{
-			name:     "char array",
-			parent:   "Parent",
-			field:    &model.Field{Name: "chars", Type: "char[10]"},
+			name:   "char array",
+			parent: "Parent",
+			field: &model.Field{Name: "chars",
+				Attr: &model.FixedStringFieldAttribute{Length: 10,
+					Padding: &model.Padding{PadChar: "' '", PadLeft: false},
+				}, Type: "char[10]"},
 			expected: "vec!['a'; 10].into_iter().collect::<String>()",
 		},
 	}
