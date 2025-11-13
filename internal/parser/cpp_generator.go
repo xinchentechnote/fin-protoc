@@ -192,10 +192,19 @@ func (g CppGenerator) generateEquals(p *model.Packet) string {
 
 // GetPadding field.Padding or config.Padding
 func (g CppGenerator) GetPadding(f *model.Field) *model.Padding {
-	if f.Padding != nil {
-		return f.Padding
+	padding := g.config.Padding
+	if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
+		if fs.Padding != nil {
+			padding = fs.Padding
+		}
 	}
-	return g.config.Padding
+	if padding == nil {
+		return nil
+	}
+	if padding.PadChar == "'\\x00'" || padding.PadChar == "'\\u0000'" {
+		padding.PadChar = "'\\0'"
+	}
+	return padding
 }
 
 func (g CppGenerator) generateEncode(p *model.Packet) string {
@@ -254,26 +263,26 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 					b.WriteString(fmt.Sprintf("    buf.write_%s(%s);\n", f.GetType(), fieldNameLowerCamel))
 				}
 			}
-		} else if size, ok := model.ParseCharArrayType(f.GetType()); ok {
-			if padding != nil {
+		} else if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
+			if !padding.IsDefault() {
 				if f.IsRepeat {
 					if g.config.LittleEndian {
-						b.WriteString(fmt.Sprintf("    codec::write_fixed_string_list_le<%s>(buf, %s, %d, %s, %t);\n", listLenTyp.Name, fieldNameLowerCamel, size, padding.PadChar, padding.PadLeft))
+						b.WriteString(fmt.Sprintf("    codec::write_fixed_string_list_le<%s>(buf, %s, %d, %s, %t);\n", listLenTyp.Name, fieldNameLowerCamel, fs.Length, padding.PadChar, padding.PadLeft))
 					} else {
-						b.WriteString(fmt.Sprintf("    codec::write_fixed_string_list<%s>(buf, %s, %d, %s, %t);\n", listLenTyp.Name, fieldNameLowerCamel, size, padding.PadChar, padding.PadLeft))
+						b.WriteString(fmt.Sprintf("    codec::write_fixed_string_list<%s>(buf, %s, %d, %s, %t);\n", listLenTyp.Name, fieldNameLowerCamel, fs.Length, padding.PadChar, padding.PadLeft))
 					}
 				} else {
-					b.WriteString(fmt.Sprintf("    codec::write_fixed_string(buf, %s, %d, %s, %t);\n", fieldNameLowerCamel, size, padding.PadChar, padding.PadLeft))
+					b.WriteString(fmt.Sprintf("    codec::write_fixed_string(buf, %s, %d, %s, %t);\n", fieldNameLowerCamel, fs.Length, padding.PadChar, padding.PadLeft))
 				}
 			} else {
 				if f.IsRepeat {
 					if g.config.LittleEndian {
-						b.WriteString(fmt.Sprintf("    codec::write_fixed_string_list_le<%s>(buf, %s, %d);\n", listLenTyp.Name, fieldNameLowerCamel, size))
+						b.WriteString(fmt.Sprintf("    codec::write_fixed_string_list_le<%s>(buf, %s, %d);\n", listLenTyp.Name, fieldNameLowerCamel, fs.Length))
 					} else {
-						b.WriteString(fmt.Sprintf("    codec::write_fixed_string_list<%s>(buf, %s, %d);\n", listLenTyp.Name, fieldNameLowerCamel, size))
+						b.WriteString(fmt.Sprintf("    codec::write_fixed_string_list<%s>(buf, %s, %d);\n", listLenTyp.Name, fieldNameLowerCamel, fs.Length))
 					}
 				} else {
-					b.WriteString(fmt.Sprintf("    codec::write_fixed_string(buf, %s, %d);\n", fieldNameLowerCamel, size))
+					b.WriteString(fmt.Sprintf("    codec::write_fixed_string(buf, %s, %d);\n", fieldNameLowerCamel, fs.Length))
 				}
 			}
 
@@ -345,26 +354,26 @@ func (g CppGenerator) generateDecode(p *model.Packet) string {
 				}
 			}
 
-		} else if size, ok := model.ParseCharArrayType(f.GetType()); ok {
-			if padding != nil {
+		} else if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
+			if !padding.IsDefault() {
 				if f.IsRepeat {
 					if g.config.LittleEndian {
-						b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string_list_le<%s>(buf, %d, %s, %t);\n", fieldNameLowerCamel, listLenTyp.Name, size, padding.PadChar, padding.PadLeft))
+						b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string_list_le<%s>(buf, %d, %s, %t);\n", fieldNameLowerCamel, listLenTyp.Name, fs.Length, padding.PadChar, padding.PadLeft))
 					} else {
-						b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string_list<%s>(buf, %d, %s, %t);\n", fieldNameLowerCamel, listLenTyp.Name, size, padding.PadChar, padding.PadLeft))
+						b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string_list<%s>(buf, %d, %s, %t);\n", fieldNameLowerCamel, listLenTyp.Name, fs.Length, padding.PadChar, padding.PadLeft))
 					}
 				} else {
-					b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string(buf, %d, %s, %t);\n", fieldNameLowerCamel, size, padding.PadChar, padding.PadLeft))
+					b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string(buf, %d, %s, %t);\n", fieldNameLowerCamel, fs.Length, padding.PadChar, padding.PadLeft))
 				}
 			} else {
 				if f.IsRepeat {
 					if g.config.LittleEndian {
-						b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string_list_le<%s>(buf, %d);\n", fieldNameLowerCamel, listLenTyp.Name, size))
+						b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string_list_le<%s>(buf, %d);\n", fieldNameLowerCamel, listLenTyp.Name, fs.Length))
 					} else {
-						b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string_list<%s>(buf, %d);\n", fieldNameLowerCamel, listLenTyp.Name, size))
+						b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string_list<%s>(buf, %d);\n", fieldNameLowerCamel, listLenTyp.Name, fs.Length))
 					}
 				} else {
-					b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string(buf, %d);\n", fieldNameLowerCamel, size))
+					b.WriteString(fmt.Sprintf("    %s = codec::read_fixed_string(buf, %d);\n", fieldNameLowerCamel, fs.Length))
 				}
 			}
 
@@ -428,7 +437,7 @@ func (g CppGenerator) generateToString(p *model.Packet) string {
 			t := field.GetType()
 			if typ, ok := cppBasicTypeMap[field.GetType()]; ok {
 				t = typ.Name
-			} else if _, ok := model.ParseCharArrayType(field.GetType()); ok {
+			} else if _, ok := field.Attr.(*model.FixedStringFieldAttribute); ok {
 				t = "std::string"
 			} else if field.GetType() == "string" || field.GetType() == "char[]" {
 				t = "std::string"
@@ -481,7 +490,7 @@ func (g CppGenerator) getFieldType(f *model.Field) string {
 	typ := ""
 	if t, ok := cppBasicTypeMap[f.GetType()]; ok {
 		typ = t.Name
-	} else if _, ok := model.ParseCharArrayType(f.GetType()); ok {
+	} else if _, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
 		typ = "std::string"
 	} else {
 		switch f.GetType() {
@@ -599,8 +608,8 @@ func (g CppGenerator) generateTestValue(f *model.Field) any {
 	fieldNameLowerCamel := strcase.ToLowerCamel(f.Name)
 	if typ, ok := cppBasicTypeMap[f.GetType()]; ok {
 		tv = typ.TestValue
-	} else if size, ok := model.ParseCharArrayType(f.GetType()); ok {
-		tv = "\"" + strings.Repeat("x", size) + "\""
+	} else if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
+		tv = "\"" + strings.Repeat("x", fs.Length) + "\""
 	} else if f.GetType() == "string" || f.GetType() == "char[]" {
 		tv = "\"hello\""
 	} else if f.InerObject != nil {
