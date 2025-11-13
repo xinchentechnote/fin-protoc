@@ -153,7 +153,7 @@ func (g PythonGenerator) generateEqMethod(p *model.Packet) string {
 		fieldName := strcase.ToSnake(f.Name)
 		if _, ok := pyBasicTypeMap[f.GetType()]; ok {
 			b.WriteString(fmt.Sprintf("        self.%s == other.%s", fieldName, fieldName))
-		} else if _, ok := model.ParseCharArrayType(f.GetType()); ok {
+		} else if _, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
 			b.WriteString(fmt.Sprintf("        self.%s == other.%s", fieldName, fieldName))
 		} else if f.InerObject != nil || (f.GetType() != "string" && f.GetType() != "char[]") {
 			b.WriteString(fmt.Sprintf("        self.%s == other.%s", fieldName, fieldName))
@@ -194,12 +194,23 @@ func (g PythonGenerator) generateDecodeMethod(p *model.Packet) string {
 	return b.String()
 }
 
-// GetPadding get padding config
-func (g PythonGenerator) GetPadding(field *model.Field) *model.Padding {
-	if field.Padding != nil {
-		return field.Padding
+// GetPadding field.Padding or config.Padding
+func (g PythonGenerator) GetPadding(f *model.Field) *model.Padding {
+	padding := g.config.Padding
+	if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
+		if fs.Padding != nil {
+			padding = fs.Padding
+		}
 	}
-	return g.config.Padding
+	if padding == nil {
+		return nil
+	}
+
+	if padding.PadChar == "'\x00'" || padding.PadChar == "'\\x00'" {
+		padding.PadChar = "'\\x00'"
+	}
+
+	return padding
 }
 
 func (g PythonGenerator) generateDecodeField(p *model.Packet, f *model.Field) string {
@@ -217,27 +228,26 @@ func (g PythonGenerator) generateDecodeField(p *model.Packet, f *model.Field) st
 			b.WriteString(fmt.Sprintf("    self.%s = buffer.read_%s()\n", fieldName, read))
 		}
 	}
-	if size, ok := model.ParseCharArrayType(f.GetType()); ok {
-		if padding != nil {
+	if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
+		if !padding.IsDefault() {
 			fromLeft := "False"
 			if padding.PadLeft {
 				fromLeft = "True"
 			}
 			if f.IsRepeat {
-				b.WriteString(fmt.Sprintf("    self.%s.append(read_fixed_string(buffer, %d, 'utf-8', %s, %s))\n", fieldName, size, padding.PadChar, fromLeft))
+				b.WriteString(fmt.Sprintf("    self.%s.append(read_fixed_string(buffer, %d, 'utf-8', %s, %s))\n", fieldName, fs.Length, padding.PadChar, fromLeft))
 			} else {
-				b.WriteString(fmt.Sprintf("    self.%s = read_fixed_string(buffer, %d, 'utf-8', %s, %s)\n", fieldName, size, padding.PadChar, fromLeft))
+				b.WriteString(fmt.Sprintf("    self.%s = read_fixed_string(buffer, %d, 'utf-8', %s, %s)\n", fieldName, fs.Length, padding.PadChar, fromLeft))
 			}
 		} else {
 			if f.IsRepeat {
-				b.WriteString(fmt.Sprintf("    self.%s.append(read_fixed_string(buffer,  %d, 'utf-8'))\n", fieldName, size))
+				b.WriteString(fmt.Sprintf("    self.%s.append(read_fixed_string(buffer,  %d, 'utf-8'))\n", fieldName, fs.Length))
 			} else {
-				b.WriteString(fmt.Sprintf("    self.%s = read_fixed_string(buffer, %d, 'utf-8')\n", fieldName, size))
+				b.WriteString(fmt.Sprintf("    self.%s = read_fixed_string(buffer, %d, 'utf-8')\n", fieldName, fs.Length))
 			}
 		}
 
-	}
-	if f.GetType() == "string" || f.GetType() == "char[]" {
+	} else if f.GetType() == "string" || f.GetType() == "char[]" {
 		var le string
 		if g.config.LittleEndian {
 			le = "_le"
@@ -344,15 +354,15 @@ func (g PythonGenerator) generateEncodeField(f *model.Field) string {
 		} else {
 			b.WriteString(fmt.Sprintf("    buffer.write_%s(self.%s)\n", typ.BasicType, fieldName))
 		}
-	} else if size, ok := model.ParseCharArrayType(f.GetType()); ok {
+	} else if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
 		fromLeft := "False"
-		if padding != nil && padding.PadLeft {
+		if !padding.IsDefault() && padding.PadLeft {
 			fromLeft = "True"
 		}
-		if padding != nil {
-			b.WriteString(fmt.Sprintf("    write_fixed_string(buffer, self.%s, %d, 'utf-8', %s, %s)\n", fieldName, size, padding.PadChar, fromLeft))
+		if !padding.IsDefault() {
+			b.WriteString(fmt.Sprintf("    write_fixed_string(buffer, self.%s, %d, 'utf-8', %s, %s)\n", fieldName, fs.Length, padding.PadChar, fromLeft))
 		} else {
-			b.WriteString(fmt.Sprintf("    write_fixed_string(buffer, self.%s, %d, 'utf-8')\n", fieldName, size))
+			b.WriteString(fmt.Sprintf("    write_fixed_string(buffer, self.%s, %d, 'utf-8')\n", fieldName, fs.Length))
 		}
 	} else if f.GetType() == "string" || f.GetType() == "char[]" {
 		if g.config.LittleEndian {
@@ -390,7 +400,7 @@ func (g PythonGenerator) generateInitMethod(p *model.Packet) string {
 			b.WriteString(fmt.Sprintf("    self.%s = %s\n", fieldName, pyBasicTypeMap[f.GetType()].DefaultValue))
 			continue
 		}
-		if _, ok := model.ParseCharArrayType(f.GetType()); ok {
+		if _, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
 			b.WriteString(fmt.Sprintf("    self.%s = ''\n", fieldName))
 			continue
 		}
@@ -484,12 +494,12 @@ func (g PythonGenerator) generateTestValue(f *model.Field) string {
 	if _, ok := g.binModel.PacketsMap[f.GetType()]; ok {
 		testValue = fieldName
 	}
-	if f.GetType() == "string" || f.GetType() == "char[]" {
+	if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
+		testValue = "\"" + strings.Repeat("x", fs.Length) + "\""
+	} else if f.GetType() == "string" || f.GetType() == "char[]" {
 		testValue = "\"hello\""
 	}
-	if size, ok := model.ParseCharArrayType(f.GetType()); ok {
-		testValue = "\"" + strings.Repeat("x", size) + "\""
-	}
+
 	if f.GetType() == "match" {
 		testValue = fieldName
 	}
