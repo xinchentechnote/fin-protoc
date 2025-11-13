@@ -192,7 +192,9 @@ end`,
 		{
 			name:   "char array",
 			packet: model.Packet{Name: "TestPacket"},
-			field:  &model.Field{Name: "testField", Type: "char[10]"},
+			field: &model.Field{Name: "testField", Attr: &model.FixedStringFieldAttribute{Length: 10,
+				Padding: &model.Padding{PadChar: "' '", PadLeft: false},
+			}, Type: "char[10]"},
 			expected: `tree:add(fields.test_packet_test_field, buf(offset, 10))
 offset = offset + 10`,
 		},
