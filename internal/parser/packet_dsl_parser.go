@@ -198,6 +198,23 @@ func creatFieldAttribute(f *model.Field) {
 			Length:  size,
 			Padding: &model.Padding{PadChar: padChar, PadLeft: padLeft},
 		}
+	} else if f.LengthOfField != "" {
+		f.Attr = &model.LengthFieldAttribute{
+			LengthOfField: f.LengthOfField,
+			LengthType:    f.GetType(),
+		}
+	} else if f.CheckSumType != "" {
+		f.Attr = &model.CheckSumFieldAttribute{
+			CheckSumType: f.CheckSumType,
+			Type:         f.GetType(),
+		}
+	} else {
+		switch f.GetType() {
+		case "i8", "u8", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64":
+			f.Attr = &model.BasicFieldAttribute{Type: f.GetType()}
+		case "string":
+			f.Attr = &model.DynamicStringFieldAttribute{Type: f.GetType()}
+		}
 	}
 }
 

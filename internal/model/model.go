@@ -239,6 +239,7 @@ func (l LengthFieldAttribute) GetType() string {
 // CheckSumFieldAttribute check sum field attribute
 type CheckSumFieldAttribute struct {
 	CheckSumType string
+	Type         string
 }
 
 // GetType return field type
@@ -260,6 +261,7 @@ func (f FixedStringFieldAttribute) GetType() string {
 // DynamicStringFieldAttribute dynamic string field attribute
 type DynamicStringFieldAttribute struct {
 	PrefixLenType string
+	Type          string
 }
 
 // GetType return field type
