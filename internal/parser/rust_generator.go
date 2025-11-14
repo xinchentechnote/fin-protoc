@@ -190,7 +190,7 @@ func (g RustGenerator) GetFieldName(f *model.Field) string {
 // EncodeField encoding field
 func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 	parentName := strcase.ToCamel(p.Name)
-	if f.LengthOfField != "" {
+	if _, ok := f.Attr.(*model.LengthFieldAttribute); ok {
 		// auto calculate length field
 		var b strings.Builder
 		b.WriteString(fmt.Sprintf("let %s_pos = buf.len();\n", strcase.ToSnake(f.Name)))
@@ -203,9 +203,9 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 		return b.String()
 	}
 
-	if f.CheckSumType != "" {
+	if csf, ok := f.Attr.(*model.CheckSumFieldAttribute); ok {
 		var b strings.Builder
-		b.WriteString(fmt.Sprintf("let val = CHECKSUM_SERVICE_CONTEXT.get(%s)\n", f.CheckSumType))
+		b.WriteString(fmt.Sprintf("let val = CHECKSUM_SERVICE_CONTEXT.get(%s)\n", csf.CheckSumType))
 		b.WriteString("    .and_then(|service| match service.calc(buf) {\n")
 		b.WriteString(fmt.Sprintf("        Checksum::%s(v) => Some(v),\n", strings.ToUpper(f.GetType())))
 		b.WriteString("        _ => None,\n")
@@ -232,7 +232,7 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 			return fmt.Sprintf("put_fixed_string_list::<%s>(buf, &self.%s, %d);", g.config.ListLenPrefixLenType, name, size)
 		}
 
-		if f.GetType() == "string" {
+		if _, ok := f.Attr.(*model.DynamicStringFieldAttribute); ok {
 			if g.config.LittleEndian {
 				return fmt.Sprintf("put_string_list_le::<%s,%s>(buf, &self.%s);", g.config.ListLenPrefixLenType, g.config.StringLenPrefixLenType, name)
 			}
