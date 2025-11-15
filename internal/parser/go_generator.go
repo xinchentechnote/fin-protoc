@@ -278,7 +278,7 @@ func (g GoGenerator) generateDecodingField(p *model.Packet, field *model.Field) 
 		b.WriteString("    } else {\n")
 		b.WriteString(fmt.Sprintf("        p.%s = val\n", fieldNameCamel))
 		b.WriteString("    }\n")
-	case *model.BasicFieldAttribute:
+	case *model.BasicFieldAttribute, *model.LengthFieldAttribute, *model.CheckSumFieldAttribute:
 		if bt, ok := goBasicTypeMap[field.GetType()]; ok {
 			b.WriteString(fmt.Sprintf("    if val, err := codec.ReadBasicType%s[%s](buf); err != nil {\n", order, bt.BasicType))
 			b.WriteString("        return err\n")
@@ -412,6 +412,9 @@ func (g GoGenerator) generateEncodingField(p *model.Packet, field *model.Field) 
 		b.WriteString(fmt.Sprintf("if checksumService, ok := codec.Get(%s); ok {\n", field.CheckSumType))
 		b.WriteString(fmt.Sprintf("    p.%s = checksumService.(codec.ChecksumService[*bytes.Buffer, %s]).Calc(buf)\n", fieldNameCamel, typ.BasicType))
 		b.WriteString("}\n")
+		b.WriteString(fmt.Sprintf("    if err :=codec.WriteBasicType%s(buf, p.%s); err != nil {\n", order, fieldNameCamel))
+		b.WriteString("        return fmt.Errorf(\"failed to encode %s: %w\", \"" + field.Name + "\", err)\n")
+		b.WriteString("    }\n")
 	case *model.FixedStringFieldAttribute:
 		// fixed string
 		if !padding.IsDefault() {
