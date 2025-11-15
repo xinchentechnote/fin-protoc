@@ -247,7 +247,7 @@ func (g PythonGenerator) generateDecodeField(p *model.Packet, f *model.Field) st
 			}
 		}
 
-	} else if f.GetType() == "string" || f.GetType() == "char[]" {
+	} else if _, ok := f.Attr.(*model.DynamicStringFieldAttribute); ok {
 		var le string
 		if g.config.LittleEndian {
 			le = "_le"
@@ -295,7 +295,7 @@ func (g PythonGenerator) generateEncodeMethod(p *model.Packet) string {
 
 	for _, f := range p.Fields {
 		fieldName := strcase.ToSnake(f.Name)
-		if f.LengthOfField != "" {
+		if _, ok := f.Attr.(*model.LengthFieldAttribute); ok {
 			typ := pyBasicTypeMap[f.GetType()]
 			b.WriteString(fmt.Sprintf("    %s_pos = buffer.write_index\n", fieldName))
 			if g.config.LittleEndian {
@@ -305,8 +305,8 @@ func (g PythonGenerator) generateEncodeMethod(p *model.Packet) string {
 			}
 			continue
 		}
-		if f.CheckSumType != "" {
-			b.WriteString(fmt.Sprintf("    service = create_checksum_service(%s)\n", f.CheckSumType))
+		if csf, ok := f.Attr.(*model.CheckSumFieldAttribute); ok {
+			b.WriteString(fmt.Sprintf("    service = create_checksum_service(%s)\n", csf.CheckSumType))
 			b.WriteString("    if service :\n")
 			b.WriteString(fmt.Sprintf("        self.%s = service.calc(buffer)\n", fieldName))
 		}
@@ -364,7 +364,7 @@ func (g PythonGenerator) generateEncodeField(f *model.Field) string {
 		} else {
 			b.WriteString(fmt.Sprintf("    write_fixed_string(buffer, self.%s, %d, 'utf-8')\n", fieldName, fs.Length))
 		}
-	} else if f.GetType() == "string" || f.GetType() == "char[]" {
+	} else if _, ok := f.Attr.(*model.DynamicStringFieldAttribute); ok {
 		if g.config.LittleEndian {
 			b.WriteString(fmt.Sprintf("    write_string_le(buffer, self.%s, '%s')\n", fieldName, g.config.StringLenPrefixLenType))
 		} else {

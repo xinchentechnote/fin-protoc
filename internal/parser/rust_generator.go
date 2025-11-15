@@ -354,7 +354,7 @@ func (g RustGenerator) DecodeField(parentName string, f *model.Field) string {
 			return fmt.Sprintf("let %s = get_fixed_string_list::<%s>(buf, %d)?;", name, g.config.ListLenPrefixLenType, fs.Length)
 		}
 
-		if f.GetType() == "string" {
+		if _, ok := f.Attr.(*model.DynamicStringFieldAttribute); ok {
 			if g.config.LittleEndian {
 				return fmt.Sprintf("let %s = get_string_list_le::<%s,%s>(buf)?;", name, g.config.ListLenPrefixLenType, g.config.StringLenPrefixLenType)
 			}

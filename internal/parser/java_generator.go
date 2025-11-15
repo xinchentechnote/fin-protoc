@@ -458,8 +458,8 @@ func (g JavaGenerator) GenerateDecode(packet *model.Packet) string {
 // GenerateDecodeField den decode field
 func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 	fieldNameLowerCamel := g.GetFieldNameLower(f)
-	switch f.Type {
-	case "string", "char[]":
+	switch c := f.Attr.(type) {
+	case *model.DynamicStringFieldAttribute:
 		// dynamic string
 		var b strings.Builder
 		fieldLen := fieldNameLowerCamel + "Len"
@@ -477,6 +477,20 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 		}
 		b.WriteString("}")
 		return b.String()
+	case *model.FixedStringFieldAttribute:
+		//fixed string
+		len := c.Length
+		padding := g.GetPadding(f)
+		if !padding.IsDefault() {
+			if f.IsRepeat {
+				return fmt.Sprintf("this.%s.add(readFixedString(byteBuf, %d, %s, %t));", fieldNameLowerCamel, len, padding.PadChar, padding.PadLeft)
+			}
+			return fmt.Sprintf("this.%s = readFixedString(byteBuf, %d, %s, %t);", fieldNameLowerCamel, len, padding.PadChar, padding.PadLeft)
+		}
+		if f.IsRepeat {
+			return fmt.Sprintf("this.%s.add(readFixedString(byteBuf, %d));", fieldNameLowerCamel, len)
+		}
+		return fmt.Sprintf("this.%s = readFixedString(byteBuf, %d);", fieldNameLowerCamel, len)
 	default:
 		if typ, ok := javaBasicTypeMap[f.GetType()]; ok {
 			//basic type
@@ -488,21 +502,6 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 				return fmt.Sprintf("this.%s.add(byteBuf.read%s());", fieldNameLowerCamel, readMethod)
 			}
 			return fmt.Sprintf("this.%s = byteBuf.read%s();", fieldNameLowerCamel, readMethod)
-		}
-		if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
-			//fixed string
-			len := fs.Length
-			padding := g.GetPadding(f)
-			if !padding.IsDefault() {
-				if f.IsRepeat {
-					return fmt.Sprintf("this.%s.add(readFixedString(byteBuf, %d, %s, %t));", fieldNameLowerCamel, len, padding.PadChar, padding.PadLeft)
-				}
-				return fmt.Sprintf("this.%s = readFixedString(byteBuf, %d, %s, %t);", fieldNameLowerCamel, len, padding.PadChar, padding.PadLeft)
-			}
-			if f.IsRepeat {
-				return fmt.Sprintf("this.%s.add(readFixedString(byteBuf, %d));", fieldNameLowerCamel, len)
-			}
-			return fmt.Sprintf("this.%s = readFixedString(byteBuf, %d);", fieldNameLowerCamel, len)
 		}
 		if f.InerObject != nil {
 			//iner object
@@ -582,48 +581,12 @@ func (g JavaGenerator) GenerateEncode(packet *model.Packet) string {
 // GenerateEncodeField gen encode field
 func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) string {
 	fieldNameLowerCamel := strcase.ToLowerCamel(f.Name)
-	if f.LengthOfField != "" {
-		// auto calculate length field
-		var b strings.Builder
-		lenTyp := javaBasicTypeMap[f.GetType()]
-		b.WriteString(fmt.Sprintf("int %sPos = byteBuf.writerIndex();\n", fieldNameLowerCamel))
-		if g.config.LittleEndian {
-			b.WriteString(fmt.Sprintf("byteBuf.write%s(0);\n", lenTyp.Le))
-		} else {
-			b.WriteString(fmt.Sprintf("byteBuf.write%s(0);\n", strcase.ToCamel(lenTyp.BasicType)))
-		}
-
-		return b.String()
-	}
-	if f.CheckSumType != "" {
-		// auto calculate checksum
-		var b strings.Builder
-		b.WriteString(fmt.Sprintf("ChecksumService<ByteBuf, Integer> checksumService = ChecksumServiceFactory.getInstance().getChecksumService(%s);\n", f.CheckSumType))
-		b.WriteString("if (checksumService != null) {\n")
-		lenTyp := javaBasicTypeMap[f.GetType()]
-		b.WriteString(fmt.Sprintf("this.%s = (%s) checksumService.calc(byteBuf);\n", fieldNameLowerCamel, lenTyp.BasicType))
-		b.WriteString("}\n")
-		if g.config.LittleEndian {
-			b.WriteString(fmt.Sprintf("byteBuf.write%s(this.%s);\n", lenTyp.Le, fieldNameLowerCamel))
-		} else {
-			b.WriteString(fmt.Sprintf("byteBuf.write%s(this.%s);\n", strcase.ToCamel(lenTyp.BasicType), fieldNameLowerCamel))
-		}
-		return b.String()
-	}
 	if f.IsRepeat {
 		fieldNameLowerCamel += ".get(i)"
 	}
 
-	if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
-		padding := g.GetPadding(f)
-		if !padding.IsDefault() {
-			return fmt.Sprintf("writeFixedString(byteBuf, this.%s, %d, %s, %t);", fieldNameLowerCamel, fs.Length, padding.PadChar, padding.PadLeft)
-		}
-		return fmt.Sprintf("writeFixedString(byteBuf, this.%s, %d);", fieldNameLowerCamel, fs.Length)
-	}
-
-	switch f.GetType() {
-	case "string", "char[]":
+	switch c := f.Attr.(type) {
+	case *model.DynamicStringFieldAttribute:
 		var b strings.Builder
 		lenTyp := javaBasicTypeMap[g.config.StringLenPrefixLenType]
 
@@ -638,6 +601,38 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 		}
 		b.WriteString(AddIndent4ln("byteBuf.writeBytes(bytes);"))
 		b.WriteString("}\n")
+		return b.String()
+	case *model.FixedStringFieldAttribute:
+		padding := g.GetPadding(f)
+		if !padding.IsDefault() {
+			return fmt.Sprintf("writeFixedString(byteBuf, this.%s, %d, %s, %t);", fieldNameLowerCamel, c.Length, padding.PadChar, padding.PadLeft)
+		}
+		return fmt.Sprintf("writeFixedString(byteBuf, this.%s, %d);", fieldNameLowerCamel, c.Length)
+	case *model.LengthFieldAttribute:
+		// auto calculate length field
+		var b strings.Builder
+		lenTyp := javaBasicTypeMap[f.GetType()]
+		b.WriteString(fmt.Sprintf("int %sPos = byteBuf.writerIndex();\n", fieldNameLowerCamel))
+		if g.config.LittleEndian {
+			b.WriteString(fmt.Sprintf("byteBuf.write%s(0);\n", lenTyp.Le))
+		} else {
+			b.WriteString(fmt.Sprintf("byteBuf.write%s(0);\n", strcase.ToCamel(lenTyp.BasicType)))
+		}
+
+		return b.String()
+	case *model.CheckSumFieldAttribute:
+		// auto calculate checksum
+		var b strings.Builder
+		b.WriteString(fmt.Sprintf("ChecksumService<ByteBuf, Integer> checksumService = ChecksumServiceFactory.getInstance().getChecksumService(%s);\n", c.CheckSumType))
+		b.WriteString("if (checksumService != null) {\n")
+		lenTyp := javaBasicTypeMap[f.GetType()]
+		b.WriteString(fmt.Sprintf("this.%s = (%s) checksumService.calc(byteBuf);\n", fieldNameLowerCamel, lenTyp.BasicType))
+		b.WriteString("}\n")
+		if g.config.LittleEndian {
+			b.WriteString(fmt.Sprintf("byteBuf.write%s(this.%s);\n", lenTyp.Le, fieldNameLowerCamel))
+		} else {
+			b.WriteString(fmt.Sprintf("byteBuf.write%s(this.%s);\n", strcase.ToCamel(lenTyp.BasicType), fieldNameLowerCamel))
+		}
 		return b.String()
 	default:
 		if typ, ok := javaBasicTypeMap[f.GetType()]; ok {

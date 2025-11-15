@@ -251,9 +251,12 @@ func TestRustDecodeField(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "string list",
-			parent:   "Parent",
-			field:    &model.Field{Name: "strings", Type: "string", IsRepeat: true},
+			name:   "string list",
+			parent: "Parent",
+			field: &model.Field{Name: "strings", Type: "string", IsRepeat: true,
+				Attr: &model.DynamicStringFieldAttribute{
+					Type: "string",
+				}},
 			expected: "let strings = get_string_list::<u16,u8>(buf)?;",
 		},
 		{
