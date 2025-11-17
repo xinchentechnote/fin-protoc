@@ -216,11 +216,15 @@ func (v *PacketDslFormattor) VisitFieldDefinition(ctx interface{}) interface{} {
 	b.WriteString(v.getHiddenLeft(ctx.(antlr.ParserRuleContext).GetStart()))
 	switch c := ctx.(type) {
 	case *gen.ObjectFieldContext:
-		repeat := ""
+		field := ""
 		if c.REPEAT() != nil {
-			repeat = "repeat "
+			field = "repeat "
 		}
-		b.WriteString(repeat + c.IDENTIFIER().GetText() + ",")
+		field += c.GetFtype().GetText()
+		if c.GetFname() != nil {
+			field += " " + c.GetFname().GetText()
+		}
+		b.WriteString(field + ",")
 	case *gen.InerObjectFieldContext:
 		b.WriteString(v.VisitInerObjectField(c).(string))
 	case *gen.LengthFieldContext:

@@ -107,7 +107,7 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 				continue
 			}
 			fld := fd.(*model.Field) // Ensure type assertion
-			if fld.LengthOfField != "" {
+			if _, ok := fld.Attr.(*model.LengthFieldAttribute); ok {
 				if !isRoot {
 					v.BinModel.AddSyntaxError(&model.SyntaxError{
 						Line:            fctx.GetStart().GetLine(),
@@ -138,6 +138,27 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 		}
 	}
 
+	for _, f := range fields {
+		switch c := f.Attr.(type) {
+		case *model.ObjectFieldAttribute:
+			if !c.IsIner {
+				c.RefPacket = v.BinModel.PacketsMap[c.PacketName]
+			}
+		case *model.LengthFieldAttribute:
+			f.Attr = &model.LengthFieldAttribute{
+				LengthType:  f.GetType(),
+				TragetField: fieldMap[c.TragetField.Name],
+			}
+		default:
+			if lengthField != nil && f.Name == lengthField.Name {
+				f.Attr = &model.LengthOfAttribute{
+					TargetField: f,
+					LengthField: lengthField,
+				}
+			}
+		}
+	}
+
 	return &model.Packet{
 		Name:        name,
 		IsRoot:      isRoot,
@@ -163,6 +184,10 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinitionWithAttribute(ctx *gen.FieldD
 			f.CheckSumType = fieldAttr.CalculatedFromAttribute().GetFrom().GetText()
 		case fieldAttr.LengthOfAttribute() != nil:
 			f.LengthOfField = fieldAttr.LengthOfAttribute().GetFrom().GetText()
+			f.Attr = &model.LengthFieldAttribute{
+				TragetField: &model.Field{Name: fieldAttr.LengthOfAttribute().GetFrom().GetText()},
+				LengthType:  f.GetType(),
+			}
 		case fieldAttr.PaddingAttribute() != nil:
 			f.Padding = &model.Padding{
 				PadChar: fieldAttr.PaddingAttribute().PADDING_CHAR().GetText(),
@@ -198,15 +223,16 @@ func creatFieldAttribute(f *model.Field) {
 			Length:  size,
 			Padding: &model.Padding{PadChar: padChar, PadLeft: padLeft},
 		}
-	} else if f.LengthOfField != "" {
-		f.Attr = &model.LengthFieldAttribute{
-			LengthOfField: f.LengthOfField,
-			LengthType:    f.GetType(),
-		}
 	} else if f.CheckSumType != "" {
 		f.Attr = &model.CheckSumFieldAttribute{
 			CheckSumType: f.CheckSumType,
 			Type:         f.GetType(),
+		}
+	} else if f.InerObject != nil {
+		f.Attr = &model.ObjectFieldAttribute{
+			RefPacket:  f.InerObject,
+			IsIner:     true,
+			PacketName: f.InerObject.Name,
 		}
 	} else {
 		switch f.GetType() {
@@ -223,15 +249,27 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinition(ctx interface{}) interface{}
 	switch c := ctx.(type) {
 	// Basic object field: REPEAT? IDENTIFIER
 	case *gen.ObjectFieldContext:
-		name := c.IDENTIFIER().GetText()
-		typ := name
-		if v.BinModel.MetaDataMap[name] != (model.MetaData{}) {
+		name := c.GetFname().GetText()
+		typ := c.GetFtype().GetText()
+		if name == "" {
+			name = typ
+		}
+		var attr model.FieldAttribute
+		if v.BinModel.MetaDataMap[typ] != (model.MetaData{}) {
 			// If metadata exists, use its basic type
-			typ = v.BinModel.MetaDataMap[name].BasicType
+			typ = v.BinModel.MetaDataMap[typ].BasicType
+			attr = &model.BasicFieldAttribute{
+				Type: typ,
+			}
+		} else {
+			attr = &model.ObjectFieldAttribute{
+				IsIner: false,
+			}
 		}
 		return &model.Field{
 			Name:     name,
 			Type:     typ,
+			Attr:     attr,
 			IsRepeat: c.REPEAT() != nil,
 			Line:     c.GetStart().GetLine(),
 			Column:   c.GetStart().GetTokenSource().GetCharPositionInLine(),
@@ -403,10 +441,14 @@ func (v *PacketDslVisitorImpl) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDec
 		}
 	}
 	return &model.Field{
-		Name:       matchName,
-		Type:       "match",
-		MatchKey:   matchKey,
-		IsRepeat:   false,
+		Name:     matchName,
+		Type:     "match",
+		MatchKey: matchKey,
+		IsRepeat: false,
+		Attr: &model.MatchFieldAttribute{
+			MatchKey:   matchKey,
+			MatchPairs: pairs,
+		},
 		MatchPairs: pairs,
 	}
 }

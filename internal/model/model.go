@@ -66,6 +66,7 @@ var _ = map[string]struct{}{
 	"float64": {},
 	"char":    {},
 	"char[]":  {},
+	"zchar[]": {},
 	"string":  {},
 }
 
@@ -77,7 +78,7 @@ var options = map[string][]string{
 	GoPackage:              {},
 	GoModule:               {},
 	FixedStringPadFromLeft: {"true", "false"},
-	FixedStringPadChar:     {"'0'", "' '"},
+	FixedStringPadChar:     {"'0'", "' '", "'\x00'"},
 }
 
 // BinaryModel contains metaData, options,and packets
@@ -227,13 +228,34 @@ func (b BasicFieldAttribute) GetType() string {
 
 // LengthFieldAttribute length field attribute
 type LengthFieldAttribute struct {
-	LengthOfField string
-	LengthType    string
+	TragetField *Field
+	LengthType  string
 }
 
 // GetType return field type
 func (l LengthFieldAttribute) GetType() string {
 	return getBasicType(l.LengthType)
+}
+
+// LengthOfAttribute describes how a length field is computed.
+//
+// This attribute defines that `LengthField` stores the size of `TargetField`.
+// The final length is calculated as: len(TargetField) + Offset.
+type LengthOfAttribute struct {
+	// TargetField is the field whose serialized size will be measured.
+	TargetField *Field
+
+	// LengthField is the field that stores the computed length value.
+	LengthField *Field
+
+	// Offset is an additional constant added to the computed length, default 0.
+	// FinalLength = len(TargetField) + Offset.
+	Offset int32
+}
+
+// GetType return field type
+func (l LengthOfAttribute) GetType() string {
+	return getBasicType(l.TargetField.Type)
 }
 
 // CheckSumFieldAttribute check sum field attribute
@@ -267,6 +289,30 @@ type DynamicStringFieldAttribute struct {
 // GetType return field type
 func (d DynamicStringFieldAttribute) GetType() string {
 	return "string"
+}
+
+// ObjectFieldAttribute object field attribute
+type ObjectFieldAttribute struct {
+	IsIner     bool
+	PacketName string
+	RefPacket  *Packet
+}
+
+// GetType return field type
+func (o ObjectFieldAttribute) GetType() string {
+	return "object"
+}
+
+// MatchFieldAttribute match field attribute
+type MatchFieldAttribute struct {
+	MatchKey   string      // If the field is a match field, this holds the typeName of match
+	RefField   *Field      // Reference to the match key field
+	MatchPairs []MatchPair // If the field is a match field, holds all match key-value pairs
+}
+
+// GetType return field type
+func (m MatchFieldAttribute) GetType() string {
+	return "match"
 }
 
 func getBasicType(fieldType string) string {

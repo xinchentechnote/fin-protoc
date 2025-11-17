@@ -634,33 +634,30 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 			b.WriteString(fmt.Sprintf("byteBuf.write%s(this.%s);\n", strcase.ToCamel(lenTyp.BasicType), fieldNameLowerCamel))
 		}
 		return b.String()
-	default:
-		if typ, ok := javaBasicTypeMap[f.GetType()]; ok {
-			if g.config.LittleEndian {
-				return fmt.Sprintf("byteBuf.write%s(this.%s);", typ.Le, fieldNameLowerCamel)
-			}
-			return fmt.Sprintf("byteBuf.write%s(this.%s);", strcase.ToCamel(typ.BasicType), fieldNameLowerCamel)
+	case *model.BasicFieldAttribute:
+		typ := javaBasicTypeMap[f.GetType()]
+		if g.config.LittleEndian {
+			return fmt.Sprintf("byteBuf.write%s(this.%s);", typ.Le, fieldNameLowerCamel)
 		}
-
-		if p.LengthField != nil && f.Name == p.LengthField.LengthOfField {
-			var b strings.Builder
-			b.WriteString(fmt.Sprintf("int %sStart = byteBuf.writerIndex();", fieldNameLowerCamel))
-			b.WriteString(fmt.Sprintf("if (this.%s != null) {\n", fieldNameLowerCamel))
-			b.WriteString(fmt.Sprintf("    this.%s.encode(byteBuf);\n", fieldNameLowerCamel))
-			b.WriteString("}\n")
-			lenTyp := javaBasicTypeMap[p.LengthField.GetType()]
-			b.WriteString(fmt.Sprintf("int %sEnd = byteBuf.writerIndex();", fieldNameLowerCamel))
-			lengthFieldName := strcase.ToLowerCamel(p.LengthField.Name)
-			b.WriteString(fmt.Sprintf("this.%s = (%s)(%sEnd - %sStart);", lengthFieldName, lenTyp.BasicType, fieldNameLowerCamel, fieldNameLowerCamel))
-			if g.config.LittleEndian {
-				b.WriteString(fmt.Sprintf("byteBuf.set%s(%sPos, this.%s);", lenTyp.Le, lengthFieldName, lengthFieldName))
-			} else {
-				b.WriteString(fmt.Sprintf("byteBuf.set%s(%sPos, this.%s);", strcase.ToCamel(lenTyp.BasicType), lengthFieldName, lengthFieldName))
-			}
-			return b.String()
+		return fmt.Sprintf("byteBuf.write%s(this.%s);", strcase.ToCamel(typ.BasicType), fieldNameLowerCamel)
+	case *model.LengthOfAttribute:
+		var b strings.Builder
+		b.WriteString(fmt.Sprintf("int %sStart = byteBuf.writerIndex();", fieldNameLowerCamel))
+		b.WriteString(fmt.Sprintf("if (this.%s != null) {\n", fieldNameLowerCamel))
+		b.WriteString(fmt.Sprintf("    this.%s.encode(byteBuf);\n", fieldNameLowerCamel))
+		b.WriteString("}\n")
+		lenTyp := javaBasicTypeMap[p.LengthField.GetType()]
+		b.WriteString(fmt.Sprintf("int %sEnd = byteBuf.writerIndex();", fieldNameLowerCamel))
+		lengthFieldName := strcase.ToLowerCamel(p.LengthField.Name)
+		b.WriteString(fmt.Sprintf("this.%s = (%s)(%sEnd - %sStart);", lengthFieldName, lenTyp.BasicType, fieldNameLowerCamel, fieldNameLowerCamel))
+		if g.config.LittleEndian {
+			b.WriteString(fmt.Sprintf("byteBuf.set%s(%sPos, this.%s);", lenTyp.Le, lengthFieldName, lengthFieldName))
+		} else {
+			b.WriteString(fmt.Sprintf("byteBuf.set%s(%sPos, this.%s);", strcase.ToCamel(lenTyp.BasicType), lengthFieldName, lengthFieldName))
 		}
-
-		if f.InerObject != nil {
+		return b.String()
+	case *model.ObjectFieldAttribute:
+		if c.IsIner {
 			var b strings.Builder
 			fieldNameLowerCamel = strcase.ToLowerCamel(f.InerObject.Name)
 			if f.IsRepeat {
@@ -669,22 +666,17 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 			b.WriteString(fmt.Sprintf("this.%s.encode(byteBuf);", fieldNameLowerCamel))
 			return b.String()
 		}
+		var b strings.Builder
+		b.WriteString(fmt.Sprintf("this.%s.encode(byteBuf);", fieldNameLowerCamel))
+		return b.String()
 
-		if f.Type == "match" {
-			var b strings.Builder
-			b.WriteString(fmt.Sprintf("if (null != this.%s) {\n", fieldNameLowerCamel))
-			b.WriteString(fmt.Sprintf("this.%s.encode(byteBuf);", fieldNameLowerCamel))
-			b.WriteString("}")
-			return b.String()
-		}
-		if _, ok := g.binModel.PacketsMap[f.Type]; ok {
-			var b strings.Builder
-			//b.WriteString(fmt.Sprintf("if (null == this.%s) {\n", fieldName))
-			//b.WriteString(AddIndent4ln(fmt.Sprintf("this.%s = new %s();", fieldName, f.Name)))
-			//b.WriteString("}\n")
-			b.WriteString(fmt.Sprintf("this.%s.encode(byteBuf);", fieldNameLowerCamel))
-			return b.String()
-		}
+	case *model.MatchFieldAttribute:
+		var b strings.Builder
+		b.WriteString(fmt.Sprintf("if (null != this.%s) {\n", fieldNameLowerCamel))
+		b.WriteString(fmt.Sprintf("this.%s.encode(byteBuf);", fieldNameLowerCamel))
+		b.WriteString("}")
+		return b.String()
+	default:
 		return "//" + f.Type
 	}
 }

@@ -19,7 +19,7 @@ func TestFormatPacketDsl(t *testing.T) {
 }
 
 func TestFormatPacketDsl1(t *testing.T) {
-	formattedDsl, err := FormatPacketDsl("root packet MyPacket {  Int64 name   `description`, }")
+	formattedDsl, err := FormatPacketDsl("root packet MyPacket {  int64 name   `description`, }")
 	assert.NoError(t, err)
 	fmt.Println(formattedDsl)
 }
@@ -32,8 +32,8 @@ func TestVisitMetaDataDeclaration(t *testing.T) {
 	}{
 		{
 			name:     "只要类型+名字",
-			input:    "Int32  count ,",
-			expected: "Int32 count,",
+			input:    "int32  count ,",
+			expected: "int32 count,",
 		},
 		{
 			name:     "带 String 描述",
@@ -42,8 +42,8 @@ func TestVisitMetaDataDeclaration(t *testing.T) {
 		},
 		{
 			name:     "带描述并且逗号",
-			input:    "uInt16  headerLen  `length` , ",
-			expected: "uInt16 headerLen `length`,",
+			input:    "uint16  headerLen  `length` , ",
+			expected: "uint16 headerLen `length`,",
 		},
 		{
 			name:     "无类型（只 IDENTIFIER）",
@@ -76,7 +76,7 @@ func TestVisitMetaDataDefinition(t *testing.T) {
 	input := `
 MetaData SampleMeta {
     string   key ` + "`" + `a description` + "`" + ` ,
-    Int32   value ` + "`" + `another desc` + "`" + `
+    int32   value ` + "`" + `another desc` + "`" + `
 }
 `
 	// 1. 构造上下文
@@ -90,7 +90,7 @@ MetaData SampleMeta {
 
 	expected := `MetaData SampleMeta {
     string key ` + "`" + `a description` + "`" + `,
-    Int32 value ` + "`" + `another desc` + "`" + `,
+    int32 value ` + "`" + `another desc` + "`" + `,
 }`
 
 	// 4. 去掉首尾空行并比较
