@@ -44,25 +44,33 @@ func NewPacketDslVisitor() *PacketDslVisitorImpl {
 	}
 }
 
+func (v *PacketDslVisitorImpl) metaDataDeclarationToMetaData(ctx *gen.MetaDataDeclarationContext) interface{} {
+	return model.MetaData{
+		Name:        ctx.GetName().GetText(),
+		Typ:         ctx.Type_().GetText(),
+		BasicType:   ctx.Type_().GetText(),
+		Description: ctx.STRING_LITERAL().GetText(),
+		Line:        ctx.GetStart().GetLine(),
+		Column:      ctx.GetStart().GetTokenSource().GetCharPositionInLine(),
+	}
+}
+
 // VisitPacket handles a list of packetDefinition nodes and returns []model.Packet.
 func (v *PacketDslVisitorImpl) VisitPacket(ctx *gen.PacketContext) interface{} {
 
 	// MetaData map
 	for _, metaDataDifinition := range ctx.AllMetaDataDefinition() {
-		for _, metaDataDeclaration := range metaDataDifinition.AllMetaDataDeclaration() {
-			name := metaDataDeclaration.GetName().GetText()
-			typ := metaDataDeclaration.Type_().GetText()
-			basicType := metaDataDeclaration.Type_().GetText()
-			// Store metadata in the map
-			v.BinModel.AddMetaData(model.MetaData{
-				Name:        name,
-				Typ:         typ,
-				BasicType:   basicType,
-				Description: metaDataDeclaration.STRING_LITERAL().GetText(),
-				Line:        metaDataDeclaration.GetStart().GetLine(),
-				Column:      metaDataDeclaration.GetStart().GetTokenSource().GetCharPositionInLine(),
-			})
-
+		for _, decl := range metaDataDifinition.GetChildren() {
+			switch c := decl.(type) {
+			case *gen.RefMetaDataDeclarationContext:
+				result := v.VisitRefMetaDataDeclaration(c).(model.MetaData)
+				v.BinModel.AddMetaData(result)
+			case *gen.MetaDataDeclarationContext:
+				result := v.metaDataDeclarationToMetaData(c).(model.MetaData)
+				v.BinModel.AddMetaData(result)
+			default:
+				continue
+			}
 		}
 	}
 
@@ -150,9 +158,8 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 				TragetField: fieldMap[c.TragetField.Name],
 			}
 		default:
-			if lengthField != nil && f.Name == lengthField.Name {
-				f.Attr = &model.LengthOfAttribute{
-					TargetField: f,
+			if lengthField != nil && f.Name == lengthField.Attr.(*model.LengthFieldAttribute).TragetField.Name {
+				f.LenTargetAttr = &model.LengthOfAttribute{
 					LengthField: lengthField,
 				}
 			}
@@ -207,6 +214,11 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinitionWithAttribute(ctx *gen.FieldD
 }
 
 func creatFieldAttribute(f *model.Field) {
+	switch f.Attr.(type) {
+	case *model.LengthFieldAttribute:
+		// Already handled
+		return
+	}
 	if size, ok := model.ParseCharArrayType(f.Type); ok {
 		f.Attr = &model.FixedStringFieldAttribute{
 			Length:  size,
@@ -249,10 +261,10 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinition(ctx interface{}) interface{}
 	switch c := ctx.(type) {
 	// Basic object field: REPEAT? IDENTIFIER
 	case *gen.ObjectFieldContext:
-		name := c.GetFname().GetText()
 		typ := c.GetFtype().GetText()
-		if name == "" {
-			name = typ
+		name := typ
+		if c.GetFname() != nil {
+			name = c.GetFname().GetText()
 		}
 		var attr model.FieldAttribute
 		if v.BinModel.MetaDataMap[typ] != (model.MetaData{}) {
@@ -285,7 +297,7 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinition(ctx interface{}) interface{}
 	// Metadata field: REPEAT? metaDataDeclaration
 	case *gen.MetaFieldContext:
 		mctx := c.MetaDataDeclaration().(*gen.MetaDataDeclarationContext)
-		fld := v.VisitMetaDataDeclaration(mctx).(*model.Field)
+		fld := v.metaDataDeclarationToField(mctx).(*model.Field)
 		if c.REPEAT() != nil {
 			fld.IsRepeat = true
 		}
@@ -325,9 +337,13 @@ func (v *PacketDslVisitorImpl) VisitLengthFieldDeclaration(ctx *gen.LengthFieldD
 		Type:          typ,
 		IsRepeat:      false,
 		LengthOfField: ctx.LengthOfAttribute().GetFrom().GetText(),
-		Doc:           desc,
-		Line:          ctx.GetStart().GetLine(),
-		Column:        ctx.GetStart().GetTokenSource().GetCharPositionInLine(),
+		Attr: &model.LengthFieldAttribute{
+			TragetField: &model.Field{Name: ctx.LengthOfAttribute().GetFrom().GetText()},
+			LengthType:  typ,
+		},
+		Doc:    desc,
+		Line:   ctx.GetStart().GetLine(),
+		Column: ctx.GetStart().GetTokenSource().GetCharPositionInLine(),
 	}
 }
 
@@ -388,8 +404,7 @@ func (v *PacketDslVisitorImpl) VisitInerObjectField(ctx *gen.InerObjectFieldCont
 	}
 }
 
-// VisitMetaDataDeclaration handles a metadata declaration of the form: type? IDENTIFIER `doc`?
-func (v *PacketDslVisitorImpl) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclarationContext) interface{} {
+func (v *PacketDslVisitorImpl) metaDataDeclarationToField(ctx *gen.MetaDataDeclarationContext) interface{} {
 	// Field name
 	name := ctx.GetName().GetText()
 	// Determine type if present
@@ -475,10 +490,16 @@ func (v *PacketDslVisitorImpl) VisitMatchPair(ctx *gen.MatchPairContext) interfa
 	return append(pairs, model.MatchPair{Key: key, Value: val, Line: ctx.GetStart().GetLine(), Column: ctx.GetStart().GetTokenSource().GetCharPositionInLine()})
 }
 
-// VisitMetaDataDefinition is not used currently; just logs visiting metadata definitions.
-func (v *PacketDslVisitorImpl) VisitMetaDataDefinition(ctx *gen.MetaDataDefinitionContext) interface{} {
-	fmt.Println("Visiting MetaDataDefinition:", ctx.GetText())
-	return nil
+// VisitRefMetaDataDeclaration handles reference metadata declarations.
+func (v *PacketDslVisitorImpl) VisitRefMetaDataDeclaration(ctx *gen.RefMetaDataDeclarationContext) interface{} {
+	return model.MetaData{
+		Name:        ctx.GetName().GetText(),
+		Typ:         ctx.GetTyp().GetText(),
+		BasicType:   ctx.GetTyp().GetText(),
+		Description: ctx.STRING_LITERAL().GetText(),
+		Line:        ctx.GetStart().GetLine(),
+		Column:      ctx.GetStart().GetTokenSource().GetCharPositionInLine(),
+	}
 }
 
 // VisitType logs visiting a type context; can be extended for type validation.

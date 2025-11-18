@@ -278,10 +278,16 @@ func (v *PacketDslFormattor) VisitMetaDataDefinition(ctx *gen.MetaDataDefinition
 	metaName := ctx.IDENTIFIER().GetText()
 	formattedDsl.WriteString(fmt.Sprintf("MetaData %s {\n", metaName))
 
-	for _, decl := range ctx.AllMetaDataDeclaration() {
-		if d, ok := decl.(*gen.MetaDataDeclarationContext); ok {
-			result := v.VisitMetaDataDeclaration(d).(string)
+	for _, decl := range ctx.GetChildren() {
+		switch c := decl.(type) {
+		case *gen.RefMetaDataDeclarationContext:
+			result := v.VisitRefMetaDataDeclaration(c).(string)
 			formattedDsl.WriteString(AddIndent4ln(result))
+		case *gen.MetaDataDeclarationContext:
+			result := v.VisitMetaDataDeclaration(c).(string)
+			formattedDsl.WriteString(AddIndent4ln(result))
+		default:
+			continue
 		}
 	}
 
@@ -331,6 +337,23 @@ func (v *PacketDslFormattor) VisitMetaDataDeclaration(ctx *gen.MetaDataDeclarati
 	}
 
 	formattedDsl.WriteString(strings.TrimSpace(fmt.Sprintf("%s %s %s", typeName, fieldName, description)))
+	if ctx.COMMA() != nil {
+		formattedDsl.WriteString(",")
+	}
+	return formattedDsl.String()
+}
+
+// VisitRefMetaDataDeclaration for visiting referenced metadata declarations.
+func (v *PacketDslFormattor) VisitRefMetaDataDeclaration(ctx *gen.RefMetaDataDeclarationContext) interface{} {
+	var formattedDsl strings.Builder
+	typeName := ctx.GetTyp().GetText()
+	fieldName := ctx.GetName().GetText()
+	description := ""
+	if ctx.STRING_LITERAL() != nil {
+		description = " " + ctx.STRING_LITERAL().GetText()
+	}
+
+	formattedDsl.WriteString(strings.TrimSpace(fmt.Sprintf("%s %s%s", typeName, fieldName, description)))
 	if ctx.COMMA() != nil {
 		formattedDsl.WriteString(",")
 	}

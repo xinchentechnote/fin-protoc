@@ -67,6 +67,9 @@ type PacketDslVisitor interface {
 	// Visit a parse tree produced by PacketDslParser#metaDataDeclaration.
 	VisitMetaDataDeclaration(ctx *MetaDataDeclarationContext) interface{}
 
+	// Visit a parse tree produced by PacketDslParser#refMetaDataDeclaration.
+	VisitRefMetaDataDeclaration(ctx *RefMetaDataDeclarationContext) interface{}
+
 	// Visit a parse tree produced by PacketDslParser#value.
 	VisitValue(ctx *ValueContext) interface{}
 

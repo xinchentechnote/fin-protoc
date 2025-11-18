@@ -87,6 +87,10 @@ func (v *BasePacketDslVisitor) VisitMetaDataDeclaration(ctx *MetaDataDeclaration
 	return v.VisitChildren(ctx)
 }
 
+func (v *BasePacketDslVisitor) VisitRefMetaDataDeclaration(ctx *RefMetaDataDeclarationContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BasePacketDslVisitor) VisitValue(ctx *ValueContext) interface{} {
 	return v.VisitChildren(ctx)
 }

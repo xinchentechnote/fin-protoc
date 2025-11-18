@@ -207,7 +207,7 @@ import io.netty.util.internal.StringUtil;
 	b.WriteString(AddIndent4ln(g.GenerateToString(packet)))
 	//inerClass
 	for _, f := range packet.Fields {
-		if f.InerObject != nil {
+		if of, ok := f.Attr.(*model.ObjectFieldAttribute); ok && of.IsIner {
 			b.WriteString(AddIndent4ln(g.GenerateJavaClassFileForPacket(f.InerObject, true)))
 		}
 	}
@@ -215,7 +215,7 @@ import io.netty.util.internal.StringUtil;
 	b.WriteString("\n")
 	//message factory for match field
 	for _, f := range packet.Fields {
-		if f.Type == "match" {
+		if _, ok := f.Attr.(*model.MatchFieldAttribute); ok {
 			b.WriteString(AddIndent4ln(g.GenerateMessageFactory(packet, f)))
 		}
 	}
@@ -491,19 +491,8 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 			return fmt.Sprintf("this.%s.add(readFixedString(byteBuf, %d));", fieldNameLowerCamel, len)
 		}
 		return fmt.Sprintf("this.%s = readFixedString(byteBuf, %d);", fieldNameLowerCamel, len)
-	default:
-		if typ, ok := javaBasicTypeMap[f.GetType()]; ok {
-			//basic type
-			readMethod := strcase.ToCamel(typ.BasicType)
-			if g.config.LittleEndian {
-				readMethod = typ.Le
-			}
-			if f.IsRepeat {
-				return fmt.Sprintf("this.%s.add(byteBuf.read%s());", fieldNameLowerCamel, readMethod)
-			}
-			return fmt.Sprintf("this.%s = byteBuf.read%s();", fieldNameLowerCamel, readMethod)
-		}
-		if f.InerObject != nil {
+	case *model.ObjectFieldAttribute:
+		if c.IsIner {
 			//iner object
 			var b strings.Builder
 			fieldName := strcase.ToLowerCamel(f.InerObject.Name)
@@ -519,31 +508,39 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 			}
 			return b.String()
 		}
-
-		if f.Type == "match" {
-			//match field
-			var b strings.Builder
-			fieldNameCamel := g.GetFieldName(f)
-			b.WriteString(fmt.Sprintf("this.%s = %sMessageFactory.getInstance().create(this.%s);\n", fieldNameLowerCamel, fieldNameCamel, strcase.ToLowerCamel(f.MatchKey)))
+		//ref object
+		var b strings.Builder
+		fieldNameLowerCamel := strcase.ToLowerCamel(f.Name)
+		if f.IsRepeat {
+			b.WriteString(fmt.Sprintf("%s %s_ = new %s();", f.GetType(), fieldNameLowerCamel, f.GetType()))
+			b.WriteString(fmt.Sprintf("%s_.decode(byteBuf);", fieldNameLowerCamel))
+			b.WriteString(fmt.Sprintf("this.%s.add(%s_);", fieldNameLowerCamel, fieldNameLowerCamel))
+		} else {
+			b.WriteString(fmt.Sprintf("if (null == this.%s) {\n", fieldNameLowerCamel))
+			b.WriteString(AddIndent4ln(fmt.Sprintf("this.%s = new %s();", fieldNameLowerCamel, f.Name)))
+			b.WriteString("}\n")
 			b.WriteString(fmt.Sprintf("this.%s.decode(byteBuf);", fieldNameLowerCamel))
-			return b.String()
 		}
-		if _, ok := g.binModel.PacketsMap[f.Type]; ok {
-			//ref object
-			var b strings.Builder
-			fieldNameLowerCamel := strcase.ToLowerCamel(f.Name)
-			if f.IsRepeat {
-				b.WriteString(fmt.Sprintf("%s %s_ = new %s();", f.GetType(), fieldNameLowerCamel, f.GetType()))
-				b.WriteString(fmt.Sprintf("%s_.decode(byteBuf);", fieldNameLowerCamel))
-				b.WriteString(fmt.Sprintf("this.%s.add(%s_);", fieldNameLowerCamel, fieldNameLowerCamel))
-			} else {
-				b.WriteString(fmt.Sprintf("if (null == this.%s) {\n", fieldNameLowerCamel))
-				b.WriteString(AddIndent4ln(fmt.Sprintf("this.%s = new %s();", fieldNameLowerCamel, f.Name)))
-				b.WriteString("}\n")
-				b.WriteString(fmt.Sprintf("this.%s.decode(byteBuf);", fieldNameLowerCamel))
-			}
-			return b.String()
+		return b.String()
+	case *model.MatchFieldAttribute:
+		//match field
+		var b strings.Builder
+		fieldNameCamel := g.GetFieldName(f)
+		b.WriteString(fmt.Sprintf("this.%s = %sMessageFactory.getInstance().create(this.%s);\n", fieldNameLowerCamel, fieldNameCamel, strcase.ToLowerCamel(f.MatchKey)))
+		b.WriteString(fmt.Sprintf("this.%s.decode(byteBuf);", fieldNameLowerCamel))
+		return b.String()
+	case *model.BasicFieldAttribute, *model.LengthFieldAttribute, *model.CheckSumFieldAttribute:
+		typ := javaBasicTypeMap[f.GetType()]
+		//basic type
+		readMethod := strcase.ToCamel(typ.BasicType)
+		if g.config.LittleEndian {
+			readMethod = typ.Le
 		}
+		if f.IsRepeat {
+			return fmt.Sprintf("this.%s.add(byteBuf.read%s());", fieldNameLowerCamel, readMethod)
+		}
+		return fmt.Sprintf("this.%s = byteBuf.read%s();", fieldNameLowerCamel, readMethod)
+	default:
 		return "//TODO " + f.Type
 	}
 }
@@ -581,10 +578,26 @@ func (g JavaGenerator) GenerateEncode(packet *model.Packet) string {
 // GenerateEncodeField gen encode field
 func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) string {
 	fieldNameLowerCamel := strcase.ToLowerCamel(f.Name)
+	if f.LenTargetAttr != nil {
+		var b strings.Builder
+		b.WriteString(fmt.Sprintf("int %sStart = byteBuf.writerIndex();", fieldNameLowerCamel))
+		b.WriteString(fmt.Sprintf("if (this.%s != null) {\n", fieldNameLowerCamel))
+		b.WriteString(fmt.Sprintf("    this.%s.encode(byteBuf);\n", fieldNameLowerCamel))
+		b.WriteString("}\n")
+		lenTyp := javaBasicTypeMap[p.LengthField.GetType()]
+		b.WriteString(fmt.Sprintf("int %sEnd = byteBuf.writerIndex();", fieldNameLowerCamel))
+		lengthFieldName := strcase.ToLowerCamel(p.LengthField.Name)
+		b.WriteString(fmt.Sprintf("this.%s = (%s)(%sEnd - %sStart);", lengthFieldName, lenTyp.BasicType, fieldNameLowerCamel, fieldNameLowerCamel))
+		if g.config.LittleEndian {
+			b.WriteString(fmt.Sprintf("byteBuf.set%s(%sPos, this.%s);", lenTyp.Le, lengthFieldName, lengthFieldName))
+		} else {
+			b.WriteString(fmt.Sprintf("byteBuf.set%s(%sPos, this.%s);", strcase.ToCamel(lenTyp.BasicType), lengthFieldName, lengthFieldName))
+		}
+		return b.String()
+	}
 	if f.IsRepeat {
 		fieldNameLowerCamel += ".get(i)"
 	}
-
 	switch c := f.Attr.(type) {
 	case *model.DynamicStringFieldAttribute:
 		var b strings.Builder
@@ -640,22 +653,6 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 			return fmt.Sprintf("byteBuf.write%s(this.%s);", typ.Le, fieldNameLowerCamel)
 		}
 		return fmt.Sprintf("byteBuf.write%s(this.%s);", strcase.ToCamel(typ.BasicType), fieldNameLowerCamel)
-	case *model.LengthOfAttribute:
-		var b strings.Builder
-		b.WriteString(fmt.Sprintf("int %sStart = byteBuf.writerIndex();", fieldNameLowerCamel))
-		b.WriteString(fmt.Sprintf("if (this.%s != null) {\n", fieldNameLowerCamel))
-		b.WriteString(fmt.Sprintf("    this.%s.encode(byteBuf);\n", fieldNameLowerCamel))
-		b.WriteString("}\n")
-		lenTyp := javaBasicTypeMap[p.LengthField.GetType()]
-		b.WriteString(fmt.Sprintf("int %sEnd = byteBuf.writerIndex();", fieldNameLowerCamel))
-		lengthFieldName := strcase.ToLowerCamel(p.LengthField.Name)
-		b.WriteString(fmt.Sprintf("this.%s = (%s)(%sEnd - %sStart);", lengthFieldName, lenTyp.BasicType, fieldNameLowerCamel, fieldNameLowerCamel))
-		if g.config.LittleEndian {
-			b.WriteString(fmt.Sprintf("byteBuf.set%s(%sPos, this.%s);", lenTyp.Le, lengthFieldName, lengthFieldName))
-		} else {
-			b.WriteString(fmt.Sprintf("byteBuf.set%s(%sPos, this.%s);", strcase.ToCamel(lenTyp.BasicType), lengthFieldName, lengthFieldName))
-		}
-		return b.String()
 	case *model.ObjectFieldAttribute:
 		if c.IsIner {
 			var b strings.Builder

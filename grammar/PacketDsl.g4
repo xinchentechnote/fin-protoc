@@ -18,16 +18,19 @@ packetDefinition:
 fieldDefinitionWithAttribute: fieldAttribute* fieldDefinition;
 
 fieldDefinition:
-	REPEAT? inerObjectDeclaration COMMA							# InerObjectField
-	| REPEAT? metaDataDeclaration								# MetaField
-	| REPEAT? ftype = IDENTIFIER (fname = IDENTIFIER)? COMMA	# ObjectField
-	| lengthFieldDeclaration									# LengthField
-	| checkSumFieldDeclaration									# CheckSumField
-	| matchFieldDeclaration COMMA								# MatchField;
+	REPEAT? inerObjectDeclaration COMMA											# InerObjectField
+	| REPEAT? metaDataDeclaration												# MetaField
+	| REPEAT? ftype = IDENTIFIER (fname = IDENTIFIER)? STRING_LITERAL? COMMA	# ObjectField
+	| lengthFieldDeclaration													# LengthField
+	| checkSumFieldDeclaration													# CheckSumField
+	| matchFieldDeclaration COMMA												# MatchField;
 
 // MetaData rule with declarations inside curly braces
 metaDataDefinition:
-	METADATA IDENTIFIER '{' metaDataDeclaration* '}';
+	METADATA IDENTIFIER '{' (
+		metaDataDeclaration
+		| refMetaDataDeclaration
+	)* '}';
 
 lengthFieldDeclaration:
 	type? name = IDENTIFIER lengthOfAttribute STRING_LITERAL? COMMA;
@@ -51,7 +54,10 @@ tagAttribute: '@tag(' DIGITS ')';
 
 // Metadata declaration with type and description
 metaDataDeclaration:
-	type? name = IDENTIFIER STRING_LITERAL? COMMA;
+	type name = IDENTIFIER STRING_LITERAL? COMMA;
+
+refMetaDataDeclaration:
+	typ = IDENTIFIER name = IDENTIFIER STRING_LITERAL? COMMA;
 
 value: type | STRING | DIGITS | PADDING_CHAR | 'true' | 'false';
 
