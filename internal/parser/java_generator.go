@@ -718,7 +718,7 @@ func (g JavaGenerator) GenerateNewInstance(instanceName string, parent string, p
 			continue
 		}
 		switch c := f.Attr.(type) {
-		case *model.BasicFieldAttribute:
+		case *model.BasicFieldAttribute, *model.CheckSumFieldAttribute:
 			if typ, ok := javaBasicTypeMap[f.GetType()]; ok {
 				if f.IsRepeat {
 					b.WriteString(fmt.Sprintf("%s.set%s(Arrays.asList(%s));\n", instanceName, fieldNameCamel, typ.TestValue))
