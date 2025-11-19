@@ -305,35 +305,25 @@ func (g JavaGenerator) GetPadding(f *model.Field) *model.Padding {
 
 // GetFieldType get java type
 func (g JavaGenerator) GetFieldType(f *model.Field) string {
-	switch f.GetType() {
-	case "string":
+	switch c := f.Attr.(type) {
+	case *model.ObjectFieldAttribute:
 		if f.IsRepeat {
-			return "List<String>"
+			return fmt.Sprintf("List<%s>", c.PacketName)
 		}
-		return "String"
-	case "i8", "u8", "char", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64":
+		return c.PacketName
+	case *model.MatchFieldAttribute:
+		return "BinaryCodec"
+	case *model.LengthFieldAttribute, *model.CheckSumFieldAttribute, *model.BasicFieldAttribute:
 		if f.IsRepeat {
 			return fmt.Sprintf("List<%s>", javaBasicTypeMap[f.GetType()].BoxType)
 		}
 		return javaBasicTypeMap[f.GetType()].BasicType
+	case *model.DynamicStringFieldAttribute, *model.FixedStringFieldAttribute:
+		if f.IsRepeat {
+			return "List<String>"
+		}
+		return "String"
 	default:
-		_, ok := model.ParseCharArrayType(f.Type)
-		if ok {
-			if f.IsRepeat {
-				return "List<String>"
-			}
-			return "String"
-		}
-		if f.InerObject != nil {
-			if f.IsRepeat {
-				return fmt.Sprintf("List<%s>", f.InerObject.Name)
-			}
-			return f.InerObject.Name
-		}
-
-		if f.Type == "match" {
-			return "BinaryCodec"
-		}
 		if f.IsRepeat {
 			return fmt.Sprintf("List<%s>", f.Type)
 		}
@@ -724,37 +714,44 @@ func (g JavaGenerator) GenerateNewInstance(instanceName string, parent string, p
 	b.WriteString(fmt.Sprintf("%s%s %s = new %s%s();\n", parent, packet.Name, instanceName, parent, packet.Name))
 	for _, f := range packet.Fields {
 		fieldNameCamel := strcase.ToCamel(f.Name)
-		if f.LengthOfField != "" {
+		if _, ok := packet.MatchFields[f.Name]; ok {
 			continue
-		} else if _, ok := packet.MatchFields[f.Name]; ok {
-			continue
-		} else if typ, ok := javaBasicTypeMap[f.GetType()]; ok {
-			if f.IsRepeat {
-				b.WriteString(fmt.Sprintf("%s.set%s(Arrays.asList(%s));\n", instanceName, fieldNameCamel, typ.TestValue))
-			} else {
-				b.WriteString(fmt.Sprintf("%s.set%s(%s);\n", instanceName, fieldNameCamel, typ.TestValue))
+		}
+		switch c := f.Attr.(type) {
+		case *model.BasicFieldAttribute:
+			if typ, ok := javaBasicTypeMap[f.GetType()]; ok {
+				if f.IsRepeat {
+					b.WriteString(fmt.Sprintf("%s.set%s(Arrays.asList(%s));\n", instanceName, fieldNameCamel, typ.TestValue))
+				} else {
+					b.WriteString(fmt.Sprintf("%s.set%s(%s);\n", instanceName, fieldNameCamel, typ.TestValue))
+				}
 			}
-		} else if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
+		case *model.FixedStringFieldAttribute:
 			if f.IsRepeat {
-				b.WriteString(fmt.Sprintf("%s.set%s(Arrays.asList(\"%s\"));\n", instanceName, fieldNameCamel, strings.Repeat("1", fs.Length)))
+				b.WriteString(fmt.Sprintf("%s.set%s(Arrays.asList(\"%s\"));\n", instanceName, fieldNameCamel, strings.Repeat("1", c.Length)))
 			} else {
-				b.WriteString(fmt.Sprintf("%s.set%s(\"%s\");\n", instanceName, fieldNameCamel, strings.Repeat("1", fs.Length)))
+				b.WriteString(fmt.Sprintf("%s.set%s(\"%s\");\n", instanceName, fieldNameCamel, strings.Repeat("1", c.Length)))
 			}
-		} else if f.GetType() == "string" {
+		case *model.DynamicStringFieldAttribute:
 			if f.IsRepeat {
 				b.WriteString(fmt.Sprintf("%s.set%s(Arrays.asList(\"example\"));\n", instanceName, fieldNameCamel))
 			} else {
 				b.WriteString(fmt.Sprintf("%s.set%s(\"example\");\n", instanceName, fieldNameCamel))
 			}
-		} else if f.InerObject != nil {
-			inerObjName := strcase.ToLowerCamel(f.InerObject.Name)
-			b.WriteString(g.GenerateNewInstance(inerObjName, packet.Name+".", f.InerObject))
+		case *model.ObjectFieldAttribute:
+			inerObjName := strcase.ToLowerCamel(f.Name) + "0"
+			parent := ""
+			if c.IsIner {
+				inerObjName = strcase.ToLowerCamel(c.RefPacket.Name)
+				parent = packet.Name + "."
+			}
+			b.WriteString(g.GenerateNewInstance(inerObjName, parent, c.RefPacket))
 			if f.IsRepeat {
 				b.WriteString(fmt.Sprintf("%s.set%s(Arrays.asList(%s));\n", instanceName, fieldNameCamel, inerObjName))
 			} else {
 				b.WriteString(fmt.Sprintf("%s.set%s(%s);\n", instanceName, fieldNameCamel, inerObjName))
 			}
-		} else if f.GetType() == "match" {
+		case *model.MatchFieldAttribute:
 			//
 			key := f.MatchPairs[0].Key
 			value := f.MatchPairs[0].Value
@@ -767,20 +764,7 @@ func (g JavaGenerator) GenerateNewInstance(instanceName string, parent string, p
 				b.WriteString(g.GenerateNewInstance(inerObjName, "", p))
 				b.WriteString(fmt.Sprintf("%s.set%s(%s);\n", instanceName, fieldNameCamel, inerObjName))
 			}
-		} else {
-			if p, ok := g.binModel.PacketsMap[f.Type]; ok {
-				inerObjName := strcase.ToLowerCamel(f.Name) + "0"
-				b.WriteString(g.GenerateNewInstance(inerObjName, "", p))
-				if f.IsRepeat {
-					b.WriteString(fmt.Sprintf("%s.set%s(Arrays.asList(%s));\n", instanceName, fieldNameCamel, inerObjName))
-				} else {
-					b.WriteString(fmt.Sprintf("%s.set%s(%s);\n", instanceName, fieldNameCamel, inerObjName))
-				}
-			} else {
-				b.WriteString("//TODO " + f.GetType())
-			}
 		}
-
 	}
 	return b.String()
 }

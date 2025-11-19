@@ -100,6 +100,27 @@ func NewBinaryModel() *BinaryModel {
 	}
 }
 
+// ResolveDependencies after parse
+func (m *BinaryModel) ResolveDependencies() {
+	for _, packet := range m.Packets {
+		for _, field := range packet.Fields {
+			if of, ok := field.Attr.(*ObjectFieldAttribute); ok {
+				if of.RefPacket == nil {
+					if refPacket, exists := m.PacketsMap[of.PacketName]; exists {
+						of.RefPacket = refPacket
+					} else {
+						m.AddSyntaxError(&SyntaxError{
+							Line:   field.Line,
+							Column: field.Column,
+							Msg:    "Unknown packet type " + of.PacketName + " for field " + field.Name,
+						})
+					}
+				}
+			}
+		}
+	}
+}
+
 // AddMetaData add MetaData
 func (m *BinaryModel) AddMetaData(metaData MetaData) {
 	if _, exists := m.MetaDataMap[metaData.Name]; exists {

@@ -93,6 +93,7 @@ func (v *PacketDslVisitorImpl) VisitPacket(ctx *gen.PacketContext) interface{} {
 		packet := def.Accept(v).(*model.Packet)
 		v.BinModel.AddPacket(packet) // Store in PacketMap
 	}
+	v.BinModel.ResolveDependencies()
 	return v.BinModel
 }
 
@@ -275,7 +276,8 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinition(ctx interface{}) interface{}
 			}
 		} else {
 			attr = &model.ObjectFieldAttribute{
-				IsIner: false,
+				IsIner:     false,
+				PacketName: typ,
 			}
 		}
 		return &model.Field{
