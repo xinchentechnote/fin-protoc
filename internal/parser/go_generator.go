@@ -74,8 +74,8 @@ func (g GoGenerator) generateGoFileForPacket(p *model.Packet, isIner bool) strin
 	// gen init
 	b.WriteString("func init() {\n")
 	for _, f := range p.Fields {
-		if f.GetType() == "match" {
-			b.WriteString(g.generateInit(p, f))
+		if mf, ok := f.Attr.(*model.MatchFieldAttribute); ok {
+			b.WriteString(g.generateInit(p, mf))
 		}
 	}
 	b.WriteString("}\n")
@@ -83,14 +83,14 @@ func (g GoGenerator) generateGoFileForPacket(p *model.Packet, isIner bool) strin
 
 	// gen MessageFactory
 	for _, f := range p.Fields {
-		if f.GetType() == "match" {
-			b.WriteString(g.generateMessageFactory(p, f))
+		if mf, ok := f.Attr.(*model.MatchFieldAttribute); ok {
+			b.WriteString(g.generateMessageFactory(p, mf))
 		}
 	}
 
 	for _, f := range p.Fields {
-		if f.InerObject != nil {
-			b.WriteString(g.generateGoFileForPacket(f.InerObject, true))
+		if of, ok := f.Attr.(*model.ObjectFieldAttribute); ok && of.IsIner {
+			b.WriteString(g.generateGoFileForPacket(of.RefPacket, true))
 		}
 	}
 
@@ -104,30 +104,24 @@ func (g GoGenerator) generateGoFileForPacket(p *model.Packet, isIner bool) strin
 	return b.String()
 }
 
-func (g GoGenerator) generateInit(p *model.Packet, field *model.Field) string {
+func (g GoGenerator) generateInit(p *model.Packet, mf *model.MatchFieldAttribute) string {
 	var b strings.Builder
-	for _, pair := range field.MatchPairs {
-		b.WriteString(fmt.Sprintf("Registry%s%sFactory(%s, func() codec.BinaryCodec {return &%s{}})\n", strcase.ToCamel(p.Name), strcase.ToCamel(field.MatchKey), pair.Key, pair.Value))
+	for _, pair := range mf.MatchPairs {
+		b.WriteString(fmt.Sprintf("Registry%s%sFactory(%s, func() codec.BinaryCodec {return &%s{}})\n", strcase.ToCamel(p.Name), strcase.ToCamel(mf.MatchKeyField.Name), pair.Key, pair.Value))
 	}
 	return b.String()
 }
 
-func (g GoGenerator) generateMessageFactory(p *model.Packet, field *model.Field) string {
-	typ := "unknow"
-	if mf, ok := p.FieldMap[field.MatchKey]; ok {
-		typ = mf.GetType()
-		if t, ok := goBasicTypeMap[mf.GetType()]; ok {
-			typ = t.BasicType
-		}
-		if _, ok := mf.Attr.(*model.FixedStringFieldAttribute); ok {
-			typ = "string"
-		}
+func (g GoGenerator) generateMessageFactory(p *model.Packet, mfa *model.MatchFieldAttribute) string {
+	typ := mfa.MatchKeyField.GetType()
+	if t, ok := goBasicTypeMap[typ]; ok {
+		typ = t.BasicType
 	}
 	var b strings.Builder
 	packageNameLowerCamel := strcase.ToLowerCamel(p.Name)
 	packageNameCamel := strcase.ToCamel(p.Name)
-	matchKeyLowerCamel := strcase.ToLowerCamel(field.MatchKey)
-	matchKeyCamel := strcase.ToCamel(field.MatchKey)
+	matchKeyLowerCamel := strcase.ToLowerCamel(mfa.MatchKeyField.Name)
+	matchKeyCamel := strcase.ToCamel(mfa.MatchKeyField.Name)
 	b.WriteString(fmt.Sprintf("var %s%sFactoryCache = map[%s]func() codec.BinaryCodec{}\n", packageNameLowerCamel, matchKeyCamel, typ))
 	b.WriteString("\n")
 	//
@@ -148,22 +142,17 @@ func (g GoGenerator) generateMessageFactory(p *model.Packet, field *model.Field)
 
 func (g GoGenerator) getFieldType(field *model.Field) string {
 
-	if t, ok := goBasicTypeMap[field.GetType()]; ok {
-		return t.BasicType
-	}
-	if _, ok := field.Attr.(*model.FixedStringFieldAttribute); ok {
+	switch field.Attr.(type) {
+	case *model.LengthFieldAttribute, *model.CheckSumFieldAttribute, *model.BasicFieldAttribute:
+		return goBasicTypeMap[field.GetType()].BasicType
+	case *model.DynamicStringFieldAttribute, *model.FixedStringFieldAttribute:
 		return "string"
-	}
-	if field.InerObject != nil {
-		return field.Name
-	}
-	switch field.GetType() {
-	case "string", "char[]":
-		return "string"
-	case "match":
+	case *model.MatchFieldAttribute:
 		return "codec.BinaryCodec"
+	default:
+		return field.Type
 	}
-	return field.GetType() // Fallback for unknown types
+
 }
 
 func (g GoGenerator) generateStructCode(p *model.Packet) string {
@@ -172,9 +161,7 @@ func (g GoGenerator) generateStructCode(p *model.Packet) string {
 	b.WriteString("type " + p.Name + " struct {\n")
 	for _, field := range p.Fields {
 		typ := g.getFieldType(field)
-		if field.InerObject != nil {
-			typ = "*" + typ
-		} else if _, ok := g.binModel.PacketsMap[field.GetType()]; ok {
+		if _, ok := field.Attr.(*model.ObjectFieldAttribute); ok {
 			typ = "*" + typ
 		}
 		fieldNameCamel := strcase.ToCamel(field.Name)
@@ -286,33 +273,24 @@ func (g GoGenerator) generateDecodingField(p *model.Packet, field *model.Field) 
 			b.WriteString(fmt.Sprintf("        p.%s = val\n", fieldNameCamel))
 			b.WriteString("    }\n")
 		}
+	case *model.ObjectFieldAttribute:
+		b.WriteString(fmt.Sprintf("    if p.%s == nil {\n", field.GetType()))
+		b.WriteString(fmt.Sprintf("        p.%s = &%s{}\n", field.GetType(), field.GetType()))
+		b.WriteString("    }\n")
+		b.WriteString(fmt.Sprintf("    if err := p.%s.Decode(buf); err != nil {\n", fieldNameCamel))
+		b.WriteString("        return err\n")
+		b.WriteString("    }\n")
+	case *model.MatchFieldAttribute:
+		b.WriteString(fmt.Sprintf("    if val, err :=New%sMessageBy%s(p.%s); err != nil {\n", strcase.ToCamel(p.Name), strcase.ToCamel(field.MatchKey), strcase.ToCamel(field.MatchKey)))
+		b.WriteString("        return err\n")
+		b.WriteString("    } else {\n")
+		b.WriteString(fmt.Sprintf("        p.%s = val\n", fieldNameCamel))
+		b.WriteString("    }\n")
+		b.WriteString(fmt.Sprintf("    if err := p.%s.Decode(buf); err != nil {\n", fieldNameCamel))
+		b.WriteString("        return err\n")
+		b.WriteString("    }\n")
 	default:
-		if field.InerObject != nil {
-			b.WriteString(fmt.Sprintf("    if p.%s == nil {\n", field.Name))
-			b.WriteString(fmt.Sprintf("        p.%s = &%s{}\n", field.Name, field.Name))
-			b.WriteString("    }\n")
-			b.WriteString(fmt.Sprintf("    if err := p.%s.Decode(buf); err != nil {\n", fieldNameCamel))
-			b.WriteString("        return err\n")
-			b.WriteString("    }\n")
-		} else if _, ok := g.binModel.PacketsMap[field.GetType()]; ok {
-			b.WriteString(fmt.Sprintf("    if p.%s == nil {\n", field.GetType()))
-			b.WriteString(fmt.Sprintf("        p.%s = &%s{}\n", field.GetType(), field.GetType()))
-			b.WriteString("    }\n")
-			b.WriteString(fmt.Sprintf("    if err := p.%s.Decode(buf); err != nil {\n", fieldNameCamel))
-			b.WriteString("        return err\n")
-			b.WriteString("    }\n")
-		} else if field.GetType() == "match" {
-			b.WriteString(fmt.Sprintf("    if val, err :=New%sMessageBy%s(p.%s); err != nil {\n", strcase.ToCamel(p.Name), strcase.ToCamel(field.MatchKey), strcase.ToCamel(field.MatchKey)))
-			b.WriteString("        return err\n")
-			b.WriteString("    } else {\n")
-			b.WriteString(fmt.Sprintf("        p.%s = val\n", fieldNameCamel))
-			b.WriteString("    }\n")
-			b.WriteString(fmt.Sprintf("    if err := p.%s.Decode(buf); err != nil {\n", fieldNameCamel))
-			b.WriteString("        return err\n")
-			b.WriteString("    }\n")
-		} else {
-			b.WriteString("--" + field.GetType() + ":" + field.Name + " is not supported for encoding--\n")
-		}
+		b.WriteString("--" + field.GetType() + ":" + field.Name + " is not supported for encoding--\n")
 	}
 	return b.String()
 }
@@ -351,22 +329,14 @@ func (g GoGenerator) generateDecodingListField(field *model.Field) string {
 		b.WriteString("    } else {\n")
 		b.WriteString(fmt.Sprintf("        p.%s = val\n", fieldNameCamel))
 		b.WriteString("    }\n")
+	case *model.ObjectFieldAttribute:
+		b.WriteString(fmt.Sprintf("    if val, err := codec.ReadObjectList%s[%s](buf,  func() *%s { return &%s{} }); err != nil {\n", order, listLenType.BasicType, strcase.ToCamel(field.GetType()), strcase.ToCamel(field.GetType())))
+		b.WriteString("        return err\n")
+		b.WriteString("    } else {\n")
+		b.WriteString(fmt.Sprintf("        p.%s = val\n", fieldNameCamel))
+		b.WriteString("    }\n")
 	default:
-		if field.InerObject != nil {
-			b.WriteString(fmt.Sprintf("    if val, err := codec.ReadObjectList%s[%s](buf,  func() *%s { return &%s{} }); err != nil {\n", order, listLenType.BasicType, strcase.ToCamel(field.GetType()), strcase.ToCamel(field.GetType())))
-			b.WriteString("        return err\n")
-			b.WriteString("    } else {\n")
-			b.WriteString(fmt.Sprintf("        p.%s = val\n", fieldNameCamel))
-			b.WriteString("    }\n")
-		} else if _, ok := g.binModel.PacketsMap[field.GetType()]; ok {
-			b.WriteString(fmt.Sprintf("    if val, err := codec.ReadObjectList%s[%s](buf,  func() *%s { return &%s{} }); err != nil {\n", order, listLenType.BasicType, strcase.ToCamel(field.GetType()), strcase.ToCamel(field.GetType())))
-			b.WriteString("        return err\n")
-			b.WriteString("    } else {\n")
-			b.WriteString(fmt.Sprintf("        p.%s = val\n", fieldNameCamel))
-			b.WriteString("    }\n")
-		} else {
-			b.WriteString("--" + field.GetType() + ":" + field.Name + " is not supported for encoding--\n")
-		}
+		b.WriteString("--" + field.GetType() + ":" + field.Name + " is not supported for encoding--\n")
 	}
 
 	return b.String()
@@ -394,6 +364,24 @@ func (g GoGenerator) generateEncodingField(p *model.Packet, field *model.Field) 
 	fieldNameCamel := strcase.ToCamel(field.Name)
 	padding := g.GetPadding(field)
 	order := g.getOrder()
+	if _, ok := field.LenAttr.(*model.LengthFieldAttribute); ok {
+		fieldNameLowerCamel := strcase.ToLowerCamel(field.Name)
+		b.WriteString(fmt.Sprintf("%sStart := buf.Len()\n", fieldNameLowerCamel))
+		b.WriteString(fmt.Sprintf("if p.%s != nil { \n", fieldNameCamel))
+		b.WriteString(fmt.Sprintf("    if err := p.%s.Encode(buf); err != nil {\n", fieldNameCamel))
+		b.WriteString("        return err\n")
+		b.WriteString("    }\n")
+		b.WriteString("}\n")
+		b.WriteString(fmt.Sprintf("%sEnd := buf.Len()\n", fieldNameLowerCamel))
+		typ := goBasicTypeMap[p.LengthField.GetType()]
+		b.WriteString(fmt.Sprintf("p.%s = %s(%sEnd - %sStart)\n", strcase.ToCamel(p.LengthField.Name), typ.BasicType, fieldNameLowerCamel, fieldNameLowerCamel))
+		if g.config.LittleEndian {
+			b.WriteString(fmt.Sprintf("binary.LittleEndian.Put%s(buf.Bytes()[%sPos:%sPos + 4], p.%s)\n", strcase.ToCamel(typ.BasicType), fieldNameLowerCamel, fieldNameLowerCamel, strcase.ToCamel(p.LengthField.Name)))
+		} else {
+			b.WriteString(fmt.Sprintf("binary.BigEndian.Put%s(buf.Bytes()[%sPos:%sPos + 4], p.%s)\n", strcase.ToCamel(typ.BasicType), fieldNameLowerCamel, fieldNameLowerCamel, strcase.ToCamel(p.LengthField.Name)))
+		}
+		return b.String()
+	}
 	switch c := field.Attr.(type) {
 	case *model.BasicFieldAttribute:
 		if _, ok := goBasicTypeMap[field.GetType()]; ok {
@@ -430,47 +418,24 @@ func (g GoGenerator) generateEncodingField(p *model.Packet, field *model.Field) 
 		b.WriteString(fmt.Sprintf("    if err := codec.WriteString%s[%s](buf, p.%s); err != nil {\n", order, strLenType.BasicType, fieldNameCamel))
 		b.WriteString("        return err\n")
 		b.WriteString("    }\n")
+	case *model.ObjectFieldAttribute:
+		b.WriteString(fmt.Sprintf("    if err := p.%s.Encode(buf); err != nil {\n", fieldNameCamel))
+		b.WriteString("        return err\n")
+		b.WriteString("    }\n")
+	case *model.MatchFieldAttribute:
+		b.WriteString(fmt.Sprintf("if p.%s == nil {\n", fieldNameCamel))
+		matchKeyCamel := strcase.ToCamel(field.MatchKey)
+		b.WriteString(fmt.Sprintf("    if val, err :=New%sMessageBy%s(p.%s); err != nil {\n", strcase.ToCamel(p.Name), matchKeyCamel, matchKeyCamel))
+		b.WriteString("        return err\n")
+		b.WriteString("    } else {\n")
+		b.WriteString(fmt.Sprintf("        p.%s = val\n", fieldNameCamel))
+		b.WriteString("    }\n")
+		b.WriteString("}\n")
+		b.WriteString(fmt.Sprintf("    if err := p.%s.Encode(buf); err != nil {\n", fieldNameCamel))
+		b.WriteString("        return err\n")
+		b.WriteString("    }\n")
 	default:
-		if p.LengthField != nil && field.Name == p.LengthField.LengthOfField {
-			fieldNameLowerCamel := strcase.ToLowerCamel(field.Name)
-			b.WriteString(fmt.Sprintf("%sStart := buf.Len()\n", fieldNameLowerCamel))
-			b.WriteString(fmt.Sprintf("if p.%s != nil { \n", fieldNameCamel))
-			b.WriteString(fmt.Sprintf("    if err := p.%s.Encode(buf); err != nil {\n", fieldNameCamel))
-			b.WriteString("        return err\n")
-			b.WriteString("    }\n")
-			b.WriteString("}\n")
-			b.WriteString(fmt.Sprintf("%sEnd := buf.Len()\n", fieldNameLowerCamel))
-			typ := goBasicTypeMap[p.LengthField.GetType()]
-			b.WriteString(fmt.Sprintf("p.%s = %s(%sEnd - %sStart)\n", strcase.ToCamel(p.LengthField.Name), typ.BasicType, fieldNameLowerCamel, fieldNameLowerCamel))
-			if g.config.LittleEndian {
-				b.WriteString(fmt.Sprintf("binary.LittleEndian.Put%s(buf.Bytes()[%sPos:%sPos + 4], p.%s)\n", strcase.ToCamel(typ.BasicType), fieldNameLowerCamel, fieldNameLowerCamel, strcase.ToCamel(p.LengthField.Name)))
-			} else {
-				b.WriteString(fmt.Sprintf("binary.BigEndian.Put%s(buf.Bytes()[%sPos:%sPos + 4], p.%s)\n", strcase.ToCamel(typ.BasicType), fieldNameLowerCamel, fieldNameLowerCamel, strcase.ToCamel(p.LengthField.Name)))
-			}
-		} else if field.InerObject != nil {
-			b.WriteString(fmt.Sprintf("    if err := p.%s.Encode(buf); err != nil {\n", fieldNameCamel))
-			b.WriteString("        return err\n")
-			b.WriteString("    }\n")
-		} else if _, ok := g.binModel.PacketsMap[field.GetType()]; ok {
-			b.WriteString(fmt.Sprintf("    if err := p.%s.Encode(buf); err != nil {\n", fieldNameCamel))
-			b.WriteString("        return err\n")
-			b.WriteString("    }\n")
-		} else if field.GetType() == "match" {
-			b.WriteString(fmt.Sprintf("if p.%s == nil {\n", fieldNameCamel))
-			matchKeyCamel := strcase.ToCamel(field.MatchKey)
-			b.WriteString(fmt.Sprintf("    if val, err :=New%sMessageBy%s(p.%s); err != nil {\n", strcase.ToCamel(p.Name), matchKeyCamel, matchKeyCamel))
-			b.WriteString("        return err\n")
-			b.WriteString("    } else {\n")
-			b.WriteString(fmt.Sprintf("        p.%s = val\n", fieldNameCamel))
-			b.WriteString("    }\n")
-			b.WriteString("}\n")
-			b.WriteString(fmt.Sprintf("    if err := p.%s.Encode(buf); err != nil {\n", fieldNameCamel))
-			b.WriteString("        return err\n")
-			b.WriteString("    }\n")
-		} else {
-			b.WriteString("--" + field.GetType() + ":" + field.Name + " is not supported for encoding--\n")
-		}
-
+		b.WriteString("--" + field.GetType() + ":" + field.Name + " is not supported for encoding--\n")
 	}
 
 	return b.String()
@@ -504,18 +469,12 @@ func (g GoGenerator) generateEncodingListField(field *model.Field) string {
 		}
 		b.WriteString("        return err\n")
 		b.WriteString("    }\n")
+	case *model.ObjectFieldAttribute:
+		b.WriteString(fmt.Sprintf("    if err := codec.WriteObjectList%s[%s](buf, p.%s); err != nil {\n", order, listLenType.BasicType, fieldNameCamel))
+		b.WriteString("        return err\n")
+		b.WriteString("    }\n")
 	default:
-		if field.InerObject != nil {
-			b.WriteString(fmt.Sprintf("    if err := codec.WriteObjectList%s[%s](buf, p.%s); err != nil {\n", order, listLenType.BasicType, fieldNameCamel))
-			b.WriteString("        return err\n")
-			b.WriteString("    }\n")
-		} else if _, ok := g.binModel.PacketsMap[field.GetType()]; ok {
-			b.WriteString(fmt.Sprintf("    if err := codec.WriteObjectList%s[%s](buf, p.%s); err != nil {\n", order, listLenType.BasicType, fieldNameCamel))
-			b.WriteString("        return err\n")
-			b.WriteString("    }\n")
-		} else {
-			b.WriteString("--" + field.GetType() + ":" + field.Name + " is not supported for encoding--\n")
-		}
+		b.WriteString("--" + field.GetType() + ":" + field.Name + " is not supported for encoding--\n")
 	}
 
 	return b.String()
@@ -595,28 +554,25 @@ func (g GoGenerator) generateTestValue(f *model.Field) any {
 	var testValue string
 	ty := f.GetType()
 	fieldNameLowerCamel := strcase.ToLowerCamel(f.Name)
-	if typ, ok := goBasicTypeMap[f.GetType()]; ok {
-		testValue = typ.TestValue
-		ty = typ.BasicType
-	} else if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
-		testValue = "\"" + strings.Repeat("x", fs.Length) + "\""
+	switch c := f.Attr.(type) {
+	case *model.BasicFieldAttribute, *model.LengthFieldAttribute, *model.CheckSumFieldAttribute:
+		if typ, ok := goBasicTypeMap[f.GetType()]; ok {
+			testValue = typ.TestValue
+			ty = typ.BasicType
+		}
+	case *model.FixedStringFieldAttribute:
+		testValue = "\"" + strings.Repeat("x", c.Length) + "\""
 		ty = "string"
-	} else if f.GetType() == "match" {
-		testValue = fieldNameLowerCamel
-	} else if f.InerObject != nil {
-		testValue = fieldNameLowerCamel
-	} else if _, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-		testValue = fieldNameLowerCamel
-	} else if f.GetType() == "string" || f.GetType() == "char[]" {
+	case *model.DynamicStringFieldAttribute:
 		testValue = "\"hello\""
 		ty = "string"
-	} else {
+	case *model.MatchFieldAttribute, *model.ObjectFieldAttribute:
+		testValue = fieldNameLowerCamel
+	default:
 		testValue = "-- unsupport " + f.GetType()
 	}
 	if f.IsRepeat {
-		if f.InerObject != nil {
-			return fmt.Sprintf("[]*msg.%s{%s}", ty, testValue)
-		} else if _, ok := g.binModel.PacketsMap[f.GetType()]; ok {
+		if _, ok := f.Attr.(*model.ObjectFieldAttribute); ok {
 			return fmt.Sprintf("[]*msg.%s{%s}", ty, testValue)
 		}
 		return fmt.Sprintf("[]%s{%s}", ty, testValue)

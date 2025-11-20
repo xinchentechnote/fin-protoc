@@ -326,9 +326,8 @@ func (o ObjectFieldAttribute) GetType() string {
 
 // MatchFieldAttribute match field attribute
 type MatchFieldAttribute struct {
-	MatchKey   string      // If the field is a match field, this holds the typeName of match
-	RefField   *Field      // Reference to the match key field
-	MatchPairs []MatchPair // If the field is a match field, holds all match key-value pairs
+	MatchKeyField *Field      // Reference to the match key field
+	MatchPairs    []MatchPair // If the field is a match field, holds all match key-value pairs
 }
 
 // GetType return field type
@@ -365,21 +364,21 @@ func getBasicType(fieldType string) string {
 
 // Field represents a single field within a packet. It can be a basic field, nested object, or match field.
 type Field struct {
-	Name          string             // Field name
-	Attr          FieldAttribute     // Field attribute interface
-	LenTargetAttr *LengthOfAttribute // Field attribute interface
-	Type          string             // Type name if this is a basic field; empty for nested or match fields
-	LengthOfField string             // This is a length field, its value is assigned from the length of another field (LengthOfField), usually used in root packets.
-	Padding       *Padding           // padChar and fromLeft
-	CheckSumType  string             //
-	IsRepeat      bool               // True if the 'repeat' modifier is present
-	InerObject    *Packet            // If the field is a nested object, this holds the nested Packet definition
-	Doc           string             // Optional documentation string (from STRING_LITERAL), currently unused
-	MatchKey      string             // If the field is a match field, this holds the typeName of match
-	MatchPairs    []MatchPair        // If the field is a match field, holds all match key-value pairs
-	Tag           int                // Tag value for step or fix protocols
-	Line          int                // Line number where the field is defined
-	Column        int                // Column number where the field is defined
+	Name          string         // Field name
+	Attr          FieldAttribute // Field attribute interface
+	LenAttr       FieldAttribute // Length attribute or LengthOf attribute
+	Type          string         // Type name if this is a basic field; empty for nested or match fields
+	LengthOfField string         // This is a length field, its value is assigned from the length of another field (LengthOfField), usually used in root packets.
+	Padding       *Padding       // padChar and fromLeft
+	CheckSumType  string         //
+	IsRepeat      bool           // True if the 'repeat' modifier is present
+	InerObject    *Packet        // If the field is a nested object, this holds the nested Packet definition
+	Doc           string         // Optional documentation string (from STRING_LITERAL), currently unused
+	MatchKey      string         // If the field is a match field, this holds the typeName of match
+	MatchPairs    []MatchPair    // If the field is a match field, holds all match key-value pairs
+	Tag           int            // Tag value for step or fix protocols
+	Line          int            // Line number where the field is defined
+	Column        int            // Column number where the field is defined
 }
 
 // ParseZCharArrayType parse char[\d]

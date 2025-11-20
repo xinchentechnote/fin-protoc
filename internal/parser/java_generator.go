@@ -568,7 +568,7 @@ func (g JavaGenerator) GenerateEncode(packet *model.Packet) string {
 // GenerateEncodeField gen encode field
 func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) string {
 	fieldNameLowerCamel := strcase.ToLowerCamel(f.Name)
-	if f.LenTargetAttr != nil {
+	if _, ok := f.LenAttr.(*model.LengthFieldAttribute); ok {
 		var b strings.Builder
 		b.WriteString(fmt.Sprintf("int %sStart = byteBuf.writerIndex();", fieldNameLowerCamel))
 		b.WriteString(fmt.Sprintf("if (this.%s != null) {\n", fieldNameLowerCamel))

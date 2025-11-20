@@ -148,6 +148,12 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 	}
 
 	for _, f := range fields {
+		if lengthField != nil && f.Name == lengthField.Attr.(*model.LengthFieldAttribute).TragetField.Name {
+			lengthField.LenAttr = &model.LengthOfAttribute{
+				LengthField: lengthField,
+			}
+			f.LenAttr = lengthField.Attr
+		}
 		switch c := f.Attr.(type) {
 		case *model.ObjectFieldAttribute:
 			if !c.IsIner {
@@ -158,12 +164,9 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 				LengthType:  f.GetType(),
 				TragetField: fieldMap[c.TragetField.Name],
 			}
-		default:
-			if lengthField != nil && f.Name == lengthField.Attr.(*model.LengthFieldAttribute).TragetField.Name {
-				f.LenTargetAttr = &model.LengthOfAttribute{
-					LengthField: lengthField,
-				}
-			}
+		case *model.MatchFieldAttribute:
+			c.MatchKeyField = fieldMap[c.MatchKeyField.Name]
+
 		}
 	}
 
@@ -463,8 +466,8 @@ func (v *PacketDslVisitorImpl) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDec
 		MatchKey: matchKey,
 		IsRepeat: false,
 		Attr: &model.MatchFieldAttribute{
-			MatchKey:   matchKey,
-			MatchPairs: pairs,
+			MatchKeyField: &model.Field{Name: matchKey},
+			MatchPairs:    pairs,
 		},
 		MatchPairs: pairs,
 	}

@@ -89,15 +89,11 @@ func (g PythonGenerator) generateCodeForPacket(p *model.Packet) string {
 	var b strings.Builder
 	// gen iner object
 	for _, f := range p.Fields {
-		if f.InerObject != nil {
-			b.WriteString(g.generateCodeForPacket(f.InerObject))
+		switch f := f.Attr.(type) {
+		case *model.ObjectFieldAttribute:
+			b.WriteString(g.generateCodeForPacket(f.RefPacket))
 			b.WriteString("\n")
-		}
-		if mp, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-			b.WriteString(g.generateCodeForPacket(mp))
-			b.WriteString("\n")
-		}
-		if f.GetType() == "match" {
+		case *model.MatchFieldAttribute:
 			for _, pair := range f.MatchPairs {
 				mp := g.binModel.PacketsMap[pair.Value]
 				packetCode := g.generateCodeForPacket(mp)
@@ -151,15 +147,7 @@ func (g PythonGenerator) generateEqMethod(p *model.Packet) string {
 	b.WriteString("    return all([\n")
 	for i, f := range p.Fields {
 		fieldName := strcase.ToSnake(f.Name)
-		if _, ok := pyBasicTypeMap[f.GetType()]; ok {
-			b.WriteString(fmt.Sprintf("        self.%s == other.%s", fieldName, fieldName))
-		} else if _, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
-			b.WriteString(fmt.Sprintf("        self.%s == other.%s", fieldName, fieldName))
-		} else if f.InerObject != nil || (f.GetType() != "string" && f.GetType() != "char[]") {
-			b.WriteString(fmt.Sprintf("        self.%s == other.%s", fieldName, fieldName))
-		} else {
-			b.WriteString(fmt.Sprintf("        self.%s == other.%s", fieldName, fieldName))
-		}
+		b.WriteString(fmt.Sprintf("        self.%s == other.%s", fieldName, fieldName))
 		if i < len(p.Fields)-1 {
 			b.WriteString(",\n")
 		} else {
@@ -217,37 +205,38 @@ func (g PythonGenerator) generateDecodeField(p *model.Packet, f *model.Field) st
 	var b strings.Builder
 	fieldName := strcase.ToSnake(f.Name)
 	padding := g.GetPadding(f)
-	if typ, ok := pyBasicTypeMap[f.GetType()]; ok {
-		read := typ.BasicType
-		if g.config.LittleEndian {
-			read = typ.Le
+	switch c := f.Attr.(type) {
+	case *model.BasicFieldAttribute, *model.LengthFieldAttribute, *model.CheckSumFieldAttribute:
+		if typ, ok := pyBasicTypeMap[f.GetType()]; ok {
+			read := typ.BasicType
+			if g.config.LittleEndian {
+				read = typ.Le
+			}
+			if f.IsRepeat {
+				b.WriteString(fmt.Sprintf("    self.%s.append(buffer.read_%s())\n", fieldName, read))
+			} else {
+				b.WriteString(fmt.Sprintf("    self.%s = buffer.read_%s()\n", fieldName, read))
+			}
 		}
-		if f.IsRepeat {
-			b.WriteString(fmt.Sprintf("    self.%s.append(buffer.read_%s())\n", fieldName, read))
-		} else {
-			b.WriteString(fmt.Sprintf("    self.%s = buffer.read_%s()\n", fieldName, read))
-		}
-	}
-	if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
+	case *model.FixedStringFieldAttribute:
 		if !padding.IsDefault() {
 			fromLeft := "False"
 			if padding.PadLeft {
 				fromLeft = "True"
 			}
 			if f.IsRepeat {
-				b.WriteString(fmt.Sprintf("    self.%s.append(read_fixed_string(buffer, %d, 'utf-8', %s, %s))\n", fieldName, fs.Length, padding.PadChar, fromLeft))
+				b.WriteString(fmt.Sprintf("    self.%s.append(read_fixed_string(buffer, %d, 'utf-8', %s, %s))\n", fieldName, c.Length, padding.PadChar, fromLeft))
 			} else {
-				b.WriteString(fmt.Sprintf("    self.%s = read_fixed_string(buffer, %d, 'utf-8', %s, %s)\n", fieldName, fs.Length, padding.PadChar, fromLeft))
+				b.WriteString(fmt.Sprintf("    self.%s = read_fixed_string(buffer, %d, 'utf-8', %s, %s)\n", fieldName, c.Length, padding.PadChar, fromLeft))
 			}
 		} else {
 			if f.IsRepeat {
-				b.WriteString(fmt.Sprintf("    self.%s.append(read_fixed_string(buffer,  %d, 'utf-8'))\n", fieldName, fs.Length))
+				b.WriteString(fmt.Sprintf("    self.%s.append(read_fixed_string(buffer,  %d, 'utf-8'))\n", fieldName, c.Length))
 			} else {
-				b.WriteString(fmt.Sprintf("    self.%s = read_fixed_string(buffer, %d, 'utf-8')\n", fieldName, fs.Length))
+				b.WriteString(fmt.Sprintf("    self.%s = read_fixed_string(buffer, %d, 'utf-8')\n", fieldName, c.Length))
 			}
 		}
-
-	} else if _, ok := f.Attr.(*model.DynamicStringFieldAttribute); ok {
+	case *model.DynamicStringFieldAttribute:
 		var le string
 		if g.config.LittleEndian {
 			le = "_le"
@@ -257,18 +246,7 @@ func (g PythonGenerator) generateDecodeField(p *model.Packet, f *model.Field) st
 		} else {
 			b.WriteString(fmt.Sprintf("    self.%s = read_string%s(buffer,'%s')\n", fieldName, le, g.config.StringLenPrefixLenType))
 		}
-	}
-	if f.InerObject != nil {
-		if f.IsRepeat {
-			b.WriteString(fmt.Sprintf("    _%s = %s()\n", fieldName, strcase.ToCamel(f.InerObject.Name)))
-			b.WriteString(fmt.Sprintf("    _%s.decode(buffer)\n", fieldName))
-			b.WriteString(fmt.Sprintf("    self.%s.append(_%s)\n", fieldName, fieldName))
-		} else {
-			b.WriteString(fmt.Sprintf("    self.%s = %s()\n", fieldName, strcase.ToCamel(f.InerObject.Name)))
-			b.WriteString(fmt.Sprintf("    self.%s.decode(buffer)\n", fieldName))
-		}
-	}
-	if _, ok := g.binModel.PacketsMap[f.GetType()]; ok {
+	case *model.ObjectFieldAttribute:
 		if f.IsRepeat {
 			b.WriteString(fmt.Sprintf("    _%s = %s()\n", strcase.ToSnake(f.GetType()), strcase.ToCamel(f.GetType())))
 			b.WriteString(fmt.Sprintf("    _%s.decode(buffer)\n", strcase.ToSnake(f.GetType())))
@@ -277,10 +255,11 @@ func (g PythonGenerator) generateDecodeField(p *model.Packet, f *model.Field) st
 			b.WriteString(fmt.Sprintf("    self.%s = %s()\n", fieldName, strcase.ToCamel(f.GetType())))
 			b.WriteString(fmt.Sprintf("    self.%s.decode(buffer)\n", fieldName))
 		}
-	}
-	if f.GetType() == "match" {
+	case *model.MatchFieldAttribute:
 		b.WriteString(fmt.Sprintf("    self.%s = %sMessageFactory.create(self.%s)\n", fieldName, strcase.ToLowerCamel(p.Name), strcase.ToSnake(f.MatchKey)))
 		b.WriteString(fmt.Sprintf("    self.%s.decode(buffer)\n", fieldName))
+	default:
+		b.WriteString("-- unsupported type: " + f.GetType() + "\n")
 	}
 	return b.String()
 }
@@ -295,22 +274,7 @@ func (g PythonGenerator) generateEncodeMethod(p *model.Packet) string {
 
 	for _, f := range p.Fields {
 		fieldName := strcase.ToSnake(f.Name)
-		if _, ok := f.Attr.(*model.LengthFieldAttribute); ok {
-			typ := pyBasicTypeMap[f.GetType()]
-			b.WriteString(fmt.Sprintf("    %s_pos = buffer.write_index\n", fieldName))
-			if g.config.LittleEndian {
-				b.WriteString(fmt.Sprintf("    buffer.write_%s(0)\n", typ.Le))
-			} else {
-				b.WriteString(fmt.Sprintf("    buffer.write_%s(0)\n", typ.BasicType))
-			}
-			continue
-		}
-		if csf, ok := f.Attr.(*model.CheckSumFieldAttribute); ok {
-			b.WriteString(fmt.Sprintf("    service = create_checksum_service(%s)\n", csf.CheckSumType))
-			b.WriteString("    if service :\n")
-			b.WriteString(fmt.Sprintf("        self.%s = service.calc(buffer)\n", fieldName))
-		}
-		if p.LengthField != nil && f.Name == p.LengthField.LengthOfField {
+		if _, ok := f.LenAttr.(*model.LengthFieldAttribute); ok {
 			b.WriteString(fmt.Sprintf("    %s_start = buffer.write_index\n", fieldName))
 			b.WriteString(fmt.Sprintf("    self.%s.encode(buffer)\n", fieldName))
 			b.WriteString(fmt.Sprintf("    %s_end = buffer.write_index\n", fieldName))
@@ -324,19 +288,42 @@ func (g PythonGenerator) generateEncodeMethod(p *model.Packet) string {
 			}
 			continue
 		}
-		if f.IsRepeat {
-			typ := pyBasicTypeMap[g.config.ListLenPrefixLenType]
-			b.WriteString(fmt.Sprintf("    size = len(self.%s)\n", fieldName))
+		switch c := f.Attr.(type) {
+		case *model.LengthFieldAttribute:
+			typ := pyBasicTypeMap[f.GetType()]
+			b.WriteString(fmt.Sprintf("    %s_pos = buffer.write_index\n", fieldName))
 			if g.config.LittleEndian {
-				b.WriteString(fmt.Sprintf("    buffer.write_%s(size)\n", typ.Le))
+				b.WriteString(fmt.Sprintf("    buffer.write_%s(0)\n", typ.Le))
 			} else {
-				b.WriteString(fmt.Sprintf("    buffer.write_%s(size)\n", typ.BasicType))
+				b.WriteString(fmt.Sprintf("    buffer.write_%s(0)\n", typ.BasicType))
 			}
-			b.WriteString("    for i in range(size):\n")
-			b.WriteString(AddIndent4ln(g.generateEncodeField(f)))
-		} else {
-			b.WriteString(g.generateEncodeField(f))
+		case *model.CheckSumFieldAttribute:
+			b.WriteString(fmt.Sprintf("    service = create_checksum_service(%s)\n", c.CheckSumType))
+			b.WriteString("    if service :\n")
+			b.WriteString(fmt.Sprintf("        self.%s = service.calc(buffer)\n", fieldName))
+			if typ, ok := pyBasicTypeMap[f.GetType()]; ok {
+				if g.config.LittleEndian {
+					b.WriteString(fmt.Sprintf("    buffer.write_%s(self.%s)\n", typ.Le, fieldName))
+				} else {
+					b.WriteString(fmt.Sprintf("    buffer.write_%s(self.%s)\n", typ.BasicType, fieldName))
+				}
+			}
+		default:
+			if f.IsRepeat {
+				typ := pyBasicTypeMap[g.config.ListLenPrefixLenType]
+				b.WriteString(fmt.Sprintf("    size = len(self.%s)\n", fieldName))
+				if g.config.LittleEndian {
+					b.WriteString(fmt.Sprintf("    buffer.write_%s(size)\n", typ.Le))
+				} else {
+					b.WriteString(fmt.Sprintf("    buffer.write_%s(size)\n", typ.BasicType))
+				}
+				b.WriteString("    for i in range(size):\n")
+				b.WriteString(AddIndent4ln(g.generateEncodeField(f)))
+			} else {
+				b.WriteString(g.generateEncodeField(f))
+			}
 		}
+
 	}
 	return b.String()
 }
@@ -348,36 +335,37 @@ func (g PythonGenerator) generateEncodeField(f *model.Field) string {
 		fieldName += "[i]"
 	}
 	padding := g.GetPadding(f)
-	if typ, ok := pyBasicTypeMap[f.GetType()]; ok {
-		if g.config.LittleEndian {
-			b.WriteString(fmt.Sprintf("    buffer.write_%s(self.%s)\n", typ.Le, fieldName))
-		} else {
-			b.WriteString(fmt.Sprintf("    buffer.write_%s(self.%s)\n", typ.BasicType, fieldName))
+	switch c := f.Attr.(type) {
+	case *model.BasicFieldAttribute, *model.CheckSumFieldAttribute:
+		if typ, ok := pyBasicTypeMap[f.GetType()]; ok {
+			if g.config.LittleEndian {
+				b.WriteString(fmt.Sprintf("    buffer.write_%s(self.%s)\n", typ.Le, fieldName))
+			} else {
+				b.WriteString(fmt.Sprintf("    buffer.write_%s(self.%s)\n", typ.BasicType, fieldName))
+			}
 		}
-	} else if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
+	case *model.FixedStringFieldAttribute:
 		fromLeft := "False"
 		if !padding.IsDefault() && padding.PadLeft {
 			fromLeft = "True"
 		}
 		if !padding.IsDefault() {
-			b.WriteString(fmt.Sprintf("    write_fixed_string(buffer, self.%s, %d, 'utf-8', %s, %s)\n", fieldName, fs.Length, padding.PadChar, fromLeft))
+			b.WriteString(fmt.Sprintf("    write_fixed_string(buffer, self.%s, %d, 'utf-8', %s, %s)\n", fieldName, c.Length, padding.PadChar, fromLeft))
 		} else {
-			b.WriteString(fmt.Sprintf("    write_fixed_string(buffer, self.%s, %d, 'utf-8')\n", fieldName, fs.Length))
+			b.WriteString(fmt.Sprintf("    write_fixed_string(buffer, self.%s, %d, 'utf-8')\n", fieldName, c.Length))
 		}
-	} else if _, ok := f.Attr.(*model.DynamicStringFieldAttribute); ok {
+	case *model.DynamicStringFieldAttribute:
 		if g.config.LittleEndian {
 			b.WriteString(fmt.Sprintf("    write_string_le(buffer, self.%s, '%s')\n", fieldName, g.config.StringLenPrefixLenType))
 		} else {
 			b.WriteString(fmt.Sprintf("    write_string(buffer, self.%s, '%s')\n", fieldName, g.config.StringLenPrefixLenType))
 		}
-	} else if f.InerObject != nil {
+	case *model.ObjectFieldAttribute:
 		b.WriteString(fmt.Sprintf("    self.%s.encode(buffer)\n", fieldName))
-	} else if _, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-		b.WriteString(fmt.Sprintf("    self.%s.encode(buffer)\n", fieldName))
-	} else if f.GetType() == "match" {
+	case *model.MatchFieldAttribute:
 		b.WriteString(fmt.Sprintf("    if self.%s is not None:\n", fieldName))
 		b.WriteString(fmt.Sprintf("        self.%s.encode(buffer)\n", fieldName))
-	} else {
+	default:
 		b.WriteString("-- unsupported type: " + f.GetType() + "\n")
 	}
 	return b.String()
@@ -396,19 +384,13 @@ func (g PythonGenerator) generateInitMethod(p *model.Packet) string {
 			b.WriteString(fmt.Sprintf("    self.%s = []\n", fieldName))
 			continue
 		}
-		if _, ok := pyBasicTypeMap[f.GetType()]; ok {
-			b.WriteString(fmt.Sprintf("    self.%s = %s\n", fieldName, pyBasicTypeMap[f.GetType()].DefaultValue))
-			continue
-		}
-		if _, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
+		switch f.Attr.(type) {
+		case *model.BasicFieldAttribute, *model.LengthFieldAttribute, *model.CheckSumFieldAttribute:
+			if _, ok := pyBasicTypeMap[f.GetType()]; ok {
+				b.WriteString(fmt.Sprintf("    self.%s = %s\n", fieldName, pyBasicTypeMap[f.GetType()].DefaultValue))
+			}
+		case *model.FixedStringFieldAttribute, *model.DynamicStringFieldAttribute:
 			b.WriteString(fmt.Sprintf("    self.%s = ''\n", fieldName))
-			continue
-		}
-		switch f.GetType() {
-		case "string", "char[]":
-			b.WriteString(fmt.Sprintf("    self.%s = ''\n", fieldName))
-		case "match":
-			b.WriteString(fmt.Sprintf("    self.%s = None\n", fieldName))
 		default:
 			b.WriteString(fmt.Sprintf("    self.%s = None\n", fieldName))
 		}
@@ -450,15 +432,12 @@ func (g PythonGenerator) generateTestCodeForPacket(packet *model.Packet) string 
 func (g PythonGenerator) generateNewInstance(name string, packet *model.Packet) string {
 	var b strings.Builder
 	for _, f := range packet.Fields {
-		if f.InerObject != nil {
-			b.WriteString(g.generateNewInstance(strcase.ToSnake(f.InerObject.Name), f.InerObject))
-		}
 		fieldName := strcase.ToSnake(f.Name)
-		if rp, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-			b.WriteString(g.generateNewInstance(fieldName, rp))
+		if of, ok := f.Attr.(*model.ObjectFieldAttribute); ok {
+			b.WriteString(g.generateNewInstance(fieldName, of.RefPacket))
 		}
-		if f.GetType() == "match" {
-			mp := g.binModel.PacketsMap[f.MatchPairs[0].Value]
+		if mf, ok := f.Attr.(*model.MatchFieldAttribute); ok {
+			mp := g.binModel.PacketsMap[mf.MatchPairs[0].Value]
 			b.WriteString(g.generateNewInstance(fieldName, mp))
 		}
 	}
@@ -484,25 +463,21 @@ func (g PythonGenerator) generateNewInstance(name string, packet *model.Packet) 
 
 func (g PythonGenerator) generateTestValue(f *model.Field) string {
 	var testValue string
-	if typ, ok := pyBasicTypeMap[f.GetType()]; ok {
-		testValue = typ.TestValue
-	}
-	if f.InerObject != nil {
-		testValue = strcase.ToSnake(f.InerObject.Name)
-	}
 	fieldName := strcase.ToSnake(f.Name)
-	if _, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-		testValue = fieldName
-	}
-	if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
-		testValue = "\"" + strings.Repeat("x", fs.Length) + "\""
-	} else if f.GetType() == "string" || f.GetType() == "char[]" {
+
+	switch c := f.Attr.(type) {
+	case *model.BasicFieldAttribute, *model.LengthFieldAttribute, *model.CheckSumFieldAttribute:
+		if typ, ok := pyBasicTypeMap[f.GetType()]; ok {
+			testValue = typ.TestValue
+		}
+	case *model.FixedStringFieldAttribute:
+		testValue = "\"" + strings.Repeat("x", c.Length) + "\""
+	case *model.DynamicStringFieldAttribute:
 		testValue = "\"hello\""
+	case *model.MatchFieldAttribute, *model.ObjectFieldAttribute:
+		testValue = fieldName
 	}
 
-	if f.GetType() == "match" {
-		testValue = fieldName
-	}
 	if f.IsRepeat {
 		return "[" + testValue + "]"
 	}

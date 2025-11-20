@@ -215,6 +215,21 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 	for _, f := range p.Fields {
 		fieldNameLowerCamel := strcase.ToLowerCamel(f.Name)
 		padding := g.GetPadding(f)
+		if _, ok := f.LenAttr.(*model.LengthFieldAttribute); ok {
+			b.WriteString(fmt.Sprintf("    auto %sStart = buf.writer_index();\n", fieldNameLowerCamel))
+			b.WriteString(fmt.Sprintf("    %s->encode(buf);\n", fieldNameLowerCamel))
+			b.WriteString(fmt.Sprintf("    auto %sEnd = buf.writer_index();\n", fieldNameLowerCamel))
+			typ := cppBasicTypeMap[p.LengthField.GetType()]
+			bodyName := strcase.ToLowerCamel(p.LengthField.LengthOfField)
+			lengthFieldName := strcase.ToLowerCamel(p.LengthField.Name)
+			b.WriteString(fmt.Sprintf("    auto %sLen_ = static_cast<%s>(%sEnd - %sStart);\n", bodyName, typ.BasicType, fieldNameLowerCamel, fieldNameLowerCamel))
+			if g.config.LittleEndian {
+				b.WriteString(fmt.Sprintf("    buf.write_%s_at(%sPos, %sLen_);\n", typ.Le, lengthFieldName, bodyName))
+			} else {
+				b.WriteString(fmt.Sprintf("    buf.write_%s_at(%sPos, %sLen_);\n", p.LengthField.GetType(), lengthFieldName, bodyName))
+			}
+			continue
+		}
 		switch c := f.Attr.(type) {
 		case *model.LengthFieldAttribute:
 			typ := cppBasicTypeMap[f.GetType()]
@@ -289,46 +304,20 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 					b.WriteString(fmt.Sprintf("    codec::write_string<%s>(buf, %s);\n", strLenTyp.Name, fieldNameLowerCamel))
 				}
 			}
-		default:
-			if p.LengthField != nil && f.Name == p.LengthField.LengthOfField {
-				b.WriteString(fmt.Sprintf("    auto %sStart = buf.writer_index();\n", fieldNameLowerCamel))
-				b.WriteString(fmt.Sprintf("    %s->encode(buf);\n", fieldNameLowerCamel))
-				b.WriteString(fmt.Sprintf("    auto %sEnd = buf.writer_index();\n", fieldNameLowerCamel))
-				typ := cppBasicTypeMap[p.LengthField.GetType()]
-				bodyName := strcase.ToLowerCamel(p.LengthField.LengthOfField)
-				lengthFieldName := strcase.ToLowerCamel(p.LengthField.Name)
-				b.WriteString(fmt.Sprintf("    auto %sLen_ = static_cast<%s>(%sEnd - %sStart);\n", bodyName, typ.BasicType, fieldNameLowerCamel, fieldNameLowerCamel))
+		case *model.ObjectFieldAttribute:
+			if f.IsRepeat {
 				if g.config.LittleEndian {
-					b.WriteString(fmt.Sprintf("    buf.write_%s_at(%sPos, %sLen_);\n", typ.Le, lengthFieldName, bodyName))
+					b.WriteString(fmt.Sprintf("    codec::write_object_List_le<%s>(buf,%s);\n", listLenTyp.Name, fieldNameLowerCamel))
 				} else {
-					b.WriteString(fmt.Sprintf("    buf.write_%s_at(%sPos, %sLen_);\n", p.LengthField.GetType(), lengthFieldName, bodyName))
+					b.WriteString(fmt.Sprintf("    codec::write_object_List<%s>(buf,%s);\n", listLenTyp.Name, fieldNameLowerCamel))
 				}
-			} else if f.InerObject != nil {
-				if f.IsRepeat {
-					if g.config.LittleEndian {
-						b.WriteString(fmt.Sprintf("    codec::write_object_List_le<%s>(buf,%s);\n", listLenTyp.Name, fieldNameLowerCamel))
-					} else {
-						b.WriteString(fmt.Sprintf("    codec::write_object_List<%s>(buf,%s);\n", listLenTyp.Name, fieldNameLowerCamel))
-					}
-				} else {
-					b.WriteString(fmt.Sprintf("    %s.encode(buf);\n", fieldNameLowerCamel))
-				}
-			} else if _, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-				if f.IsRepeat {
-					if g.config.LittleEndian {
-						b.WriteString(fmt.Sprintf("    codec::write_object_List_le<%s>(buf,%s);\n", listLenTyp.Name, fieldNameLowerCamel))
-					} else {
-						b.WriteString(fmt.Sprintf("    codec::write_object_List<%s>(buf,%s);\n", listLenTyp.Name, fieldNameLowerCamel))
-					}
-				} else {
-					b.WriteString(fmt.Sprintf("    %s.encode(buf);\n", fieldNameLowerCamel))
-				}
-			} else if f.GetType() == "match" {
-				b.WriteString(fmt.Sprintf("    %s->encode(buf);\n", fieldNameLowerCamel))
 			} else {
-				b.WriteString("-- unsupport type:" + f.GetType() + "\n")
+				b.WriteString(fmt.Sprintf("    %s.encode(buf);\n", fieldNameLowerCamel))
 			}
-
+		case *model.MatchFieldAttribute:
+			b.WriteString(fmt.Sprintf("    %s->encode(buf);\n", fieldNameLowerCamel))
+		default:
+			b.WriteString("-- unsupport type:" + f.GetType() + "\n")
 		}
 
 	}
@@ -399,35 +388,22 @@ func (g CppGenerator) generateDecode(p *model.Packet) string {
 					b.WriteString(fmt.Sprintf("    %s = codec::read_string<%s>(buf);\n", fieldNameLowerCamel, strLenTyp.Name))
 				}
 			}
-		default:
-			if f.InerObject != nil {
-				if f.IsRepeat {
-					if g.config.LittleEndian {
-						b.WriteString(fmt.Sprintf("    %s = codec::read_object_List_le<%s,%s>(buf);\n", fieldNameLowerCamel, listLenTyp.Name, f.GetType()))
-					} else {
-						b.WriteString(fmt.Sprintf("    %s = codec::read_object_List<%s,%s>(buf);\n", fieldNameLowerCamel, listLenTyp.Name, f.GetType()))
-					}
+		case *model.ObjectFieldAttribute:
+			if f.IsRepeat {
+				if g.config.LittleEndian {
+					b.WriteString(fmt.Sprintf("    %s = codec::read_object_List_le<%s,%s>(buf);\n", fieldNameLowerCamel, listLenTyp.Name, f.GetType()))
 				} else {
-					b.WriteString(fmt.Sprintf("    %s.decode(buf);\n", fieldNameLowerCamel))
+					b.WriteString(fmt.Sprintf("    %s = codec::read_object_List<%s,%s>(buf);\n", fieldNameLowerCamel, listLenTyp.Name, f.GetType()))
 				}
-			} else if _, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-				if f.IsRepeat {
-					if g.config.LittleEndian {
-						b.WriteString(fmt.Sprintf("    %s = codec::read_object_List_le<%s,%s>(buf);\n", fieldNameLowerCamel, listLenTyp.Name, f.GetType()))
-					} else {
-						b.WriteString(fmt.Sprintf("    %s = codec::read_object_List<%s,%s>(buf);\n", fieldNameLowerCamel, listLenTyp.Name, f.GetType()))
-					}
-				} else {
-					b.WriteString(fmt.Sprintf("    %s.decode(buf);\n", fieldNameLowerCamel))
-				}
-			} else if f.GetType() == "match" {
-				matchKeyLowerCamel := strcase.ToLowerCamel(f.MatchKey)
-				b.WriteString(fmt.Sprintf("    %s = %sMessageFactory::getInstance().create(%s);\n", fieldNameLowerCamel, strcase.ToCamel(p.Name), matchKeyLowerCamel))
-				b.WriteString(fmt.Sprintf("    %s->decode(buf);\n", fieldNameLowerCamel))
 			} else {
-				b.WriteString("-- unsupport type:" + f.GetType() + "\n")
+				b.WriteString(fmt.Sprintf("    %s.decode(buf);\n", fieldNameLowerCamel))
 			}
-
+		case *model.MatchFieldAttribute:
+			matchKeyLowerCamel := strcase.ToLowerCamel(f.MatchKey)
+			b.WriteString(fmt.Sprintf("    %s = %sMessageFactory::getInstance().create(%s);\n", fieldNameLowerCamel, strcase.ToCamel(p.Name), matchKeyLowerCamel))
+			b.WriteString(fmt.Sprintf("    %s->decode(buf);\n", fieldNameLowerCamel))
+		default:
+			b.WriteString("-- unsupport type:" + f.GetType() + "\n")
 		}
 
 	}
@@ -447,42 +423,39 @@ func (g CppGenerator) generateToString(p *model.Packet) string {
 		fieldNameLowerCamel := strcase.ToLowerCamel(field.Name)
 		if field.IsRepeat {
 			t := field.GetType()
-			if typ, ok := cppBasicTypeMap[field.GetType()]; ok {
-				t = typ.Name
-			} else if _, ok := field.Attr.(*model.FixedStringFieldAttribute); ok {
-				t = "std::string"
-			} else if field.GetType() == "string" || field.GetType() == "char[]" {
+			switch field.Attr.(type) {
+			case *model.BasicFieldAttribute, *model.LengthFieldAttribute, *model.CheckSumFieldAttribute:
+				if typ, ok := cppBasicTypeMap[field.GetType()]; ok {
+					t = typ.Name
+				}
+			case *model.FixedStringFieldAttribute, *model.DynamicStringFieldAttribute:
 				t = "std::string"
 			}
 			b.WriteString(fmt.Sprintf("    << \"%s: \" << codec::join_vector<%s>(%s)\n", field.Name, t, fieldNameLowerCamel))
 			continue
 		}
-		if _, ok := cppBasicTypeMap[field.GetType()]; ok {
-			switch field.GetType() {
-			case "i8":
-				b.WriteString(fmt.Sprintf("    << \"%s: \" << static_cast<int>(%s)\n", field.Name, fieldNameLowerCamel))
-			case "u8":
-				b.WriteString(fmt.Sprintf("    << \"%s: \" << static_cast<unsigned>(%s)\n", field.Name, fieldNameLowerCamel))
-			case "f32", "f64":
-				b.WriteString(fmt.Sprintf("    << \"%s: \" << std::fixed << std::setprecision(6) << %s\n", field.Name, fieldNameLowerCamel))
-			default:
-				b.WriteString(fmt.Sprintf("    << \"%s: \" << std::to_string(%s)\n", field.Name, fieldNameLowerCamel))
+		switch field.Attr.(type) {
+		case *model.BasicFieldAttribute, *model.LengthFieldAttribute, *model.CheckSumFieldAttribute:
+			if _, ok := cppBasicTypeMap[field.GetType()]; ok {
+				switch field.GetType() {
+				case "i8":
+					b.WriteString(fmt.Sprintf("    << \"%s: \" << static_cast<int>(%s)\n", field.Name, fieldNameLowerCamel))
+				case "u8":
+					b.WriteString(fmt.Sprintf("    << \"%s: \" << static_cast<unsigned>(%s)\n", field.Name, fieldNameLowerCamel))
+				case "f32", "f64":
+					b.WriteString(fmt.Sprintf("    << \"%s: \" << std::fixed << std::setprecision(6) << %s\n", field.Name, fieldNameLowerCamel))
+				default:
+					b.WriteString(fmt.Sprintf("    << \"%s: \" << std::to_string(%s)\n", field.Name, fieldNameLowerCamel))
+				}
 			}
-			continue
-		}
-		if field.InerObject != nil {
+		case *model.ObjectFieldAttribute:
 			b.WriteString(fmt.Sprintf("    << \"%s: \" << %s.toString()\n", field.Name, fieldNameLowerCamel))
-			continue
-		}
-		if _, ok := g.binModel.PacketsMap[field.GetType()]; ok {
-			b.WriteString(fmt.Sprintf("    << \"%s: \" << %s.toString()\n", field.Name, fieldNameLowerCamel))
-			continue
-		}
-		if field.GetType() == "match" {
+		case *model.MatchFieldAttribute:
 			b.WriteString(fmt.Sprintf("    << \"%s: \" << %s->toString()\n", field.Name, fieldNameLowerCamel))
-			continue
+		default:
+			b.WriteString(fmt.Sprintf("    << \"%s: \" << %s\n", field.Name, fieldNameLowerCamel))
 		}
-		b.WriteString(fmt.Sprintf("    << \"%s: \" << %s\n", field.Name, fieldNameLowerCamel))
+
 	}
 	b.WriteString("    << \" }\";\n")
 	b.WriteString("    return oss.str();\n")
@@ -500,19 +473,17 @@ func (g CppGenerator) generateOstreamOperator(p *model.Packet) string {
 
 func (g CppGenerator) getFieldType(f *model.Field) string {
 	typ := ""
-	if t, ok := cppBasicTypeMap[f.GetType()]; ok {
-		typ = t.Name
-	} else if _, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
-		typ = "std::string"
-	} else {
-		switch f.GetType() {
-		case "match":
-			typ = "std::unique_ptr<codec::BinaryCodec>"
-		case "string", "char[]":
-			typ = "std::string"
-		default:
-			typ = f.GetType()
+	switch f.Attr.(type) {
+	case *model.BasicFieldAttribute, *model.LengthFieldAttribute, *model.CheckSumFieldAttribute:
+		if t, ok := cppBasicTypeMap[f.GetType()]; ok {
+			typ = t.Name
 		}
+	case *model.FixedStringFieldAttribute, *model.DynamicStringFieldAttribute:
+		typ = "std::string"
+	case *model.MatchFieldAttribute:
+		typ = "std::unique_ptr<codec::BinaryCodec>"
+	default:
+		typ = f.GetType()
 	}
 	if f.IsRepeat {
 		typ = "std::vector<" + typ + ">"
@@ -546,7 +517,10 @@ func (g CppGenerator) generateUnitestForPacket(p *model.Packet) string {
 	b.WriteString(fmt.Sprintf("    %s decoded;\n", p.Name))
 	b.WriteString("    decoded.decode(buf);\n")
 	for _, f := range p.Fields {
-		if f.LengthOfField != "" || f.CheckSumType != "" {
+		if _, ok := f.Attr.(*model.LengthFieldAttribute); ok {
+			b.WriteString(fmt.Sprintf("    original.%s = decoded.%s;\n", strcase.ToLowerCamel(f.Name), strcase.ToLowerCamel(f.Name)))
+		}
+		if _, ok := f.Attr.(*model.CheckSumFieldAttribute); ok {
 			b.WriteString(fmt.Sprintf("    original.%s = decoded.%s;\n", strcase.ToLowerCamel(f.Name), strcase.ToLowerCamel(f.Name)))
 		}
 	}
@@ -560,23 +534,22 @@ func (g CppGenerator) generateNewInstance(name string, p *model.Packet) string {
 	var b strings.Builder
 	for _, f := range p.Fields {
 		fieldNameLowerCamel := strcase.ToLowerCamel(f.Name)
-		if f.InerObject != nil {
-			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, f.InerObject))
+		switch c := f.Attr.(type) {
+		case *model.ObjectFieldAttribute:
+			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, c.RefPacket))
 			b.WriteString("\n")
-		} else if mp, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, mp))
-			b.WriteString("\n")
-		} else if f.GetType() == "match" {
-			mp := g.binModel.PacketsMap[f.MatchPairs[0].Value]
+		case *model.MatchFieldAttribute:
+			mp := g.binModel.PacketsMap[c.MatchPairs[0].Value]
 			b.WriteString(g.generateMakeUniqueInstance(fieldNameLowerCamel, mp))
 			b.WriteString("\n")
 		}
+
 	}
 	b.WriteString(fmt.Sprintf("%s %s;\n", strcase.ToCamel(p.Name), name))
 	for _, f := range p.Fields {
 		fieldNameLowerCamel := strcase.ToLowerCamel(f.Name)
-		if f.GetType() == "match" {
-			b.WriteString(fmt.Sprintf("%s.%s = %s;\n", name, strcase.ToLowerCamel(f.MatchKey), f.MatchPairs[0].Key))
+		if c, ok := f.Attr.(*model.MatchFieldAttribute); ok {
+			b.WriteString(fmt.Sprintf("%s.%s = %s;\n", name, strcase.ToLowerCamel(c.MatchKeyField.Name), c.MatchPairs[0].Key))
 			b.WriteString(fmt.Sprintf("%s.%s = std::move(%s);\n", name, fieldNameLowerCamel, g.generateTestValue(f)))
 		} else {
 			if _, ok := p.MatchFields[f.Name]; ok {
@@ -592,21 +565,15 @@ func (g CppGenerator) generateMakeUniqueInstance(name string, p *model.Packet) s
 	var b strings.Builder
 	for _, f := range p.Fields {
 		fieldNameLowerCamel := strcase.ToLowerCamel(f.Name)
-		if f.InerObject != nil {
-			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, f.InerObject))
-			b.WriteString("\n")
-		} else if mp, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, mp))
-			b.WriteString("\n")
-		} else if f.GetType() == "match" {
-			b.WriteString(g.generateMakeUniqueInstance(fieldNameLowerCamel, mp))
+		if of, ok := f.Attr.(*model.ObjectFieldAttribute); ok {
+			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, of.RefPacket))
 			b.WriteString("\n")
 		}
 	}
 	b.WriteString(fmt.Sprintf("auto %s = std::make_unique<%s>();\n", name, strcase.ToCamel(p.Name)))
 	for _, f := range p.Fields {
 		fieldNameLowerCamel := strcase.ToLowerCamel(f.Name)
-		if f.GetType() == "match" {
+		if _, ok := f.Attr.(*model.MatchFieldAttribute); ok {
 			b.WriteString(fmt.Sprintf("%s->%s = std::move(%s);\n", name, fieldNameLowerCamel, g.generateTestValue(f)))
 		} else {
 			b.WriteString(fmt.Sprintf("%s->%s = %s;\n", name, fieldNameLowerCamel, g.generateTestValue(f)))
@@ -618,19 +585,18 @@ func (g CppGenerator) generateMakeUniqueInstance(name string, p *model.Packet) s
 func (g CppGenerator) generateTestValue(f *model.Field) any {
 	tv := ""
 	fieldNameLowerCamel := strcase.ToLowerCamel(f.Name)
-	if typ, ok := cppBasicTypeMap[f.GetType()]; ok {
-		tv = typ.TestValue
-	} else if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
-		tv = "\"" + strings.Repeat("x", fs.Length) + "\""
-	} else if f.GetType() == "string" || f.GetType() == "char[]" {
+	switch c := f.Attr.(type) {
+	case *model.BasicFieldAttribute, *model.CheckSumFieldAttribute, *model.LengthFieldAttribute:
+		if typ, ok := cppBasicTypeMap[f.GetType()]; ok {
+			tv = typ.TestValue
+		}
+	case *model.FixedStringFieldAttribute:
+		tv = "\"" + strings.Repeat("x", c.Length) + "\""
+	case *model.DynamicStringFieldAttribute:
 		tv = "\"hello\""
-	} else if f.InerObject != nil {
+	case *model.ObjectFieldAttribute, *model.MatchFieldAttribute:
 		tv = fieldNameLowerCamel
-	} else if _, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-		tv = fieldNameLowerCamel
-	} else if f.GetType() == "match" {
-		tv = fieldNameLowerCamel
-	} else {
+	default:
 		tv = "-- unsupport " + f.GetType()
 	}
 
