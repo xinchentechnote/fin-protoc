@@ -171,8 +171,8 @@ func (g LuaWspGenerator) generateSubDissector(parentName string, pkt *model.Pack
 	var b strings.Builder
 
 	for _, f := range pkt.Fields {
-		if f.InerObject != nil {
-			b.WriteString(g.generateSubDissector(parentName, f.InerObject))
+		if of, ok := f.Attr.(*model.ObjectFieldAttribute); ok && of.IsIner {
+			b.WriteString(g.generateSubDissector(parentName, of.RefPacket))
 			b.WriteString("\n")
 		}
 	}
@@ -230,7 +230,7 @@ func (g LuaWspGenerator) decodeList(treeName string, p *model.Packet, f *model.F
 	b.WriteString(g.decodeListSize(treeName, p, f) + "\n")
 	b.WriteString(fmt.Sprintf("for i=1,%s_%s_%s do\n", strcase.ToSnake(p.Name), strcase.ToSnake(f.Name), "size"))
 	code := g.decodeField(treeName, p, f)
-	if f.InerObject != nil {
+	if of, ok := f.Attr.(*model.ObjectFieldAttribute); ok && of.IsIner {
 		code = "offset = " + code
 	}
 	b.WriteString(AddIndent4ln(code))
@@ -296,11 +296,8 @@ func (g LuaWspGenerator) decodeStringLen(treeName string, p *model.Packet, f *mo
 }
 
 func (g LuaWspGenerator) decodeFieldForLocal(f *model.Field) string {
-	if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
-		return fmt.Sprintf("local %s = buf(offset, %d):string()", strcase.ToSnake(f.Name), fs.Length)
-	}
-	switch f.GetType() {
-	case "i8", "u8", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64", "char":
+	switch c := f.Attr.(type) {
+	case *model.BasicFieldAttribute, *model.LengthFieldAttribute, *model.CheckSumFieldAttribute:
 		luaType, ok := luaBasicTypeMap[f.GetType()]
 		if !ok {
 			return "-- unsupported numeric type: " + f.GetType() + "\n"
@@ -310,7 +307,9 @@ func (g LuaWspGenerator) decodeFieldForLocal(f *model.Field) string {
 			decodeName = luaType.Le
 		}
 		return fmt.Sprintf("local %s = buf(offset, %d):%s()", strcase.ToSnake(f.Name), luaType.Size, decodeName)
-	case "string":
+	case *model.FixedStringFieldAttribute:
+		return fmt.Sprintf("local %s = buf(offset, %d):string()", strcase.ToSnake(f.Name), c.Length)
+	case *model.DynamicStringFieldAttribute:
 		luaType, ok := luaBasicTypeMap[g.config.StringLenPrefixLenType]
 		if !ok {
 			return "-- unsupported numeric type: " + f.GetType() + "\n"
@@ -332,14 +331,13 @@ func (g LuaWspGenerator) decodeFieldForLocal(f *model.Field) string {
 func (g LuaWspGenerator) decodeField(treeName string, p *model.Packet, f *model.Field) string {
 	packageName := strcase.ToSnake(p.Name)
 	fieldName := strcase.ToSnake(f.Name)
-	if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
+	switch c := f.Attr.(type) {
+	case *model.FixedStringFieldAttribute:
 		var b strings.Builder
-		b.WriteString(fmt.Sprintf("%s:add(fields.%s_%s, buf(offset, %d))\n", treeName, packageName, fieldName, fs.Length))
-		b.WriteString(fmt.Sprintf("offset = offset + %d", fs.Length))
+		b.WriteString(fmt.Sprintf("%s:add(fields.%s_%s, buf(offset, %d))\n", treeName, packageName, fieldName, c.Length))
+		b.WriteString(fmt.Sprintf("offset = offset + %d", c.Length))
 		return b.String()
-	}
-	switch f.GetType() {
-	case "i8", "u8", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64", "char":
+	case *model.BasicFieldAttribute, *model.LengthFieldAttribute, *model.CheckSumFieldAttribute:
 		luaType, ok := luaBasicTypeMap[f.GetType()]
 		if !ok {
 			return "-- unsupported numeric type: " + f.GetType() + "\n"
@@ -359,7 +357,7 @@ func (g LuaWspGenerator) decodeField(treeName string, p *model.Packet, f *model.
 			return "-- error generating code: " + err.Error() + "\n"
 		}
 		return code
-	case "match":
+	case *model.MatchFieldAttribute:
 		if len(f.MatchPairs) == 0 {
 			return ""
 		}
@@ -374,31 +372,22 @@ func (g LuaWspGenerator) decodeField(treeName string, p *model.Packet, f *model.
 		}
 		b.WriteString("end")
 		return b.String()
-	case "string":
+	case *model.DynamicStringFieldAttribute:
 		var b strings.Builder
 		b.WriteString(g.decodeStringLen(treeName, p, f) + "\n")
 		lenName := fmt.Sprintf("%s_%s_%s", packageName, fieldName, "len")
 		b.WriteString(fmt.Sprintf("%s:add(fields.%s_%s, buf(offset, %s))\n", treeName, packageName, fieldName, lenName))
 		b.WriteString(fmt.Sprintf("offset = offset + %s", lenName))
 		return b.String()
-	default:
+	case *model.ObjectFieldAttribute:
 		var b strings.Builder
-		if f.InerObject != nil {
-			b.WriteString(fmt.Sprintf("dissect_%s(buf, pinfo, subtree, offset)", fieldName))
-			if !f.IsRepeat {
-				b.WriteString("\n")
-				b.WriteString(fmt.Sprintf("pinfo.cols.info:set(\"%s\")", f.Name))
-			}
-			return b.String()
+		b.WriteString(fmt.Sprintf("dissect_%s(buf, pinfo, subtree, offset)", strcase.ToSnake(c.RefPacket.Name)))
+		if !f.IsRepeat {
+			b.WriteString("\n")
+			b.WriteString(fmt.Sprintf("pinfo.cols.info:set(\"%s\")", f.Name))
 		}
-		if _, ok := g.binModel.PacketsMap[f.Type]; ok {
-			b.WriteString(fmt.Sprintf("dissect_%s(buf, pinfo, subtree, offset)", strcase.ToSnake(f.Type)))
-			if !f.IsRepeat {
-				b.WriteString("\n")
-				b.WriteString(fmt.Sprintf("pinfo.cols.info:set(\"%s\")", f.Name))
-			}
-			return b.String()
-		}
+		return b.String()
+	default:
 
 		return "-- unsupported type: " + f.GetType() + "\n"
 	}

@@ -66,6 +66,7 @@ func TestGenerateSubDissector(t *testing.T) {
 			{
 				Name: "testField",
 				Type: "u32",
+				Attr: &model.BasicFieldAttribute{},
 			},
 		},
 	}
@@ -95,6 +96,7 @@ func TestGenerateMainDissector(t *testing.T) {
 			{
 				Name: "testField",
 				Type: "u32",
+				Attr: &model.BasicFieldAttribute{},
 			},
 		},
 	}
@@ -124,6 +126,7 @@ func TestDecodeList(t *testing.T) {
 	field := &model.Field{
 		Name:     "testList",
 		Type:     "u32",
+		Attr:     &model.BasicFieldAttribute{},
 		IsRepeat: true,
 	}
 	binModel := &model.BinaryModel{
@@ -159,14 +162,14 @@ func TestLuaDecodeField(t *testing.T) {
 		{
 			name:   "u32 field",
 			packet: model.Packet{Name: "TestPacket"},
-			field:  &model.Field{Name: "testField", Type: "u32"},
+			field:  &model.Field{Name: "testField", Type: "u32", Attr: &model.BasicFieldAttribute{}},
 			expected: `tree:add(fields.test_packet_test_field, buf(offset, 4))
 offset = offset + 4`,
 		},
 		{
 			name:   "string field",
 			packet: model.Packet{Name: "TestPacket"},
-			field:  &model.Field{Name: "testField", Type: "string"},
+			field:  &model.Field{Name: "testField", Type: "string", Attr: &model.DynamicStringFieldAttribute{}},
 			expected: `local test_packet_test_field_len = buf(offset, 1):uint()
 tree:add("testField Len: ".. test_packet_test_field_len, buf(offset, 1))
 offset = offset + 1
@@ -183,6 +186,7 @@ offset = offset + test_packet_test_field_len`,
 				MatchPairs: []model.MatchPair{
 					{Key: "1", Value: "Message1"},
 				},
+				Attr: &model.MatchFieldAttribute{},
 			},
 			expected: `if msg_type == 1 then -- Message1
     dissect_message_1(buf, pinfo, tree, offset)
