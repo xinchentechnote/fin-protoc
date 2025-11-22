@@ -2,7 +2,6 @@ package parser
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/iancoleman/strcase"
@@ -65,8 +64,8 @@ func (g RustGenerator) generateUseCode(msg *model.Packet) string {
 	var b strings.Builder
 	usePackets := make(map[string]struct{})
 	for _, f := range msg.Fields {
-		if f.GetType() == "match" {
-			for _, pair := range f.MatchPairs {
+		if mf, ok := f.Attr.(*model.MatchFieldAttribute); ok {
+			for _, pair := range mf.MatchPairs {
 				if _, exists := usePackets[pair.Value]; exists {
 					continue // Skip if already added
 				}
@@ -76,7 +75,7 @@ func (g RustGenerator) generateUseCode(msg *model.Packet) string {
 			if _, exists := usePackets[f.Type]; exists {
 				continue // Skip if already added
 			}
-			if _, exsits := g.binModel.PacketsMap[f.Type]; exsits {
+			if c, ok := f.Attr.(*model.ObjectFieldAttribute); ok && !c.IsIner {
 				usePackets[f.Type] = struct{}{}
 			}
 		}
@@ -166,19 +165,13 @@ func (g RustGenerator) GetPadding(f *model.Field) *model.Padding {
 
 // GetFieldType convert field type for rust
 func (g RustGenerator) GetFieldType(parentName string, f *model.Field) string {
-	switch f.GetType() {
-	case "string":
+	switch f.Attr.(type) {
+	case *model.FixedStringFieldAttribute, *model.DynamicStringFieldAttribute:
 		return "String"
-	case "match":
+	case *model.MatchFieldAttribute:
 		return parentName + f.Name + "Enum"
 	default:
-		pattern := `^char\[(\d+)\]$`
-		re := regexp.MustCompile(pattern)
-		if re.MatchString(f.GetType()) {
-			return "String"
-		}
 		return f.GetType()
-
 	}
 }
 
@@ -217,9 +210,9 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 	name := strcase.ToSnake(f.Name)
 	padding := g.GetPadding(f)
 	if f.IsRepeat {
-
-		if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
-			size := fs.Length
+		switch c := f.Attr.(type) {
+		case *model.FixedStringFieldAttribute:
+			size := c.Length
 			if g.config.LittleEndian {
 				if !padding.IsDefault() {
 					return fmt.Sprintf("put_fixed_string_list_with_pad_char_le::<%s>(buf, &self.%s, %d, %s, %t);", g.config.ListLenPrefixLenType, name, size, padding.PadChar, padding.PadLeft)
@@ -230,26 +223,17 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 				return fmt.Sprintf("put_fixed_string_list_with_pad_char::<%s>(buf, &self.%s, %d, %s, %t);", g.config.ListLenPrefixLenType, name, size, padding.PadChar, padding.PadLeft)
 			}
 			return fmt.Sprintf("put_fixed_string_list::<%s>(buf, &self.%s, %d);", g.config.ListLenPrefixLenType, name, size)
-		}
-
-		if _, ok := f.Attr.(*model.DynamicStringFieldAttribute); ok {
+		case *model.DynamicStringFieldAttribute:
 			if g.config.LittleEndian {
 				return fmt.Sprintf("put_string_list_le::<%s,%s>(buf, &self.%s);", g.config.ListLenPrefixLenType, g.config.StringLenPrefixLenType, name)
 			}
 			return fmt.Sprintf("put_string_list::<%s,%s>(buf, &self.%s);", g.config.ListLenPrefixLenType, g.config.StringLenPrefixLenType, name)
-		}
-		if f.InerObject != nil {
+		case *model.ObjectFieldAttribute:
 			if g.config.LittleEndian {
 				return fmt.Sprintf("put_object_list_le::<%s,%s>(buf, &self.%s);", f.GetType(), g.config.ListLenPrefixLenType, name)
 			}
 			return fmt.Sprintf("put_object_list::<%s,%s>(buf, &self.%s);", f.GetType(), g.config.ListLenPrefixLenType, name)
 
-		}
-		if _, ok := g.binModel.PacketsMap[f.Type]; ok {
-			if g.config.LittleEndian {
-				return fmt.Sprintf("put_object_list_le::<%s,%s>(buf, &self.%s);", f.GetType(), g.config.ListLenPrefixLenType, name)
-			}
-			return fmt.Sprintf("put_object_list::<%s,%s>(buf, &self.%s);", f.GetType(), g.config.ListLenPrefixLenType, name)
 		}
 
 		if f.GetType() == "char" {
@@ -268,22 +252,14 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 		return fmt.Sprintf("put_char_array(buf, &self.%s, %d);", name, fs.Length)
 	}
 
-	switch f.GetType() {
-	case "string":
+	switch f.Attr.(type) {
+	case *model.DynamicStringFieldAttribute:
 		if g.config.LittleEndian {
 			return fmt.Sprintf("put_%s_le::<%s>(buf, &self.%s);", f.GetType(), g.config.StringLenPrefixLenType, name)
 		}
 		return fmt.Sprintf("put_%s::<%s>(buf, &self.%s);", f.GetType(), g.config.StringLenPrefixLenType, name)
-	case "char":
-		return fmt.Sprintf("put_%s(buf, self.%s);", f.GetType(), name)
-	case "u8", "i8":
-		return fmt.Sprintf("buf.put_%s(self.%s);", f.GetType(), name)
-	case "u16", "u32", "u64", "i16", "i32", "i64", "f32", "f64":
-		if g.config.LittleEndian {
-			return fmt.Sprintf("buf.put_%s_le(self.%s);", f.GetType(), name)
-		}
-		return fmt.Sprintf("buf.put_%s(self.%s);", f.GetType(), name)
-	case "match":
+
+	case *model.MatchFieldAttribute:
 		var b strings.Builder
 		if p.LengthField != nil && f.Name == p.LengthField.LengthOfField {
 			b.WriteString(fmt.Sprintf("let %s_start = buf.len();\n", strcase.ToSnake(f.Name)))
@@ -306,18 +282,24 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 		}
 
 		return b.String()
+	case *model.ObjectFieldAttribute:
+		return fmt.Sprintf("self.%s.encode(buf);", g.GetFieldName(f))
 	default:
-
-		if f.InerObject != nil {
-			// If it's a nested object, we need to encode it
-			return fmt.Sprintf("self.%s.encode(buf);", g.GetFieldName(f))
-
+		switch f.GetType() {
+		case "char":
+			return fmt.Sprintf("put_%s(buf, self.%s);", f.GetType(), name)
+		case "u8", "i8":
+			return fmt.Sprintf("buf.put_%s(self.%s);", f.GetType(), name)
+		case "u16", "u32", "u64", "i16", "i32", "i64", "f32", "f64":
+			if g.config.LittleEndian {
+				return fmt.Sprintf("buf.put_%s_le(self.%s);", f.GetType(), name)
+			}
+			return fmt.Sprintf("buf.put_%s(self.%s);", f.GetType(), name)
+		default:
+			return fmt.Sprintf("// unknown type for encode: %s", f.GetType())
 		}
-		if _, ok := g.binModel.PacketsMap[f.Type]; ok {
-			return fmt.Sprintf("self.%s.encode(buf);", g.GetFieldName(f))
-		}
-		return fmt.Sprintf("// unknown type for encode: %s", f.GetType())
 	}
+
 }
 
 // EncoderMatchField encodes match field
@@ -341,36 +323,31 @@ func (g RustGenerator) DecodeField(parentName string, f *model.Field) string {
 	name := strcase.ToSnake(f.Name)
 	padding := g.GetPadding(f)
 	if f.IsRepeat {
-		if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
+		switch c := f.Attr.(type) {
+		case *model.FixedStringFieldAttribute:
 			if g.config.LittleEndian {
 				if !padding.IsDefault() {
-					return fmt.Sprintf("let %s = get_fixed_string_list_trim_pad_char_le::<%s>(buf, %d, %s, %t)?;", name, g.config.ListLenPrefixLenType, fs.Length, padding.PadChar, padding.PadLeft)
+					return fmt.Sprintf("let %s = get_fixed_string_list_trim_pad_char_le::<%s>(buf, %d, %s, %t)?;", name, g.config.ListLenPrefixLenType, c.Length, padding.PadChar, padding.PadLeft)
 				}
-				return fmt.Sprintf("let %s = get_fixed_string_list_le::<%s>(buf, %d)?;", name, g.config.ListLenPrefixLenType, fs.Length)
+				return fmt.Sprintf("let %s = get_fixed_string_list_le::<%s>(buf, %d)?;", name, g.config.ListLenPrefixLenType, c.Length)
 			}
 			if !padding.IsDefault() {
-				return fmt.Sprintf("let %s = get_fixed_string_list_trim_pad_char::<%s>(buf, %d, %s, %t)?;", name, g.config.ListLenPrefixLenType, fs.Length, padding.PadChar, padding.PadLeft)
+				return fmt.Sprintf("let %s = get_fixed_string_list_trim_pad_char::<%s>(buf, %d, %s, %t)?;", name, g.config.ListLenPrefixLenType, c.Length, padding.PadChar, padding.PadLeft)
 			}
-			return fmt.Sprintf("let %s = get_fixed_string_list::<%s>(buf, %d)?;", name, g.config.ListLenPrefixLenType, fs.Length)
-		}
+			return fmt.Sprintf("let %s = get_fixed_string_list::<%s>(buf, %d)?;", name, g.config.ListLenPrefixLenType, c.Length)
 
-		if _, ok := f.Attr.(*model.DynamicStringFieldAttribute); ok {
+		case *model.DynamicStringFieldAttribute:
 			if g.config.LittleEndian {
 				return fmt.Sprintf("let %s = get_string_list_le::<%s,%s>(buf)?;", name, g.config.ListLenPrefixLenType, g.config.StringLenPrefixLenType)
 			}
 			return fmt.Sprintf("let %s = get_string_list::<%s,%s>(buf)?;", name, g.config.ListLenPrefixLenType, g.config.StringLenPrefixLenType)
-		}
-		if f.InerObject != nil {
+
+		case *model.ObjectFieldAttribute:
 			if g.config.LittleEndian {
 				return fmt.Sprintf("let %s = get_object_list_le::<%s,%s>(buf)?;", name, f.GetType(), g.config.ListLenPrefixLenType)
 			}
 			return fmt.Sprintf("let %s = get_object_list::<%s,%s>(buf)?;", name, f.GetType(), g.config.ListLenPrefixLenType)
-		}
-		if _, ok := g.binModel.PacketsMap[f.Type]; ok {
-			if g.config.LittleEndian {
-				return fmt.Sprintf("let %s = get_object_list_le::<%s,%s>(buf)?;", name, f.GetType(), g.config.ListLenPrefixLenType)
-			}
-			return fmt.Sprintf("let %s = get_object_list::<%s,%s>(buf)?;", name, f.GetType(), g.config.ListLenPrefixLenType)
+
 		}
 
 		if f.GetType() == "char" {
@@ -383,19 +360,24 @@ func (g RustGenerator) DecodeField(parentName string, f *model.Field) string {
 		return fmt.Sprintf("let %s = get_list::<%s,%s>(buf)?;", name, f.GetType(), g.config.ListLenPrefixLenType)
 	}
 
-	if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
+	switch c := f.Attr.(type) {
+	case *model.FixedStringFieldAttribute:
 		if !padding.IsDefault() {
-			return fmt.Sprintf("let %s = get_char_array_trim_pad_char(buf, %d, %s, %t)?;", name, fs.Length, padding.PadChar, padding.PadLeft)
+			return fmt.Sprintf("let %s = get_char_array_trim_pad_char(buf, %d, %s, %t)?;", name, c.Length, padding.PadChar, padding.PadLeft)
 		}
-		return fmt.Sprintf("let %s = get_char_array(buf, %d)?;", name, fs.Length)
-	}
-
-	switch f.GetType() {
-	case "string":
+		return fmt.Sprintf("let %s = get_char_array(buf, %d)?;", name, c.Length)
+	case *model.DynamicStringFieldAttribute:
 		if g.config.LittleEndian {
 			return fmt.Sprintf("let %s = get_%s_le::<%s>(buf)?;", name, f.GetType(), g.config.StringLenPrefixLenType)
 		}
 		return fmt.Sprintf("let %s = get_%s::<%s>(buf)?;", name, f.GetType(), g.config.StringLenPrefixLenType)
+	case *model.MatchFieldAttribute:
+		return g.DecodeMatchField(parentName, f)
+	case *model.ObjectFieldAttribute:
+		return fmt.Sprintf("let %s = %s::decode(buf)?;", g.GetFieldName(f), c.RefPacket.Name)
+	}
+
+	switch f.GetType() {
 	case "char":
 		return fmt.Sprintf("let %s = get_%s(buf)?;", name, f.GetType())
 	case "u8", "i8":
@@ -405,18 +387,7 @@ func (g RustGenerator) DecodeField(parentName string, f *model.Field) string {
 			return fmt.Sprintf("let %s = buf.get_%s_le();", name, f.GetType())
 		}
 		return fmt.Sprintf("let %s = buf.get_%s();", name, f.GetType())
-	case "match":
-		return g.DecodeMatchField(parentName, f)
 	default:
-
-		if f.InerObject != nil {
-			// If it's a nested object, we need to decode it
-			return fmt.Sprintf("let %s = %s::decode(buf)?;", g.GetFieldName(f), f.InerObject.Name)
-		}
-		if _, ok := g.binModel.PacketsMap[f.Type]; ok {
-			// If it's a nested object, we need to decode it
-			return fmt.Sprintf("let %s = %s::decode(buf)?;", g.GetFieldName(f), f.Type)
-		}
 		return fmt.Sprintf("// unknown type for decode: %s", f.GetType())
 	}
 }
@@ -549,44 +520,37 @@ func (g RustGenerator) testValueList(f *model.Field) string {
 }
 
 func (g RustGenerator) testValueSingle(parentName string, f *model.Field) string {
-	typ := f.GetType()
-	if f.LengthOfField != "" {
+	switch c := f.Attr.(type) {
+	case *model.LengthFieldAttribute:
 		return "0"
-	}
-	// handle match
-	if typ == "match" {
+	case *model.MatchFieldAttribute:
 		return g.testMatchValue(parentName, f)
-	}
-
-	// handle char[n]
-	if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
-		return fmt.Sprintf("vec!['a'; %d].into_iter().collect::<String>()", fs.Length)
-	}
-
-	// handle primitive
-	if val, ok := g.primitiveSingleValues()[typ]; ok {
-		return val
-	}
-
-	if f.InerObject != nil {
+	case *model.FixedStringFieldAttribute:
+		return fmt.Sprintf("vec!['a'; %d].into_iter().collect::<String>()", c.Length)
+	case *model.ObjectFieldAttribute:
 		// If it's a nested object, we need to create a default instance
 		var fieldValues []string
-		for _, subField := range f.InerObject.Fields {
-			fieldValues = append(fieldValues, fmt.Sprintf("%s: %s", strcase.ToSnake(subField.Name), g.testValue(f.InerObject.Name, subField)))
+		for _, subField := range c.RefPacket.Fields {
+			fieldValues = append(fieldValues, fmt.Sprintf("%s: %s", strcase.ToSnake(subField.Name), g.testValue(c.RefPacket.Name, subField)))
 		}
-		return fmt.Sprintf("%s{\n %s \n}", strcase.ToCamel(f.InerObject.Name), strings.Join(fieldValues, ",\n"))
+		return fmt.Sprintf("%s{\n %s \n}", strcase.ToCamel(c.RefPacket.Name), strings.Join(fieldValues, ",\n"))
+	default:
+		// handle primitive
+		if val, ok := g.primitiveSingleValues()[f.GetType()]; ok {
+			return val
+		}
+		return "Default::default()"
 	}
 
-	if p, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-		// If it's a nested object, we need to create a default instance
-		var fieldValues []string
-		for _, subField := range p.Fields {
-			fieldValues = append(fieldValues, fmt.Sprintf("%s: %s", strcase.ToSnake(subField.Name), g.testValue(p.Name, subField)))
-		}
-		return fmt.Sprintf("%s{\n %s \n}", strcase.ToCamel(p.Name), strings.Join(fieldValues, ",\n"))
-	}
+	// if p, ok := g.binModel.PacketsMap[f.GetType()]; ok {
+	// 	// If it's a nested object, we need to create a default instance
+	// 	var fieldValues []string
+	// 	for _, subField := range p.Fields {
+	// 		fieldValues = append(fieldValues, fmt.Sprintf("%s: %s", strcase.ToSnake(subField.Name), g.testValue(p.Name, subField)))
+	// 	}
+	// 	return fmt.Sprintf("%s{\n %s \n}", strcase.ToCamel(p.Name), strings.Join(fieldValues, ",\n"))
+	// }
 
-	return "Default::default()"
 }
 
 func (g RustGenerator) primitiveListValues() map[string]string {
