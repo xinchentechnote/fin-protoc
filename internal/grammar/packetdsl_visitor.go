@@ -76,6 +76,15 @@ type PacketDslVisitor interface {
 	// Visit a parse tree produced by PacketDslParser#type.
 	VisitType(ctx *TypeContext) interface{}
 
+	// Visit a parse tree produced by PacketDslParser#basicType.
+	VisitBasicType(ctx *BasicTypeContext) interface{}
+
+	// Visit a parse tree produced by PacketDslParser#fixedString.
+	VisitFixedString(ctx *FixedStringContext) interface{}
+
+	// Visit a parse tree produced by PacketDslParser#dynamicString.
+	VisitDynamicString(ctx *DynamicStringContext) interface{}
+
 	// Visit a parse tree produced by PacketDslParser#matchFieldDeclaration.
 	VisitMatchFieldDeclaration(ctx *MatchFieldDeclarationContext) interface{}
 

@@ -99,6 +99,18 @@ func (v *BasePacketDslVisitor) VisitType(ctx *TypeContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
+func (v *BasePacketDslVisitor) VisitBasicType(ctx *BasicTypeContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BasePacketDslVisitor) VisitFixedString(ctx *FixedStringContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BasePacketDslVisitor) VisitDynamicString(ctx *DynamicStringContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BasePacketDslVisitor) VisitMatchFieldDeclaration(ctx *MatchFieldDeclarationContext) interface{} {
 	return v.VisitChildren(ctx)
 }

@@ -62,8 +62,11 @@ refMetaDataDeclaration:
 value: type | STRING | DIGITS | PADDING_CHAR | 'true' | 'false';
 
 // Types for fields
-type:
-	UINT8
+type: basicType | fixedString | dynamicString;
+
+basicType:
+	CHAR
+	| UINT8
 	| UINT16
 	| UINT32
 	| UINT64
@@ -72,11 +75,9 @@ type:
 	| INT32
 	| INT64
 	| FLOAT32
-	| FLOAT64
-	| 'string'
-	| 'char'
-	| 'char[' DIGITS? ']'
-	| 'zchar[' DIGITS ']';
+	| FLOAT64;
+fixedString: 'char[' DIGITS ']' | 'zchar[' DIGITS ']';
+dynamicString: 'string' | 'char[]';
 
 // Match field rule for defining match criteria
 matchFieldDeclaration:
@@ -88,6 +89,7 @@ inerObjectDeclaration: IDENTIFIER ('{' fieldDefinition+ '}');
 
 list: '[' (DIGITS | STRING) (COMMA (DIGITS | STRING))* ']';
 
+CHAR: 'char';
 UINT8: 'uint8' | 'u8';
 UINT16: 'uint16' | 'u16';
 UINT32: 'uint32' | 'u32';
