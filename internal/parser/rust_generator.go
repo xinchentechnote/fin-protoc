@@ -72,11 +72,12 @@ func (g RustGenerator) generateUseCode(msg *model.Packet) string {
 				usePackets[pair.Value] = struct{}{}
 			}
 		} else {
-			if _, exists := usePackets[f.Type]; exists {
-				continue // Skip if already added
-			}
+
 			if c, ok := f.Attr.(*model.ObjectFieldAttribute); ok && !c.IsIner {
-				usePackets[f.Type] = struct{}{}
+				if _, exists := usePackets[c.PacketName]; exists {
+					continue // Skip if already added
+				}
+				usePackets[c.PacketName] = struct{}{}
 			}
 		}
 	}
@@ -90,8 +91,8 @@ func (g RustGenerator) generateUseCode(msg *model.Packet) string {
 func (g RustGenerator) generateStructCode(pkt *model.Packet) string {
 	var b strings.Builder
 	for _, f := range pkt.Fields {
-		if f.InerObject != nil {
-			b.WriteString(g.generateStructCode(f.InerObject))
+		if of, ok := f.Attr.(*model.ObjectFieldAttribute); ok && of.IsIner {
+			b.WriteString(g.generateStructCode(of.RefPacket))
 			b.WriteString("\n")
 		}
 	}
@@ -252,7 +253,7 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 		return fmt.Sprintf("put_char_array(buf, &self.%s, %d);", name, fs.Length)
 	}
 
-	switch f.Attr.(type) {
+	switch c := f.Attr.(type) {
 	case *model.DynamicStringFieldAttribute:
 		if g.config.LittleEndian {
 			return fmt.Sprintf("put_%s_le::<%s>(buf, &self.%s);", f.GetType(), g.config.StringLenPrefixLenType, name)
@@ -261,12 +262,12 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 
 	case *model.MatchFieldAttribute:
 		var b strings.Builder
-		if p.LengthField != nil && f.Name == p.LengthField.LengthOfField {
+		if _, ok := f.LenAttr.(*model.LengthOfAttribute); ok {
 			b.WriteString(fmt.Sprintf("let %s_start = buf.len();\n", strcase.ToSnake(f.Name)))
 		}
-		b.WriteString(g.EncoderMatchField(parentName, "buf", f))
+		b.WriteString(g.EncoderMatchField(parentName, "buf", f, c))
 		b.WriteString("\n")
-		if p.LengthField != nil && f.Name == p.LengthField.LengthOfField {
+		if _, ok := f.LenAttr.(*model.LengthOfAttribute); ok {
 			b.WriteString(fmt.Sprintf("let %s_end = buf.len();\n", strcase.ToSnake(f.Name)))
 			typ := cppBasicTypeMap[p.LengthField.GetType()]
 			if g.config.LittleEndian {
@@ -303,11 +304,11 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 }
 
 // EncoderMatchField encodes match field
-func (g RustGenerator) EncoderMatchField(parentName string, bufName string, f *model.Field) string {
+func (g RustGenerator) EncoderMatchField(parentName string, bufName string, f *model.Field, mfa *model.MatchFieldAttribute) string {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("match &self.%s {\n", g.GetFieldName(f)))
 	pairs := make(map[string]struct{})
-	for _, pair := range f.MatchPairs {
+	for _, pair := range mfa.MatchPairs {
 		if _, exists := pairs[pair.Value]; exists {
 			continue
 		}
@@ -372,7 +373,7 @@ func (g RustGenerator) DecodeField(parentName string, f *model.Field) string {
 		}
 		return fmt.Sprintf("let %s = get_%s::<%s>(buf)?;", name, f.GetType(), g.config.StringLenPrefixLenType)
 	case *model.MatchFieldAttribute:
-		return g.DecodeMatchField(parentName, f)
+		return g.DecodeMatchField(parentName, f, c)
 	case *model.ObjectFieldAttribute:
 		return fmt.Sprintf("let %s = %s::decode(buf)?;", g.GetFieldName(f), c.RefPacket.Name)
 	}
@@ -402,15 +403,15 @@ func (g RustGenerator) HasQuotes(s string) bool {
 }
 
 // DecodeMatchField decodes match field
-func (g RustGenerator) DecodeMatchField(parentName string, f *model.Field) string {
+func (g RustGenerator) DecodeMatchField(parentName string, f *model.Field, mfa *model.MatchFieldAttribute) string {
 	var b strings.Builder
-	matchKey := strcase.ToSnake(f.MatchKey)
-	if g.HasQuotes(f.MatchPairs[0].Key) {
+	matchKey := strcase.ToSnake(mfa.MatchKeyField.Name)
+	if g.HasQuotes(mfa.MatchPairs[0].Key) {
 		matchKey += ".as_str()"
 	}
 	b.WriteString(fmt.Sprintf("let %s = match %s {\n", strcase.ToSnake(f.Name), matchKey))
 	var pairs = make(map[string]struct{})
-	for _, pair := range f.MatchPairs {
+	for _, pair := range mfa.MatchPairs {
 		key := pair.Key
 		if _, exists := pairs[key]; exists {
 			continue
@@ -427,11 +428,11 @@ func (g RustGenerator) DecodeMatchField(parentName string, f *model.Field) strin
 func (g RustGenerator) generateMatchFieldEnumCode(packet *model.Packet) string {
 	var b strings.Builder
 	for _, f := range packet.Fields {
-		if f.GetType() == "match" {
+		if mf, ok := f.Attr.(*model.MatchFieldAttribute); ok {
 			b.WriteString("#[derive(Debug, Clone, PartialEq)]")
 			b.WriteString(fmt.Sprintf("pub enum %s%sEnum {\n", packet.Name, f.Name))
 			matchValus := make(map[string]struct{})
-			for _, pair := range f.MatchPairs {
+			for _, pair := range mf.MatchPairs {
 				if _, exists := matchValus[pair.Value]; exists {
 					continue // Skip if already added
 				}
@@ -459,20 +460,20 @@ func (g RustGenerator) generateUnitTestCode(pkt *model.Packet) string {
 	// new instance
 	b.WriteString(AddIndent4ln(AddIndent4(fmt.Sprintf("let mut original = %s {", strcase.ToCamel(pkt.Name)))))
 	for _, f := range pkt.Fields {
-		if pkt.MatchFields[f.MatchKey] != nil {
-			if len(f.MatchPairs) > 0 {
-				key := f.MatchPairs[0].Key
+		if mf, ok := f.Attr.(*model.MatchFieldAttribute); ok {
+			if len(mf.MatchPairs) > 0 {
+				key := mf.MatchPairs[0].Key
 				if g.HasQuotes(key) {
 					key = fmt.Sprintf("%s.to_string()", key)
 				}
-				b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", strcase.ToSnake(f.MatchKey), key)))))
+				b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", strcase.ToSnake(mf.MatchKeyField.Name), key)))))
 				b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", g.GetFieldName(f), g.testValue(pkt.Name, f))))))
 			}
 			continue
 		}
-		if pkt.MatchFields[f.Name] != nil {
-			continue
-		}
+		// if pkt.MatchFields[f.Name] != nil {
+		// 	continue
+		// }
 		b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", g.GetFieldName(f), g.testValue(pkt.Name, f))))))
 	}
 	b.WriteString(AddIndent4ln(AddIndent4("};\n")))
@@ -485,7 +486,8 @@ func (g RustGenerator) generateUnitTestCode(pkt *model.Packet) string {
 	// decoding
 	b.WriteString(AddIndent4ln(AddIndent4(fmt.Sprintf("let decoded = %s::decode(&mut bytes).unwrap();", strcase.ToCamel(pkt.Name)))))
 	for _, f := range pkt.Fields {
-		if f.LengthOfField != "" || f.CheckSumType != "" {
+		switch f.Attr.(type) {
+		case *model.LengthFieldAttribute, *model.CheckSumFieldAttribute:
 			b.WriteString(AddIndent4ln(AddIndent4(fmt.Sprintf("original.%s = decoded.%s;", strcase.ToSnake(f.Name), strcase.ToSnake(f.Name)))))
 		}
 	}
@@ -524,7 +526,7 @@ func (g RustGenerator) testValueSingle(parentName string, f *model.Field) string
 	case *model.LengthFieldAttribute:
 		return "0"
 	case *model.MatchFieldAttribute:
-		return g.testMatchValue(parentName, f)
+		return g.testMatchValue(parentName, f, c)
 	case *model.FixedStringFieldAttribute:
 		return fmt.Sprintf("vec!['a'; %d].into_iter().collect::<String>()", c.Length)
 	case *model.ObjectFieldAttribute:
@@ -583,12 +585,12 @@ func (g RustGenerator) primitiveSingleValues() map[string]string {
 	}
 }
 
-func (g RustGenerator) testMatchValue(parentName string, f *model.Field) string {
-	if len(f.MatchPairs) == 0 {
-		return fmt.Sprintf("%s%s::default()", parentName, f.MatchKey)
+func (g RustGenerator) testMatchValue(parentName string, f *model.Field, mf *model.MatchFieldAttribute) string {
+	if len(mf.MatchPairs) == 0 {
+		return fmt.Sprintf("%s%s::default()", parentName, mf.MatchKeyField.Name)
 	}
 
-	matchName := f.MatchPairs[0].Value
+	matchName := mf.MatchPairs[0].Value
 	subPacket := g.binModel.PacketsMap[matchName]
 	var innerFields []string
 	for _, subField := range subPacket.Fields {

@@ -208,15 +208,15 @@ import io.netty.util.internal.StringUtil;
 	//inerClass
 	for _, f := range packet.Fields {
 		if of, ok := f.Attr.(*model.ObjectFieldAttribute); ok && of.IsIner {
-			b.WriteString(AddIndent4ln(g.GenerateJavaClassFileForPacket(f.InerObject, true)))
+			b.WriteString(AddIndent4ln(g.GenerateJavaClassFileForPacket(of.RefPacket, true)))
 		}
 	}
 
 	b.WriteString("\n")
 	//message factory for match field
 	for _, f := range packet.Fields {
-		if _, ok := f.Attr.(*model.MatchFieldAttribute); ok {
-			b.WriteString(AddIndent4ln(g.GenerateMessageFactory(packet, f)))
+		if mf, ok := f.Attr.(*model.MatchFieldAttribute); ok {
+			b.WriteString(AddIndent4ln(g.GenerateMessageFactory(packet, f, mf)))
 		}
 	}
 	b.WriteString("\n")
@@ -225,11 +225,11 @@ import io.netty.util.internal.StringUtil;
 }
 
 // GenerateMessageFactory gen message factory for match field
-func (g JavaGenerator) GenerateMessageFactory(p *model.Packet, f *model.Field) string {
+func (g JavaGenerator) GenerateMessageFactory(p *model.Packet, f *model.Field, mf *model.MatchFieldAttribute) string {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("public static enum %sMessageFactory {\n", g.GetFieldName(f)))
 	b.WriteString("    INSTANCE;\n")
-	typ := p.FieldMap[f.MatchKey].GetType()
+	typ := p.FieldMap[mf.MatchKeyField.Name].GetType()
 	matchKeyTyp, ok := javaBasicTypeMap[typ]
 	cast := ""
 	if ok {
@@ -242,28 +242,28 @@ func (g JavaGenerator) GenerateMessageFactory(p *model.Packet, f *model.Field) s
 	b.WriteString(fmt.Sprintf("private final Map<%s, Supplier<BinaryCodec>> %sMap = new HashMap<>();", typ, g.GetFieldNameLower(f)))
 	b.WriteString("\n")
 	b.WriteString("static {\n")
-	for _, pair := range f.MatchPairs {
+	for _, pair := range mf.MatchPairs {
 		b.WriteString(fmt.Sprintf("    getInstance().register(%s%s, %s::new);\n", cast, pair.Key, pair.Value))
 	}
 	b.WriteString("}\n")
 	b.WriteString("\n")
-	b.WriteString(fmt.Sprintf("public BinaryCodec create(%s %s) {\n", typ, strcase.ToLowerCamel(f.MatchKey)))
-	b.WriteString(fmt.Sprintf("    Supplier<BinaryCodec> supplier = %sMap.get(%s);\n", g.GetFieldNameLower(f), strcase.ToLowerCamel(f.MatchKey)))
+	b.WriteString(fmt.Sprintf("public BinaryCodec create(%s %s) {\n", typ, strcase.ToLowerCamel(mf.MatchKeyField.Name)))
+	b.WriteString(fmt.Sprintf("    Supplier<BinaryCodec> supplier = %sMap.get(%s);\n", g.GetFieldNameLower(f), strcase.ToLowerCamel(mf.MatchKeyField.Name)))
 	b.WriteString("    if (null == supplier) {\n")
-	b.WriteString(fmt.Sprintf("        throw new IllegalArgumentException(\"Unsupported %s:\" + %s);\n", f.MatchKey, strcase.ToLowerCamel(f.MatchKey)))
+	b.WriteString(fmt.Sprintf("        throw new IllegalArgumentException(\"Unsupported %s:\" + %s);\n", mf.MatchKeyField.Name, strcase.ToLowerCamel(mf.MatchKeyField.Name)))
 	b.WriteString("    }\n")
 	b.WriteString("    return supplier.get();\n")
 	b.WriteString("}")
 
 	b.WriteString("\n")
 	//register method
-	b.WriteString(fmt.Sprintf("public void register(%s %s, Supplier<BinaryCodec> supplier) {\n", typ, strcase.ToLowerCamel(f.MatchKey)))
-	b.WriteString(fmt.Sprintf("    %sMap.put(%s, supplier);\n", g.GetFieldNameLower(f), strcase.ToLowerCamel(f.MatchKey)))
+	b.WriteString(fmt.Sprintf("public void register(%s %s, Supplier<BinaryCodec> supplier) {\n", typ, strcase.ToLowerCamel(mf.MatchKeyField.Name)))
+	b.WriteString(fmt.Sprintf("    %sMap.put(%s, supplier);\n", g.GetFieldNameLower(f), strcase.ToLowerCamel(mf.MatchKeyField.Name)))
 	b.WriteString("}")
 	b.WriteString("\n")
 	//remove method
-	b.WriteString(fmt.Sprintf("public boolean remove(%s %s) {\n", typ, strcase.ToLowerCamel(f.MatchKey)))
-	b.WriteString(fmt.Sprintf("    return null != %sMap.remove(%s);\n", g.GetFieldNameLower(f), strcase.ToLowerCamel(f.MatchKey)))
+	b.WriteString(fmt.Sprintf("public boolean remove(%s %s) {\n", typ, strcase.ToLowerCamel(mf.MatchKeyField.Name)))
+	b.WriteString(fmt.Sprintf("    return null != %sMap.remove(%s);\n", g.GetFieldNameLower(f), strcase.ToLowerCamel(mf.MatchKeyField.Name)))
 	b.WriteString("}")
 	b.WriteString("\n")
 	//getInstance method
@@ -324,10 +324,7 @@ func (g JavaGenerator) GetFieldType(f *model.Field) string {
 		}
 		return "String"
 	default:
-		if f.IsRepeat {
-			return fmt.Sprintf("List<%s>", f.Type)
-		}
-		return f.Type
+		return "unkown type"
 	}
 }
 
@@ -485,7 +482,7 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 		if c.IsIner {
 			//iner object
 			var b strings.Builder
-			fieldName := strcase.ToLowerCamel(f.InerObject.Name)
+			fieldName := strcase.ToLowerCamel(c.RefPacket.Name)
 			if f.IsRepeat {
 				b.WriteString(fmt.Sprintf("%s %s_ = new %s();", f.GetType(), fieldName, f.GetType()))
 				b.WriteString(fmt.Sprintf("%s_.decode(byteBuf);", fieldName))
@@ -516,7 +513,7 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 		//match field
 		var b strings.Builder
 		fieldNameCamel := g.GetFieldName(f)
-		b.WriteString(fmt.Sprintf("this.%s = %sMessageFactory.getInstance().create(this.%s);\n", fieldNameLowerCamel, fieldNameCamel, strcase.ToLowerCamel(f.MatchKey)))
+		b.WriteString(fmt.Sprintf("this.%s = %sMessageFactory.getInstance().create(this.%s);\n", fieldNameLowerCamel, fieldNameCamel, strcase.ToLowerCamel(c.MatchKeyField.Name)))
 		b.WriteString(fmt.Sprintf("this.%s.decode(byteBuf);", fieldNameLowerCamel))
 		return b.String()
 	case *model.BasicFieldAttribute, *model.LengthFieldAttribute, *model.CheckSumFieldAttribute:
@@ -531,7 +528,7 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 		}
 		return fmt.Sprintf("this.%s = byteBuf.read%s();", fieldNameLowerCamel, readMethod)
 	default:
-		return "//TODO " + f.Type
+		return "//TODO unknow"
 	}
 }
 
@@ -646,7 +643,7 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 	case *model.ObjectFieldAttribute:
 		if c.IsIner {
 			var b strings.Builder
-			fieldNameLowerCamel = strcase.ToLowerCamel(f.InerObject.Name)
+			fieldNameLowerCamel = strcase.ToLowerCamel(c.RefPacket.Name)
 			if f.IsRepeat {
 				fieldNameLowerCamel += ".get(i)"
 			}
@@ -664,7 +661,7 @@ func (g JavaGenerator) GenerateEncodeField(p *model.Packet, f *model.Field) stri
 		b.WriteString("}")
 		return b.String()
 	default:
-		return "//" + f.Type
+		return "// unknow type"
 	}
 }
 
@@ -753,12 +750,12 @@ func (g JavaGenerator) GenerateNewInstance(instanceName string, parent string, p
 			}
 		case *model.MatchFieldAttribute:
 			//
-			key := f.MatchPairs[0].Key
-			value := f.MatchPairs[0].Value
-			if typ, ok := javaBasicTypeMap[packet.FieldMap[f.MatchKey].GetType()]; ok {
+			key := c.MatchPairs[0].Key
+			value := c.MatchPairs[0].Value
+			if typ, ok := javaBasicTypeMap[packet.FieldMap[c.MatchKeyField.Name].GetType()]; ok {
 				key = fmt.Sprintf("(%s)%s", typ.BasicType, key)
 			}
-			b.WriteString(fmt.Sprintf("%s.set%s(%s);\n", instanceName, strcase.ToCamel(f.MatchKey), key))
+			b.WriteString(fmt.Sprintf("%s.set%s(%s);\n", instanceName, strcase.ToCamel(c.MatchKeyField.Name), key))
 			if p, ok := g.binModel.PacketsMap[value]; ok {
 				inerObjName := strcase.ToLowerCamel(p.Name)
 				b.WriteString(g.GenerateNewInstance(inerObjName, "", p))

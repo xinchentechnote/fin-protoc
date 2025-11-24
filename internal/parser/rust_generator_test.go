@@ -33,7 +33,7 @@ func TestGenerateRust(t *testing.T) {
 		Fields: []*model.Field{
 			{
 				Name: "testField",
-				Type: "u32",
+				Attr: &model.BasicFieldAttribute{Type: "u32"},
 			},
 		},
 	}
@@ -62,7 +62,7 @@ func TestGenerateRustFileForPacket(t *testing.T) {
 		Fields: []*model.Field{
 			{
 				Name: "testField",
-				Type: "u32",
+				Attr: &model.BasicFieldAttribute{Type: "u32"},
 			},
 		},
 	}
@@ -110,18 +110,10 @@ func TestGenerateUseCode(t *testing.T) {
 		Fields: []*model.Field{
 			{
 				Name: "testField",
-				Type: "OtherPacket",
-				Attr: &model.ObjectFieldAttribute{},
+				Attr: &model.ObjectFieldAttribute{PacketName: "OtherPacket"},
 			},
 			{
 				Name: "matchField",
-				Type: "match",
-				MatchPairs: []model.MatchPair{
-					{
-						Key:   "1",
-						Value: "MatchedPacket",
-					},
-				},
 				Attr: &model.MatchFieldAttribute{
 					MatchPairs: []model.MatchPair{
 						{
@@ -129,7 +121,7 @@ func TestGenerateUseCode(t *testing.T) {
 							Value: "MatchedPacket",
 						},
 					},
-					MatchKeyField: &model.Field{Type: "string"},
+					MatchKeyField: &model.Field{Name: "matchField"},
 				},
 			},
 		},
@@ -159,7 +151,7 @@ func TestGenerateStructCode(t *testing.T) {
 		Fields: []*model.Field{
 			{
 				Name: "testField",
-				Type: "u32",
+				Attr: &model.BasicFieldAttribute{Type: "u32"},
 			},
 		},
 	}
@@ -188,25 +180,25 @@ func TestGetFieldType(t *testing.T) {
 		{
 			name:     "string type",
 			parent:   "Parent",
-			field:    &model.Field{Type: "string", Attr: &model.DynamicStringFieldAttribute{Type: "String"}},
+			field:    &model.Field{Attr: &model.DynamicStringFieldAttribute{Type: "String"}},
 			expected: "String",
 		},
 		{
 			name:     "match type",
 			parent:   "Parent",
-			field:    &model.Field{Type: "match", MatchKey: "Match", Attr: &model.MatchFieldAttribute{}},
+			field:    &model.Field{Attr: &model.MatchFieldAttribute{}},
 			expected: "ParentEnum",
 		},
 		{
 			name:     "char array",
 			parent:   "Parent",
-			field:    &model.Field{Type: "char[10]", Attr: &model.FixedStringFieldAttribute{Length: 10}},
+			field:    &model.Field{Attr: &model.FixedStringFieldAttribute{Length: 10}},
 			expected: "String",
 		},
 		{
 			name:     "primitive type",
 			parent:   "Parent",
-			field:    &model.Field{Type: "u32", Attr: &model.BasicFieldAttribute{Type: "u32"}},
+			field:    &model.Field{Attr: &model.BasicFieldAttribute{Type: "u32"}},
 			expected: "u32",
 		},
 	}
@@ -227,12 +219,12 @@ func TestGetFieldName(t *testing.T) {
 	}{
 		{
 			name:     "match field",
-			field:    &model.Field{Name: "MatchField", Type: "match"},
+			field:    &model.Field{Name: "MatchField"},
 			expected: "match_field",
 		},
 		{
 			name:     "regular field",
-			field:    &model.Field{Name: "RegularField", Type: "u32"},
+			field:    &model.Field{Name: "RegularField"},
 			expected: "regular_field",
 		},
 	}
@@ -263,7 +255,7 @@ func TestRustDecodeField(t *testing.T) {
 		{
 			name:   "string list",
 			parent: "Parent",
-			field: &model.Field{Name: "strings", Type: "string", IsRepeat: true,
+			field: &model.Field{Name: "strings", IsRepeat: true,
 				Attr: &model.DynamicStringFieldAttribute{
 					Type: "string",
 				}},
@@ -272,33 +264,28 @@ func TestRustDecodeField(t *testing.T) {
 		{
 			name:     "primitive list",
 			parent:   "Parent",
-			field:    &model.Field{Name: "numbers", Type: "u32", Attr: &model.BasicFieldAttribute{Type: "u32"}, IsRepeat: true},
+			field:    &model.Field{Name: "numbers", Attr: &model.BasicFieldAttribute{Type: "u32"}, IsRepeat: true},
 			expected: "let numbers = get_list::<u32,u16>(buf)?;",
 		},
 		{
 			name:     "string",
 			parent:   "Parent",
-			field:    &model.Field{Name: "text", Type: "string", Attr: &model.DynamicStringFieldAttribute{Type: "string"}},
+			field:    &model.Field{Name: "text", Attr: &model.DynamicStringFieldAttribute{Type: "string"}},
 			expected: "let text = get_string::<u8>(buf)?;",
 		},
 		{
 			name:     "primitive",
 			parent:   "Parent",
-			field:    &model.Field{Name: "number", Type: "u32", Attr: &model.BasicFieldAttribute{Type: "u32"}},
+			field:    &model.Field{Name: "number", Attr: &model.BasicFieldAttribute{Type: "u32"}},
 			expected: "let number = buf.get_u32();",
 		},
 		{
 			name:   "match field",
 			parent: "Parent",
 			field: &model.Field{
-				Name:     "matchField",
-				Type:     "match",
-				MatchKey: "matchField",
-				MatchPairs: []model.MatchPair{
-					{Key: "\"1\"", Value: "Value"},
-				},
+				Name: "matchField",
 				Attr: &model.MatchFieldAttribute{MatchKeyField: &model.Field{Name: "matchField",
-					Type: "string", Attr: &model.DynamicStringFieldAttribute{Type: "string"}},
+					Attr: &model.DynamicStringFieldAttribute{Type: "string"}},
 					MatchPairs: []model.MatchPair{
 						{Key: "\"1\"", Value: "Value"},
 					},
@@ -328,17 +315,17 @@ func TestGenerateMatchFieldEnumCode(t *testing.T) {
 		Name: "TestPacket",
 		Fields: []*model.Field{
 			{
-				Name:     "Body",
-				Type:     "match",
-				MatchKey: "Type",
-				MatchPairs: []model.MatchPair{
-					{
-						Key:   "1",
-						Value: "FirstValue",
-					},
-					{
-						Key:   "2",
-						Value: "SecondValue",
+				Name: "Body",
+				Attr: &model.MatchFieldAttribute{
+					MatchPairs: []model.MatchPair{
+						{
+							Key:   "1",
+							Value: "FirstValue",
+						},
+						{
+							Key:   "2",
+							Value: "SecondValue",
+						},
 					},
 				},
 			},
@@ -368,7 +355,7 @@ func TestGenerateUnitTestCode(t *testing.T) {
 		Fields: []*model.Field{
 			{
 				Name: "testField",
-				Type: "u32",
+				Attr: &model.BasicFieldAttribute{Type: "u32"},
 			},
 		},
 	}
@@ -405,25 +392,25 @@ func TestTestValue(t *testing.T) {
 		{
 			name:     "string list",
 			parent:   "Parent",
-			field:    &model.Field{Name: "strings", Type: "string", IsRepeat: true},
+			field:    &model.Field{Name: "strings", IsRepeat: true, Attr: &model.DynamicStringFieldAttribute{Type: "string"}},
 			expected: `vec!["example".to_string(), "test".to_string()]`,
 		},
 		{
 			name:     "u32 list",
 			parent:   "Parent",
-			field:    &model.Field{Name: "numbers", Type: "u32", IsRepeat: true},
+			field:    &model.Field{Name: "numbers", IsRepeat: true, Attr: &model.BasicFieldAttribute{Type: "u32"}},
 			expected: "vec![123456,654321]",
 		},
 		{
 			name:     "string",
 			parent:   "Parent",
-			field:    &model.Field{Name: "text", Type: "string"},
+			field:    &model.Field{Name: "text", Attr: &model.DynamicStringFieldAttribute{Type: "string"}},
 			expected: `"example".to_string()`,
 		},
 		{
 			name:     "u32",
 			parent:   "Parent",
-			field:    &model.Field{Name: "number", Type: "u32"},
+			field:    &model.Field{Name: "number", Attr: &model.BasicFieldAttribute{Type: "u32"}},
 			expected: "123456",
 		},
 		{
@@ -432,7 +419,7 @@ func TestTestValue(t *testing.T) {
 			field: &model.Field{Name: "chars",
 				Attr: &model.FixedStringFieldAttribute{Length: 10,
 					Padding: &model.Padding{PadChar: "' '", PadLeft: false},
-				}, Type: "char[10]"},
+				}},
 			expected: "vec!['a'; 10].into_iter().collect::<String>()",
 		},
 	}

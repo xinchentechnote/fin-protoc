@@ -150,7 +150,7 @@ func (g GoGenerator) getFieldType(field *model.Field) string {
 	case *model.MatchFieldAttribute:
 		return "codec.BinaryCodec"
 	default:
-		return field.Type
+		return "unknow type"
 	}
 
 }
@@ -281,7 +281,7 @@ func (g GoGenerator) generateDecodingField(p *model.Packet, field *model.Field) 
 		b.WriteString("        return err\n")
 		b.WriteString("    }\n")
 	case *model.MatchFieldAttribute:
-		b.WriteString(fmt.Sprintf("    if val, err :=New%sMessageBy%s(p.%s); err != nil {\n", strcase.ToCamel(p.Name), strcase.ToCamel(field.MatchKey), strcase.ToCamel(field.MatchKey)))
+		b.WriteString(fmt.Sprintf("    if val, err :=New%sMessageBy%s(p.%s); err != nil {\n", strcase.ToCamel(p.Name), strcase.ToCamel(c.MatchKeyField.Name), strcase.ToCamel(c.MatchKeyField.Name)))
 		b.WriteString("        return err\n")
 		b.WriteString("    } else {\n")
 		b.WriteString(fmt.Sprintf("        p.%s = val\n", fieldNameCamel))
@@ -391,13 +391,13 @@ func (g GoGenerator) generateEncodingField(p *model.Packet, field *model.Field) 
 		}
 	case *model.LengthFieldAttribute:
 		typ := goBasicTypeMap[field.GetType()]
-		b.WriteString(fmt.Sprintf("    %sPos := buf.Len()\n", strcase.ToLowerCamel(field.LengthOfField)))
+		b.WriteString(fmt.Sprintf("    %sPos := buf.Len()\n", strcase.ToLowerCamel(c.TragetField.Name)))
 		b.WriteString(fmt.Sprintf("    if err :=codec.WriteBasicType%s(buf, %s(0)); err != nil {\n", order, typ.BasicType))
 		b.WriteString("        return fmt.Errorf(\"failed to encode %s: %w\", \"" + field.Name + "\", err)\n")
 		b.WriteString("    }\n")
 	case *model.CheckSumFieldAttribute:
 		typ := goBasicTypeMap[field.GetType()]
-		b.WriteString(fmt.Sprintf("if checksumService, ok := codec.Get(%s); ok {\n", field.CheckSumType))
+		b.WriteString(fmt.Sprintf("if checksumService, ok := codec.Get(%s); ok {\n", c.CheckSumType))
 		b.WriteString(fmt.Sprintf("    p.%s = checksumService.(codec.ChecksumService[*bytes.Buffer, %s]).Calc(buf)\n", fieldNameCamel, typ.BasicType))
 		b.WriteString("}\n")
 		b.WriteString(fmt.Sprintf("    if err :=codec.WriteBasicType%s(buf, p.%s); err != nil {\n", order, fieldNameCamel))
@@ -424,7 +424,7 @@ func (g GoGenerator) generateEncodingField(p *model.Packet, field *model.Field) 
 		b.WriteString("    }\n")
 	case *model.MatchFieldAttribute:
 		b.WriteString(fmt.Sprintf("if p.%s == nil {\n", fieldNameCamel))
-		matchKeyCamel := strcase.ToCamel(field.MatchKey)
+		matchKeyCamel := strcase.ToCamel(c.MatchKeyField.Name)
 		b.WriteString(fmt.Sprintf("    if val, err :=New%sMessageBy%s(p.%s); err != nil {\n", strcase.ToCamel(p.Name), matchKeyCamel, matchKeyCamel))
 		b.WriteString("        return err\n")
 		b.WriteString("    } else {\n")
@@ -521,22 +521,22 @@ func (g GoGenerator) generateNewInstance(name string, p *model.Packet) string {
 	var b strings.Builder
 	for _, f := range p.Fields {
 		fieldNameLowerCamel := strcase.ToLowerCamel(f.Name)
-		if f.InerObject != nil {
-			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, f.InerObject))
-		} else if fp, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, fp))
-		} else if f.GetType() == "match" {
-			mp := f.MatchPairs[0]
+		switch c := f.Attr.(type) {
+		case *model.ObjectFieldAttribute:
+			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, c.RefPacket))
+		case *model.MatchFieldAttribute:
+			mp := c.MatchPairs[0]
 			valuePackage := g.binModel.PacketsMap[mp.Value]
 			b.WriteString(g.generateNewInstance(fieldNameLowerCamel, valuePackage))
+
 		}
 	}
 	b.WriteString(fmt.Sprintf("    %s := &msg.%s{\n", name, strcase.ToCamel(p.Name)))
 	for _, f := range p.Fields {
-		if p.MatchFields[f.MatchKey] != nil {
-			if len(f.MatchPairs) > 0 {
-				key := f.MatchPairs[0].Key
-				b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", strcase.ToCamel(f.MatchKey), key)))))
+		if mf, ok := f.Attr.(*model.MatchFieldAttribute); ok {
+			if len(mf.MatchPairs) > 0 {
+				key := mf.MatchPairs[0].Key
+				b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", strcase.ToCamel(mf.MatchKeyField.Name), key)))))
 				b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", strcase.ToCamel(f.Name), g.generateTestValue(f))))))
 			}
 			continue

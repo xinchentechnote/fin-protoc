@@ -202,8 +202,8 @@ func (g LuaWspGenerator) generateMainDissector(rootPacket *model.Packet) string 
 	var b strings.Builder
 
 	for _, f := range rootPacket.Fields {
-		if f.InerObject != nil {
-			b.WriteString(g.generateSubDissector(rootPacket.Name, f.InerObject))
+		if of, ok := f.Attr.(*model.ObjectFieldAttribute); ok && of.IsIner {
+			b.WriteString(g.generateSubDissector(rootPacket.Name, of.RefPacket))
 			b.WriteString("\n")
 		}
 	}
@@ -241,7 +241,7 @@ func (g LuaWspGenerator) decodeList(treeName string, p *model.Packet, f *model.F
 
 func isMatchField(f *model.Field, rootPacket *model.Packet) bool {
 	for _, field := range rootPacket.Fields {
-		if field.GetType() == "match" && f.Name == field.MatchKey {
+		if mf, ok := field.Attr.(*model.MatchFieldAttribute); ok && f.Name == mf.MatchKeyField.Name {
 			return true
 		}
 	}
@@ -358,15 +358,15 @@ func (g LuaWspGenerator) decodeField(treeName string, p *model.Packet, f *model.
 		}
 		return code
 	case *model.MatchFieldAttribute:
-		if len(f.MatchPairs) == 0 {
+		if len(c.MatchPairs) == 0 {
 			return ""
 		}
 		var b strings.Builder
-		for i, pair := range f.MatchPairs {
+		for i, pair := range c.MatchPairs {
 			if i != 0 {
 				b.WriteString("else")
 			}
-			b.WriteString(fmt.Sprintf("if %s == %s then -- %s\n", strcase.ToSnake(f.MatchKey), pair.Key, pair.Value))
+			b.WriteString(fmt.Sprintf("if %s == %s then -- %s\n", strcase.ToSnake(c.MatchKeyField.Name), pair.Key, pair.Value))
 			b.WriteString(AddIndent4ln(fmt.Sprintf("dissect_%s(buf, pinfo, tree, offset)", strcase.ToSnake(pair.Value))))
 			b.WriteString(AddIndent4ln(fmt.Sprintf("pinfo.cols.info:set(\"%s\")", pair.Value)))
 		}
@@ -440,10 +440,8 @@ func (g LuaWspGenerator) generateFieldDefinitionFromPacket(mdl *model.BinaryMode
 			b.WriteString(AddIndent4ln(fmt.Sprintf("%s = ProtoField.bool(\"%s\", \"%s\"),",
 				fieldName, filterName, f.Name)))
 		default:
-			if p, ok := mdl.PacketsMap[f.Name]; ok {
-				b.WriteString(g.generateFieldDefinitionFromPacket(mdl, p))
-			} else if f.InerObject != nil {
-				b.WriteString(g.generateFieldDefinitionFromPacket(mdl, f.InerObject))
+			if of, ok := f.Attr.(*model.ObjectFieldAttribute); ok {
+				b.WriteString(g.generateFieldDefinitionFromPacket(mdl, of.RefPacket))
 			} else {
 				b.WriteString(AddIndent4ln(fmt.Sprintf("-- Unsupported type: %s", f.GetType())))
 			}

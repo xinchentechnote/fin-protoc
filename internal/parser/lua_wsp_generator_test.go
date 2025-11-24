@@ -34,7 +34,7 @@ func TestGenerateLua(t *testing.T) {
 		Fields: []*model.Field{
 			{
 				Name: "testField",
-				Type: "u32",
+				Attr: &model.BasicFieldAttribute{Type: "u32"},
 			},
 		},
 	}
@@ -65,8 +65,7 @@ func TestGenerateSubDissector(t *testing.T) {
 		Fields: []*model.Field{
 			{
 				Name: "testField",
-				Type: "u32",
-				Attr: &model.BasicFieldAttribute{},
+				Attr: &model.BasicFieldAttribute{Type: "u32"},
 			},
 		},
 	}
@@ -95,8 +94,7 @@ func TestGenerateMainDissector(t *testing.T) {
 		Fields: []*model.Field{
 			{
 				Name: "testField",
-				Type: "u32",
-				Attr: &model.BasicFieldAttribute{},
+				Attr: &model.BasicFieldAttribute{Type: "u32"},
 			},
 		},
 	}
@@ -125,8 +123,7 @@ func TestDecodeList(t *testing.T) {
 	}
 	field := &model.Field{
 		Name:     "testList",
-		Type:     "u32",
-		Attr:     &model.BasicFieldAttribute{},
+		Attr:     &model.BasicFieldAttribute{Type: "u32"},
 		IsRepeat: true,
 	}
 	binModel := &model.BinaryModel{
@@ -162,14 +159,14 @@ func TestLuaDecodeField(t *testing.T) {
 		{
 			name:   "u32 field",
 			packet: model.Packet{Name: "TestPacket"},
-			field:  &model.Field{Name: "testField", Type: "u32", Attr: &model.BasicFieldAttribute{}},
+			field:  &model.Field{Name: "testField", Attr: &model.BasicFieldAttribute{Type: "u32"}},
 			expected: `tree:add(fields.test_packet_test_field, buf(offset, 4))
 offset = offset + 4`,
 		},
 		{
 			name:   "string field",
 			packet: model.Packet{Name: "TestPacket"},
-			field:  &model.Field{Name: "testField", Type: "string", Attr: &model.DynamicStringFieldAttribute{}},
+			field:  &model.Field{Name: "testField", Attr: &model.DynamicStringFieldAttribute{}},
 			expected: `local test_packet_test_field_len = buf(offset, 1):uint()
 tree:add("testField Len: ".. test_packet_test_field_len, buf(offset, 1))
 offset = offset + 1
@@ -180,13 +177,16 @@ offset = offset + test_packet_test_field_len`,
 			name:   "match field",
 			packet: model.Packet{Name: "TestPacket"},
 			field: &model.Field{
-				Name:     "testField",
-				Type:     "match",
-				MatchKey: "msgType",
-				MatchPairs: []model.MatchPair{
-					{Key: "1", Value: "Message1"},
+				Name: "testField",
+				Attr: &model.MatchFieldAttribute{
+					MatchKeyField: &model.Field{
+						Name: "msgType",
+						Attr: &model.BasicFieldAttribute{Type: "u32"},
+					},
+					MatchPairs: []model.MatchPair{
+						{Key: "1", Value: "Message1"},
+					},
 				},
-				Attr: &model.MatchFieldAttribute{},
 			},
 			expected: `if msg_type == 1 then -- Message1
     dissect_message_1(buf, pinfo, tree, offset)
@@ -196,9 +196,10 @@ end`,
 		{
 			name:   "char array",
 			packet: model.Packet{Name: "TestPacket"},
-			field: &model.Field{Name: "testField", Attr: &model.FixedStringFieldAttribute{Length: 10,
-				Padding: &model.Padding{PadChar: "' '", PadLeft: false},
-			}, Type: "char[10]"},
+			field: &model.Field{Name: "testField",
+				Attr: &model.FixedStringFieldAttribute{Length: 10,
+					Padding: &model.Padding{PadChar: "' '", PadLeft: false},
+				}},
 			expected: `tree:add(fields.test_packet_test_field, buf(offset, 10))
 offset = offset + 10`,
 		},
@@ -223,7 +224,7 @@ func TestDecodeListSize(t *testing.T) {
 	}
 	field := &model.Field{
 		Name:     "testList",
-		Type:     "u32",
+		Attr:     &model.BasicFieldAttribute{Type: "u32"},
 		IsRepeat: true,
 	}
 	binModel := &model.BinaryModel{
@@ -278,7 +279,7 @@ func TestDecodeStringLen(t *testing.T) {
 	}
 	field := &model.Field{
 		Name: "testString",
-		Type: "string",
+		Attr: &model.DynamicStringFieldAttribute{Type: "string"},
 	}
 	binModel := &model.BinaryModel{
 		PacketsMap: map[string]*model.Packet{
@@ -332,11 +333,11 @@ func TestGenerateFieldDefinition(t *testing.T) {
 		Fields: []*model.Field{
 			{
 				Name: "testField",
-				Type: "u32",
+				Attr: &model.BasicFieldAttribute{Type: "u32"},
 			},
 			{
 				Name: "testString",
-				Type: "string",
+				Attr: &model.DynamicStringFieldAttribute{Type: "string"},
 			},
 		},
 	}
@@ -362,23 +363,15 @@ func TestGenerateFieldDefinitionFromPacket(t *testing.T) {
 		Fields: []*model.Field{
 			{
 				Name: "test",
-				Type: "u32",
+				Attr: &model.BasicFieldAttribute{Type: "u32"},
 			},
 			{
 				Name: "testString",
-				Type: "string",
+				Attr: &model.DynamicStringFieldAttribute{Type: "string"},
 			},
 			{
 				Name: "testChar",
-				Type: "char",
-			},
-			{
-				Name: "testBytes",
-				Type: "bytes",
-			},
-			{
-				Name: "testBool",
-				Type: "bool",
+				Attr: &model.BasicFieldAttribute{Type: "char"},
 			},
 		},
 	}
@@ -392,8 +385,6 @@ func TestGenerateFieldDefinitionFromPacket(t *testing.T) {
 	assert.Contains(t, code, "test_packet_test = ProtoField.uint32(\"test_packet.test\", \"test\", base.DEC),")
 	assert.Contains(t, code, "test_packet_test_string = ProtoField.string(\"test_packet.test_string\", \"testString\"),")
 	assert.Contains(t, code, "test_packet_test_char = ProtoField.char(\"test_packet.test_char\", \"testChar\", base.OCT),")
-	assert.Contains(t, code, "test_packet_test_bytes = ProtoField.bytes(\"test_packet.test_bytes\", \"testBytes\"),")
-	assert.Contains(t, code, "test_packet_test_bool = ProtoField.bool(\"test_packet.test_bool\", \"testBool\"),")
 }
 
 func TestIsMatchField(t *testing.T) {
@@ -411,9 +402,10 @@ func TestIsMatchField(t *testing.T) {
 			rootPacket: model.Packet{
 				Fields: []*model.Field{
 					{
-						Name:     "testField",
-						Type:     "match",
-						MatchKey: "msgType",
+						Name: "testField",
+						Attr: &model.MatchFieldAttribute{MatchKeyField: &model.Field{
+							Name: "msgType",
+						}},
 					},
 				},
 			},
@@ -427,9 +419,12 @@ func TestIsMatchField(t *testing.T) {
 			rootPacket: model.Packet{
 				Fields: []*model.Field{
 					{
-						Name:     "testField",
-						Type:     "match",
-						MatchKey: "msgType",
+						Name: "testField",
+						Attr: &model.MatchFieldAttribute{
+							MatchKeyField: &model.Field{
+								Name: "msgType",
+							},
+						},
 					},
 				},
 			},

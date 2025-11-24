@@ -256,7 +256,7 @@ func (g PythonGenerator) generateDecodeField(p *model.Packet, f *model.Field) st
 			b.WriteString(fmt.Sprintf("    self.%s.decode(buffer)\n", fieldName))
 		}
 	case *model.MatchFieldAttribute:
-		b.WriteString(fmt.Sprintf("    self.%s = %sMessageFactory.create(self.%s)\n", fieldName, strcase.ToLowerCamel(p.Name), strcase.ToSnake(f.MatchKey)))
+		b.WriteString(fmt.Sprintf("    self.%s = %sMessageFactory.create(self.%s)\n", fieldName, strcase.ToLowerCamel(p.Name), strcase.ToSnake(c.MatchKeyField.Name)))
 		b.WriteString(fmt.Sprintf("    self.%s.decode(buffer)\n", fieldName))
 	default:
 		b.WriteString("-- unsupported type: " + f.GetType() + "\n")
@@ -444,17 +444,17 @@ func (g PythonGenerator) generateNewInstance(name string, packet *model.Packet) 
 	b.WriteString(fmt.Sprintf("%s = %s()\n", name, strcase.ToCamel(packet.Name)))
 	for _, f := range packet.Fields {
 		fieldName := strcase.ToSnake(f.Name)
-		if packet.MatchFields[f.MatchKey] != nil {
-			if len(f.MatchPairs) > 0 {
-				key := f.MatchPairs[0].Key
-				b.WriteString(fmt.Sprintf("%s.%s = %s\n", name, strcase.ToSnake(f.MatchKey), key))
+		if mf, ok := f.Attr.(*model.MatchFieldAttribute); ok {
+			if len(mf.MatchPairs) > 0 {
+				key := mf.MatchPairs[0].Key
+				b.WriteString(fmt.Sprintf("%s.%s = %s\n", name, strcase.ToSnake(mf.MatchKeyField.Name), key))
 				b.WriteString(fmt.Sprintf("%s.%s = %s\n", name, fieldName, g.generateTestValue(f)))
 			}
 			continue
 		}
-		if packet.MatchFields[f.Name] != nil {
-			continue
-		}
+		// if packet.MatchFields[f.Name] != nil {
+		// 	continue
+		// }
 		b.WriteString(fmt.Sprintf("%s.%s = %s\n", name, fieldName, g.generateTestValue(f)))
 	}
 

@@ -97,16 +97,12 @@ func (g CppGenerator) generateCodeForPacket(p *model.Packet) string {
 
 	//iner
 	for _, f := range p.Fields {
-		if f.InerObject != nil {
-			b.WriteString(g.generateCodeForPacket(f.InerObject))
+		if of, ok := f.Attr.(*model.ObjectFieldAttribute); ok {
+			b.WriteString(g.generateCodeForPacket(of.RefPacket))
 			b.WriteString("\n")
 		}
-		if mp, ok := g.binModel.PacketsMap[f.GetType()]; ok {
-			b.WriteString(g.generateCodeForPacket(mp))
-			b.WriteString("\n")
-		}
-		if f.GetType() == "match" {
-			for _, pair := range f.MatchPairs {
+		if mf, ok := f.Attr.(*model.MatchFieldAttribute); ok {
+			for _, pair := range mf.MatchPairs {
 				mp := g.binModel.PacketsMap[pair.Value]
 				packetCode := g.generateCodeForPacket(mp)
 				if packetCode != "" {
@@ -215,13 +211,13 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 	for _, f := range p.Fields {
 		fieldNameLowerCamel := strcase.ToLowerCamel(f.Name)
 		padding := g.GetPadding(f)
-		if _, ok := f.LenAttr.(*model.LengthFieldAttribute); ok {
+		if lf, ok := f.LenAttr.(*model.LengthFieldAttribute); ok {
 			b.WriteString(fmt.Sprintf("    auto %sStart = buf.writer_index();\n", fieldNameLowerCamel))
 			b.WriteString(fmt.Sprintf("    %s->encode(buf);\n", fieldNameLowerCamel))
 			b.WriteString(fmt.Sprintf("    auto %sEnd = buf.writer_index();\n", fieldNameLowerCamel))
-			typ := cppBasicTypeMap[p.LengthField.GetType()]
-			bodyName := strcase.ToLowerCamel(p.LengthField.LengthOfField)
-			lengthFieldName := strcase.ToLowerCamel(p.LengthField.Name)
+			typ := cppBasicTypeMap[lf.GetType()]
+			bodyName := strcase.ToLowerCamel(lf.TragetField.Name)
+			lengthFieldName := strcase.ToLowerCamel(f.Name)
 			b.WriteString(fmt.Sprintf("    auto %sLen_ = static_cast<%s>(%sEnd - %sStart);\n", bodyName, typ.BasicType, fieldNameLowerCamel, fieldNameLowerCamel))
 			if g.config.LittleEndian {
 				b.WriteString(fmt.Sprintf("    buf.write_%s_at(%sPos, %sLen_);\n", typ.Le, lengthFieldName, bodyName))
@@ -245,7 +241,7 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 			if g.config.LittleEndian {
 				ty = typ.Le
 			}
-			b.WriteString(fmt.Sprintf("    auto service = ChecksumServiceContext::instance().get<ByteBuf, %s>(%s);\n", typ.Name, f.CheckSumType))
+			b.WriteString(fmt.Sprintf("    auto service = ChecksumServiceContext::instance().get<ByteBuf, %s>(%s);\n", typ.Name, c.CheckSumType))
 			b.WriteString("    if(service != nullptr){\n")
 			b.WriteString("        auto cs = service->calc(buf);\n")
 			b.WriteString(fmt.Sprintf("        buf.write_%s(cs);\n", ty))
@@ -399,7 +395,7 @@ func (g CppGenerator) generateDecode(p *model.Packet) string {
 				b.WriteString(fmt.Sprintf("    %s.decode(buf);\n", fieldNameLowerCamel))
 			}
 		case *model.MatchFieldAttribute:
-			matchKeyLowerCamel := strcase.ToLowerCamel(f.MatchKey)
+			matchKeyLowerCamel := strcase.ToLowerCamel(c.MatchKeyField.Name)
 			b.WriteString(fmt.Sprintf("    %s = %sMessageFactory::getInstance().create(%s);\n", fieldNameLowerCamel, strcase.ToCamel(p.Name), matchKeyLowerCamel))
 			b.WriteString(fmt.Sprintf("    %s->decode(buf);\n", fieldNameLowerCamel))
 		default:

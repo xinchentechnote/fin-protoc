@@ -187,15 +187,6 @@ func (m *BinaryModel) AddPacket(packet *Packet) {
 			return
 		}
 		m.RootPacket = packet
-		if packet.LengthField != nil {
-			if _, ok := packet.FieldMap[packet.LengthField.LengthOfField]; !ok {
-				m.AddSyntaxError(&SyntaxError{
-					Line:   packet.LengthField.Line,
-					Column: packet.LengthField.Column,
-					Msg:    "Length field refers to unknown field " + packet.LengthField.LengthOfField,
-				})
-			}
-		}
 	}
 }
 
@@ -276,7 +267,7 @@ type LengthOfAttribute struct {
 
 // GetType return field type
 func (l LengthOfAttribute) GetType() string {
-	return getBasicType(l.TargetField.Type)
+	return l.TargetField.Attr.GetType()
 }
 
 // CheckSumFieldAttribute check sum field attribute
@@ -364,21 +355,14 @@ func getBasicType(fieldType string) string {
 
 // Field represents a single field within a packet. It can be a basic field, nested object, or match field.
 type Field struct {
-	Name          string         // Field name
-	Attr          FieldAttribute // Field attribute interface
-	LenAttr       FieldAttribute // Length attribute or LengthOf attribute
-	Type          string         // Type name if this is a basic field; empty for nested or match fields
-	LengthOfField string         // This is a length field, its value is assigned from the length of another field (LengthOfField), usually used in root packets.
-	Padding       *Padding       // padChar and fromLeft
-	CheckSumType  string         //
-	IsRepeat      bool           // True if the 'repeat' modifier is present
-	InerObject    *Packet        // If the field is a nested object, this holds the nested Packet definition
-	Doc           string         // Optional documentation string (from STRING_LITERAL), currently unused
-	MatchKey      string         // If the field is a match field, this holds the typeName of match
-	MatchPairs    []MatchPair    // If the field is a match field, holds all match key-value pairs
-	Tag           int            // Tag value for step or fix protocols
-	Line          int            // Line number where the field is defined
-	Column        int            // Column number where the field is defined
+	Name     string         // Field name
+	Attr     FieldAttribute // Field attribute interface
+	LenAttr  FieldAttribute // Length attribute or LengthOf attribute
+	IsRepeat bool           // True if the 'repeat' modifier is present
+	Doc      string         // Optional documentation string (from STRING_LITERAL), currently unused
+	Tag      int            // Tag value for step or fix protocols
+	Line     int            // Line number where the field is defined
+	Column   int            // Column number where the field is defined
 }
 
 // ParseZCharArrayType parse char[\d]
@@ -407,8 +391,15 @@ func ParseCharArrayType(fieldType string) (size int, ok bool) {
 
 // GetType return field type
 func (f Field) GetType() string {
-	if f.Type != "" {
-		switch strings.ToLower(f.Type) {
+	switch c := f.Attr.(type) {
+	case *FixedStringFieldAttribute, *DynamicStringFieldAttribute:
+		return "string"
+	case *ObjectFieldAttribute:
+		return c.RefPacket.Name
+	case *MatchFieldAttribute:
+		return "match"
+	default:
+		switch strings.ToLower(f.Attr.GetType()) {
 		case "i8", "int8":
 			return "i8"
 		case "i16", "int16":
@@ -432,21 +423,9 @@ func (f Field) GetType() string {
 		case "string", "char[]":
 			return "string"
 		default:
-			if _, ok := ParseCharArrayType(f.Type); ok {
-				return "string"
-			}
-			if _, ok := ParseZCharArrayType(f.Type); ok {
-				return "string"
-			}
-			return f.Type // Return the type as is if it doesn't match any known types
+			return f.Attr.GetType()
 		}
 	}
-	if f.InerObject != nil && f.InerObject.Name != "" {
-		return f.InerObject.Name
-	} else if len(f.MatchPairs) > 0 {
-		return "match"
-	}
-	return "unknown"
 }
 
 // MatchPair represents a single key-value mapping inside a match field.

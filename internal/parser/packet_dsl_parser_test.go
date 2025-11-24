@@ -50,8 +50,8 @@ root packet Logon {
 	}
 	// Check fields
 	expectedFields := []*model.Field{
-		{Name: "username", Type: "string", IsRepeat: false, Line: 3, Column: 1, Attr: &model.DynamicStringFieldAttribute{Type: "string"}},
-		{Name: "password", Type: "u16", IsRepeat: false, Line: 4, Column: 1, Attr: &model.BasicFieldAttribute{Type: "u16"}},
+		{Name: "username", IsRepeat: false, Line: 3, Column: 1, Attr: &model.DynamicStringFieldAttribute{Type: "string"}},
+		{Name: "password", IsRepeat: false, Line: 4, Column: 1, Attr: &model.BasicFieldAttribute{Type: "u16"}},
 	}
 	if !reflect.DeepEqual(pkt.Fields, expectedFields) {
 		t.Errorf("fields mismatch. expected %+v, got %+v", expectedFields, pkt.Fields)
@@ -95,27 +95,29 @@ packet Parent {
 	if nested.Name != "nestedChild" {
 		t.Errorf("expected first field 'nestedChild', got '%s'", nested.Name)
 	}
-	if nested.Type != "nestedChild" {
-		t.Errorf("expected nestedChild Type=empty, got '%s'", nested.Type)
+	if nested.Attr.GetType() != "object" {
+		t.Errorf("expected object Type=empty, got '%s'", nested.Attr.GetType())
 	}
-	if nested.InerObject.Name != "nestedChild" {
-		t.Errorf("expected nested InerObject.Name 'nestedChild', got '%s'", nested.InerObject.Name)
-	}
-	if len(nested.InerObject.Fields) != 1 || nested.InerObject.Fields[0].Name != "childField" {
-		t.Errorf("nested child fields incorrect: %+v", nested.InerObject.Fields)
+	of := nested.Attr.(*model.ObjectFieldAttribute)
+	if of.RefPacket.Name != "nestedChild" {
+		t.Errorf("expected nested InerObject.Name 'nestedChild', got '%s'", of.RefPacket.Name)
+		if len(of.RefPacket.Fields) != 1 || of.RefPacket.Fields[0].Name != "childField" {
+			t.Errorf("nested child fields incorrect: %+v", of.RefPacket.Fields)
+		}
 	}
 	// Verify matchType
 	matchField := pkt.Fields[2]
 	if matchField.Name != "body" {
 		t.Errorf("expected second field 'matchName', got '%s'", matchField.Name)
 	}
-	if len(matchField.MatchPairs) != 2 {
-		t.Errorf("expected 2 match pairs, got %d", len(matchField.MatchPairs))
+	mf := matchField.Attr.(*model.MatchFieldAttribute)
+	if len(mf.MatchPairs) != 2 {
+		t.Errorf("expected 2 match pairs, got %d", len(mf.MatchPairs))
 	}
-	if matchField.MatchPairs[0].Key != "0" || matchField.MatchPairs[0].Value != "OptionA" {
-		t.Errorf("first match pair incorrect: %+v", matchField.MatchPairs[0])
+	if mf.MatchPairs[0].Key != "0" || mf.MatchPairs[0].Value != "OptionA" {
+		t.Errorf("first match pair incorrect: %+v", mf.MatchPairs[0])
 	}
-	if matchField.MatchPairs[1].Key != "1" || matchField.MatchPairs[1].Value != "OptionB" {
-		t.Errorf("second match pair incorrect: %+v", matchField.MatchPairs[1])
+	if mf.MatchPairs[1].Key != "1" || mf.MatchPairs[1].Value != "OptionB" {
+		t.Errorf("second match pair incorrect: %+v", mf.MatchPairs[1])
 	}
 }

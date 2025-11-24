@@ -141,8 +141,8 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 			fields = append(fields, fld)
 			fieldMap[fld.Name] = fld
 
-			if fld.Type == "match" {
-				matchFields[fld.MatchKey] = fld.MatchPairs
+			if mf, ok := fld.Attr.(*model.MatchFieldAttribute); ok {
+				matchFields[mf.MatchKeyField.Name] = mf.MatchPairs
 			}
 		}
 	}
@@ -192,15 +192,14 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinitionWithAttribute(ctx *gen.FieldD
 	for _, fieldAttr := range ctx.AllFieldAttribute() {
 		switch {
 		case fieldAttr.CalculatedFromAttribute() != nil:
-			f.CheckSumType = fieldAttr.CalculatedFromAttribute().GetFrom().GetText()
+			f.Attr = &model.CheckSumFieldAttribute{CheckSumType: fieldAttr.CalculatedFromAttribute().GetFrom().GetText()}
 		case fieldAttr.LengthOfAttribute() != nil:
-			f.LengthOfField = fieldAttr.LengthOfAttribute().GetFrom().GetText()
 			f.Attr = &model.LengthFieldAttribute{
 				TragetField: &model.Field{Name: fieldAttr.LengthOfAttribute().GetFrom().GetText()},
 				LengthType:  f.GetType(),
 			}
 		case fieldAttr.PaddingAttribute() != nil:
-			f.Padding = &model.Padding{
+			f.Attr.(*model.FixedStringFieldAttribute).Padding = &model.Padding{
 				PadChar: fieldAttr.PaddingAttribute().PADDING_CHAR().GetText(),
 				PadLeft: strings.Contains(fieldAttr.PaddingAttribute().PADDING_ATTR().GetText(), "left"),
 			}
@@ -212,52 +211,8 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinitionWithAttribute(ctx *gen.FieldD
 
 	}
 
-	creatFieldAttribute(f)
 	return fd
 
-}
-
-func creatFieldAttribute(f *model.Field) {
-	switch f.Attr.(type) {
-	case *model.LengthFieldAttribute:
-		// Already handled
-		return
-	}
-	if size, ok := model.ParseCharArrayType(f.Type); ok {
-		f.Attr = &model.FixedStringFieldAttribute{
-			Length:  size,
-			Padding: f.Padding,
-		}
-	} else if size, ok := model.ParseZCharArrayType(f.Type); ok {
-		padChar := "'\x00'"
-		padLeft := false
-		if f.Padding != nil {
-			padChar = f.Padding.PadChar
-			padLeft = f.Padding.PadLeft
-		}
-		f.Attr = &model.FixedStringFieldAttribute{
-			Length:  size,
-			Padding: &model.Padding{PadChar: padChar, PadLeft: padLeft},
-		}
-	} else if f.CheckSumType != "" {
-		f.Attr = &model.CheckSumFieldAttribute{
-			CheckSumType: f.CheckSumType,
-			Type:         f.GetType(),
-		}
-	} else if f.InerObject != nil {
-		f.Attr = &model.ObjectFieldAttribute{
-			RefPacket:  f.InerObject,
-			IsIner:     true,
-			PacketName: f.InerObject.Name,
-		}
-	} else {
-		switch f.GetType() {
-		case "i8", "u8", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64":
-			f.Attr = &model.BasicFieldAttribute{Type: f.GetType()}
-		case "string":
-			f.Attr = &model.DynamicStringFieldAttribute{Type: f.GetType()}
-		}
-	}
 }
 
 // VisitFieldDefinition dispatches to specific handlers based on field type.
@@ -285,7 +240,6 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinition(ctx interface{}) interface{}
 		}
 		return &model.Field{
 			Name:     name,
-			Type:     typ,
 			Attr:     attr,
 			IsRepeat: c.REPEAT() != nil,
 			Line:     c.GetStart().GetLine(),
@@ -338,10 +292,8 @@ func (v *PacketDslVisitorImpl) VisitLengthFieldDeclaration(ctx *gen.LengthFieldD
 		typ = v.BinModel.MetaDataMap[name].BasicType
 	}
 	return &model.Field{
-		Name:          name,
-		Type:          typ,
-		IsRepeat:      false,
-		LengthOfField: ctx.LengthOfAttribute().GetFrom().GetText(),
+		Name:     name,
+		IsRepeat: false,
 		Attr: &model.LengthFieldAttribute{
 			TragetField: &model.Field{Name: ctx.LengthOfAttribute().GetFrom().GetText()},
 			LengthType:  typ,
@@ -368,13 +320,15 @@ func (v *PacketDslVisitorImpl) VisitCheckSumFieldDeclaration(ctx *gen.CheckSumFi
 		typ = v.BinModel.MetaDataMap[name].BasicType
 	}
 	return &model.Field{
-		Name:         ctx.GetName().GetText(),
-		Type:         typ,
-		IsRepeat:     false,
-		CheckSumType: ctx.CalculatedFromAttribute().GetFrom().GetText(),
-		Doc:          desc,
-		Line:         ctx.GetStart().GetLine(),
-		Column:       ctx.GetStart().GetTokenSource().GetCharPositionInLine(),
+		Name:     ctx.GetName().GetText(),
+		IsRepeat: false,
+		Attr: &model.CheckSumFieldAttribute{
+			Type:         typ,
+			CheckSumType: ctx.CalculatedFromAttribute().GetFrom().GetText(),
+		},
+		Doc:    desc,
+		Line:   ctx.GetStart().GetLine(),
+		Column: ctx.GetStart().GetTokenSource().GetCharPositionInLine(),
 	}
 }
 
@@ -390,7 +344,6 @@ func (v *PacketDslVisitorImpl) VisitInerObjectField(ctx *gen.InerObjectFieldCont
 			continue
 		}
 		f := fld.(*model.Field)
-		creatFieldAttribute(f)
 		subFields = append(subFields, f)
 	}
 	// Construct nested Packet model
@@ -400,12 +353,15 @@ func (v *PacketDslVisitorImpl) VisitInerObjectField(ctx *gen.InerObjectFieldCont
 		Fields: subFields,
 	}
 	return &model.Field{
-		Name:       name,
-		Type:       name, // nested objects do not have a basic Type
-		IsRepeat:   ctx.REPEAT() != nil,
-		InerObject: &p,
-		Line:       ctx.GetStart().GetLine(),
-		Column:     ctx.GetStart().GetTokenSource().GetCharPositionInLine(),
+		Name:     name,
+		IsRepeat: ctx.REPEAT() != nil,
+		Attr: &model.ObjectFieldAttribute{
+			IsIner:     true,
+			RefPacket:  &p,
+			PacketName: p.Name,
+		},
+		Line:   ctx.GetStart().GetLine(),
+		Column: ctx.GetStart().GetTokenSource().GetCharPositionInLine(),
 	}
 }
 
@@ -413,15 +369,25 @@ func (v *PacketDslVisitorImpl) metaDataDeclarationToField(ctx *gen.MetaDataDecla
 	// Field name
 	name := ctx.GetName().GetText()
 	// Determine type if present
-	var typ string
-	if ctx.Type_() != nil {
-		typ = ctx.Type_().GetText()
-	} else {
-		typ = name
-	}
-	// If metadata exists, use its basic type
-	if meta, exists := v.BinModel.MetaDataMap[typ]; exists {
-		typ = meta.BasicType
+	var attr model.FieldAttribute
+	if ctx.Type_().BasicType() != nil {
+		attr = &model.BasicFieldAttribute{
+			Type: ctx.Type_().GetText(),
+		}
+	} else if ctx.Type_().FixedString() != nil {
+		size, _ := strconv.Atoi(ctx.Type_().FixedString().DIGITS().GetText())
+		if strings.Contains(ctx.Type_().GetText(), "zchar") {
+			attr = &model.FixedStringFieldAttribute{
+				Length:  size,
+				Padding: &model.Padding{PadChar: "'\x00'", PadLeft: false},
+			}
+		} else {
+			attr = &model.FixedStringFieldAttribute{
+				Length: size,
+			}
+		}
+	} else if ctx.Type_().DynamicString() != nil {
+		attr = &model.DynamicStringFieldAttribute{Type: "string"}
 	}
 	// Extract documentation string if present, by removing backticks
 	var doc string
@@ -431,7 +397,7 @@ func (v *PacketDslVisitorImpl) metaDataDeclarationToField(ctx *gen.MetaDataDecla
 	}
 	return &model.Field{
 		Name:     name,
-		Type:     typ,
+		Attr:     attr,
 		IsRepeat: false,
 		Doc:      doc,
 		Line:     ctx.GetStart().GetLine(),
@@ -462,14 +428,11 @@ func (v *PacketDslVisitorImpl) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDec
 	}
 	return &model.Field{
 		Name:     matchName,
-		Type:     "match",
-		MatchKey: matchKey,
 		IsRepeat: false,
 		Attr: &model.MatchFieldAttribute{
 			MatchKeyField: &model.Field{Name: matchKey},
 			MatchPairs:    pairs,
 		},
-		MatchPairs: pairs,
 	}
 }
 
