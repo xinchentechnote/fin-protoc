@@ -45,10 +45,29 @@ func NewPacketDslVisitor() *PacketDslVisitorImpl {
 }
 
 func (v *PacketDslVisitorImpl) metaDataDeclarationToMetaData(ctx *gen.MetaDataDeclarationContext) interface{} {
+	var attr model.FieldAttribute
+	if ctx.Type_().BasicType() != nil {
+		attr = &model.BasicFieldAttribute{
+			Type: ctx.Type_().GetText(),
+		}
+	} else if ctx.Type_().FixedString() != nil {
+		size, _ := strconv.Atoi(ctx.Type_().FixedString().DIGITS().GetText())
+		if strings.Contains(ctx.Type_().GetText(), "zchar") {
+			attr = &model.FixedStringFieldAttribute{
+				Length:  size,
+				Padding: &model.Padding{PadChar: "'\x00'", PadLeft: false},
+			}
+		} else {
+			attr = &model.FixedStringFieldAttribute{
+				Length: size,
+			}
+		}
+	} else if ctx.Type_().DynamicString() != nil {
+		attr = &model.DynamicStringFieldAttribute{Type: "string"}
+	}
 	return model.MetaData{
 		Name:        ctx.GetName().GetText(),
-		Typ:         ctx.Type_().GetText(),
-		BasicType:   ctx.Type_().GetText(),
+		Attr:        attr,
 		Description: ctx.STRING_LITERAL().GetText(),
 		Line:        ctx.GetStart().GetLine(),
 		Column:      ctx.GetStart().GetTokenSource().GetCharPositionInLine(),
@@ -192,7 +211,7 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinitionWithAttribute(ctx *gen.FieldD
 	for _, fieldAttr := range ctx.AllFieldAttribute() {
 		switch {
 		case fieldAttr.CalculatedFromAttribute() != nil:
-			f.Attr = &model.CheckSumFieldAttribute{CheckSumType: fieldAttr.CalculatedFromAttribute().GetFrom().GetText()}
+			f.Attr = &model.CheckSumFieldAttribute{Type: f.GetType(), CheckSumType: fieldAttr.CalculatedFromAttribute().GetFrom().GetText()}
 		case fieldAttr.LengthOfAttribute() != nil:
 			f.Attr = &model.LengthFieldAttribute{
 				TragetField: &model.Field{Name: fieldAttr.LengthOfAttribute().GetFrom().GetText()},
@@ -228,10 +247,7 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinition(ctx interface{}) interface{}
 		var attr model.FieldAttribute
 		if v.BinModel.MetaDataMap[typ] != (model.MetaData{}) {
 			// If metadata exists, use its basic type
-			typ = v.BinModel.MetaDataMap[typ].BasicType
-			attr = &model.BasicFieldAttribute{
-				Type: typ,
-			}
+			attr = v.BinModel.MetaDataMap[typ].Attr
 		} else {
 			attr = &model.ObjectFieldAttribute{
 				IsIner:     false,
@@ -289,7 +305,7 @@ func (v *PacketDslVisitorImpl) VisitLengthFieldDeclaration(ctx *gen.LengthFieldD
 	}
 	if v.BinModel.MetaDataMap[name] != (model.MetaData{}) {
 		// If metadata exists, use its basic type
-		typ = v.BinModel.MetaDataMap[name].BasicType
+		typ = v.BinModel.MetaDataMap[name].Attr.GetType()
 	}
 	return &model.Field{
 		Name:     name,
@@ -317,7 +333,7 @@ func (v *PacketDslVisitorImpl) VisitCheckSumFieldDeclaration(ctx *gen.CheckSumFi
 	}
 	if v.BinModel.MetaDataMap[name] != (model.MetaData{}) {
 		// If metadata exists, use its basic type
-		typ = v.BinModel.MetaDataMap[name].BasicType
+		typ = v.BinModel.MetaDataMap[name].Attr.GetType()
 	}
 	return &model.Field{
 		Name:     ctx.GetName().GetText(),
@@ -460,10 +476,10 @@ func (v *PacketDslVisitorImpl) VisitMatchPair(ctx *gen.MatchPairContext) interfa
 
 // VisitRefMetaDataDeclaration handles reference metadata declarations.
 func (v *PacketDslVisitorImpl) VisitRefMetaDataDeclaration(ctx *gen.RefMetaDataDeclarationContext) interface{} {
+
 	return model.MetaData{
 		Name:        ctx.GetName().GetText(),
-		Typ:         ctx.GetTyp().GetText(),
-		BasicType:   ctx.GetTyp().GetText(),
+		Attr:        v.BinModel.MetaDataMap[ctx.GetTyp().GetText()].Attr,
 		Description: ctx.STRING_LITERAL().GetText(),
 		Line:        ctx.GetStart().GetLine(),
 		Column:      ctx.GetStart().GetTokenSource().GetCharPositionInLine(),

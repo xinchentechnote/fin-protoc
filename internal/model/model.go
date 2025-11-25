@@ -131,8 +131,8 @@ func (m *BinaryModel) AddMetaData(metaData MetaData) {
 		})
 		return
 	}
-	if m.MetaDataMap[metaData.Typ] != (MetaData{}) {
-		metaData.BasicType = m.MetaDataMap[metaData.Typ].BasicType
+	if m.MetaDataMap[metaData.Name] != (MetaData{}) {
+		metaData.Attr = m.MetaDataMap[metaData.Name].Attr
 	}
 	m.MetaDataMap[metaData.Name] = metaData
 }
@@ -192,12 +192,11 @@ func (m *BinaryModel) AddPacket(packet *Packet) {
 
 // MetaData metaData
 type MetaData struct {
-	Name        string // Name of the metadata
-	Typ         string // Type of the metadata,
-	BasicType   string // Basic type if applicable, e.g., "i32", "u16"
-	Description string // Description of the metadata
-	Line        int    // Line number where the metadata is defined
-	Column      int    // Column number where the metadata is defined
+	Name        string         // Name of the metadata
+	Attr        FieldAttribute // Type attribute
+	Description string         // Description of the metadata
+	Line        int            // Line number where the metadata is defined
+	Column      int            // Column number where the metadata is defined
 }
 
 // Packet represents a message definition, which may be a root or nested packet.
@@ -278,7 +277,7 @@ type CheckSumFieldAttribute struct {
 
 // GetType return field type
 func (c CheckSumFieldAttribute) GetType() string {
-	return getBasicType(c.CheckSumType)
+	return getBasicType(c.Type)
 }
 
 // FixedStringFieldAttribute fixed string field attribute

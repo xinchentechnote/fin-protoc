@@ -142,13 +142,15 @@ func (g GoGenerator) generateMessageFactory(p *model.Packet, mfa *model.MatchFie
 
 func (g GoGenerator) getFieldType(field *model.Field) string {
 
-	switch field.Attr.(type) {
+	switch c := field.Attr.(type) {
 	case *model.LengthFieldAttribute, *model.CheckSumFieldAttribute, *model.BasicFieldAttribute:
 		return goBasicTypeMap[field.GetType()].BasicType
 	case *model.DynamicStringFieldAttribute, *model.FixedStringFieldAttribute:
 		return "string"
 	case *model.MatchFieldAttribute:
 		return "codec.BinaryCodec"
+	case *model.ObjectFieldAttribute:
+		return c.RefPacket.Name
 	default:
 		return "unknow type"
 	}

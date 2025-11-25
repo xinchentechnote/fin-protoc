@@ -452,9 +452,9 @@ func (g PythonGenerator) generateNewInstance(name string, packet *model.Packet) 
 			}
 			continue
 		}
-		// if packet.MatchFields[f.Name] != nil {
-		// 	continue
-		// }
+		if packet.MatchFields[f.Name] != nil {
+			continue
+		}
 		b.WriteString(fmt.Sprintf("%s.%s = %s\n", name, fieldName, g.generateTestValue(f)))
 	}
 

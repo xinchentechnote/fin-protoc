@@ -262,12 +262,12 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 
 	case *model.MatchFieldAttribute:
 		var b strings.Builder
-		if _, ok := f.LenAttr.(*model.LengthOfAttribute); ok {
+		if _, ok := f.LenAttr.(*model.LengthFieldAttribute); ok {
 			b.WriteString(fmt.Sprintf("let %s_start = buf.len();\n", strcase.ToSnake(f.Name)))
 		}
 		b.WriteString(g.EncoderMatchField(parentName, "buf", f, c))
 		b.WriteString("\n")
-		if _, ok := f.LenAttr.(*model.LengthOfAttribute); ok {
+		if _, ok := f.LenAttr.(*model.LengthFieldAttribute); ok {
 			b.WriteString(fmt.Sprintf("let %s_end = buf.len();\n", strcase.ToSnake(f.Name)))
 			typ := cppBasicTypeMap[p.LengthField.GetType()]
 			if g.config.LittleEndian {
@@ -471,9 +471,9 @@ func (g RustGenerator) generateUnitTestCode(pkt *model.Packet) string {
 			}
 			continue
 		}
-		// if pkt.MatchFields[f.Name] != nil {
-		// 	continue
-		// }
+		if pkt.MatchFields[f.Name] != nil {
+			continue
+		}
 		b.WriteString(AddIndent4ln(AddIndent4(AddIndent4(fmt.Sprintf("%s: %s,", g.GetFieldName(f), g.testValue(pkt.Name, f))))))
 	}
 	b.WriteString(AddIndent4ln(AddIndent4("};\n")))

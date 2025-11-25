@@ -13,7 +13,7 @@
             "args": [
                 "format",
                 "-f",
-                "/home/s0596/workspace/fin-proto-rs/szse-binary/proto/szse_bin_v1.29.dsl"
+                "${env:HOME}/workspace/fin-proto-rs/szse-binary/proto/szse_bin_v1.29.dsl"
             ]
         },
         {
@@ -25,9 +25,23 @@
             "args": [
                 "compile",
                 "-f",
-                "/home/s0596/workspace/fin-proto/sample/sample.pdsl",
+                "${env:HOME}/workspace/fin-proto/sample/sample.pdsl",
                 "-j",
-                "/home/s0596/workspace/fin-proto-java/sample-bin/src/"
+                "${env:HOME}/workspace/fin-proto-java/sample-bin/src/"
+            ]
+        },
+        {
+            "name": "Launch Package - debug gen lua",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/",
+            "args": [
+                "compile",
+                "-f",
+                "${env:HOME}/workspace/fin-proto/szse/binary/szse_bin_v1.29.pdsl",
+                "-l",
+                "${env:HOME}/workspace/fin-proto/szse/binary/"
             ]
         },
         {
@@ -39,9 +53,9 @@
             "args": [
                 "compile",
                 "-f",
-                "/home/s0596/workspace/fin-proto/sample/sample.pdsl",
+                "${env:HOME}/workspace/fin-proto/sample/sample.pdsl",
                 "-g",
-                "/home/s0596/workspace/fin-proto-go/sample-bin/messages/"
+                "${env:HOME}/workspace/fin-proto-go/sample-bin/messages/"
             ]
         },
         {
@@ -53,9 +67,9 @@
             "args": [
                 "compile",
                 "-f",
-                "/home/s0596/workspace/fin-proto-java/sse-bin/proto/sse_bin_v0.57.dsl",
+                "${env:HOME}/workspace/fin-proto-java/sse-bin/proto/sse_bin_v0.57.dsl",
                 "-j",
-                "/home/s0596/workspace/fin-proto-java/sse-bin/src/"
+                "${env:HOME}/workspace/fin-proto-java/sse-bin/src/"
             ]
         },
         {
@@ -67,9 +81,23 @@
             "args": [
                 "compile",
                 "-f",
-                "/home/s0596/workspace/fin-proto-java/szse-bin/proto/szse_bin_v1.29.pdsl",
+                "${env:HOME}/workspace/fin-proto-java/szse-bin/proto/szse_bin_v1.29.pdsl",
                 "-j",
-                "/home/s0596/workspace/fin-proto-java/szse-bin/src/"
+                "${env:HOME}/workspace/fin-proto-java/szse-bin/src/"
+            ]
+        },
+        {
+            "name": "debug-gen-sample-rs",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/",
+            "args": [
+                "compile",
+                "-f",
+                "${env:HOME}/workspace/fin-proto/sample/sample.pdsl",
+                "-r",
+                "${env:HOME}/workspace/fin-proto-rs/sample-binary/src/"
             ]
         }
     ]
