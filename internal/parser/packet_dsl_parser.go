@@ -63,7 +63,7 @@ func (v *PacketDslVisitorImpl) metaDataDeclarationToMetaData(ctx *gen.MetaDataDe
 			}
 		}
 	} else if ctx.Type_().DynamicString() != nil {
-		attr = &model.DynamicStringFieldAttribute{Type: "string"}
+		attr = &model.DynamicStringFieldAttribute{}
 	}
 	return model.MetaData{
 		Name:        ctx.GetName().GetText(),
@@ -367,6 +367,8 @@ func (v *PacketDslVisitorImpl) VisitInerObjectField(ctx *gen.InerObjectFieldCont
 		Name:   name,
 		IsRoot: false,
 		Fields: subFields,
+		Line:   ctx.GetStart().GetLine(),
+		Column: ctx.GetStart().GetTokenSource().GetCharPositionInLine(),
 	}
 	return &model.Field{
 		Name:     name,
@@ -403,7 +405,7 @@ func (v *PacketDslVisitorImpl) metaDataDeclarationToField(ctx *gen.MetaDataDecla
 			}
 		}
 	} else if ctx.Type_().DynamicString() != nil {
-		attr = &model.DynamicStringFieldAttribute{Type: "string"}
+		attr = &model.DynamicStringFieldAttribute{}
 	}
 	// Extract documentation string if present, by removing backticks
 	var doc string

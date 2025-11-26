@@ -2,9 +2,9 @@ package parser
 
 import (
 	"os"
-	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/xinchentechnote/fin-protoc/internal/model"
 )
 
@@ -22,51 +22,92 @@ func writeTempFile(t *testing.T, content string) string {
 	return f.Name()
 }
 
-func TestParseSimplePacket(t *testing.T) {
-	// Example DSL: one root packet with two simple fields
-	dsl := `
-root packet Logon {
-	string username,
-	u16 password,
+func TestParseOption(t *testing.T) {
+	dsl := `options {
+    StringPrefixLenType = u16;
+    ArrayPrefixLenType = u16;
+    LittleEndian = true;
+    JavaPackage = "com.finproto.sample.messages";
+    GoPackage = "sample_bin";
+    GoModule = "github.com/xinchentechnote/fin-proto-go/sample-bin/messages";
+    FixedStringPadFromLeft = true;
+    FixedStringPadChar = '0';
 }`
 	path := writeTempFile(t, dsl)
 	defer os.Remove(path)
 
 	data, err := ParseFile(path)
-	if err != nil {
-		t.Fatalf("ParseFile returned error: %v", err)
-	}
-	// Expect []model.Packet with one entry
-	packets := data.(*model.BinaryModel).PacketsMap
-	if len(packets) != 1 {
-		t.Fatalf("expected 1 packet, got %d", len(packets))
-	}
-	pkt := packets["Logon"]
-	if pkt.Name != "Logon" {
-		t.Errorf("expected packet name 'Logon', got '%s'", pkt.Name)
-	}
-	if !pkt.IsRoot {
-		t.Errorf("expected IsRoot=true")
-	}
-	// Check fields
-	expectedFields := []*model.Field{
-		{Name: "username", IsRepeat: false, Line: 3, Column: 1, Attr: &model.DynamicStringFieldAttribute{Type: "string"}},
-		{Name: "password", IsRepeat: false, Line: 4, Column: 1, Attr: &model.BasicFieldAttribute{Type: "u16"}},
-	}
-	if !reflect.DeepEqual(pkt.Fields, expectedFields) {
-		t.Errorf("fields mismatch. expected %+v, got %+v", expectedFields, pkt.Fields)
-	}
+	assert.NoError(t, err)
+	assert.NotNil(t, data)
+	assert.Equal(t, &model.Configuration{
+		StringLenPrefixLenType: "u16",
+		ListLenPrefixLenType:   "u16",
+		LittleEndian:           true,
+		JavaPackage:            "com.finproto.sample.messages",
+		GoPackage:              "sample_bin",
+		GoModule:               "github.com/xinchentechnote/fin-proto-go/sample-bin/messages",
+		Padding: &model.Padding{
+			PadChar: "'0'",
+			PadLeft: true,
+		},
+	}, data.(*model.BinaryModel).Config)
 }
 
-func TestParseNestedAndMatchField(t *testing.T) {
+func TestParseSimplePacket(t *testing.T) {
+	dsl := `
+root packet Logon {
+	char fchar,
+	u8 fu8,
+	i8 fi8,
+	u16 fu16,
+	i16 fi16,
+	u32 fu32,
+	i32 fi32,
+	u64 fu64,
+	i64 fi64,
+	f32 ff32,
+	f64 ff64,
+	char[10] ffixedstr,
+	string fstr,
+}`
+	path := writeTempFile(t, dsl)
+	defer os.Remove(path)
+
+	data, err := ParseFile(path)
+	assert.NoError(t, err)
+	assert.NotNil(t, data)
+	binModel := data.(*model.BinaryModel)
+	assert.Equal(t, 1, len(binModel.PacketsMap))
+	pkt := binModel.PacketsMap["Logon"]
+	assert.Equal(t, "Logon", pkt.Name)
+	assert.Equal(t, 1, len(binModel.Packets))
+	assert.Equal(t, pkt, binModel.Packets[0])
+	assert.True(t, pkt.IsRoot)
+	expectedFields := []*model.Field{
+		{Name: "fchar", IsRepeat: false, Line: 3, Column: 1, Attr: &model.BasicFieldAttribute{Type: "char"}},
+		{Name: "fu8", IsRepeat: false, Line: 4, Column: 1, Attr: &model.BasicFieldAttribute{Type: "u8"}},
+		{Name: "fi8", IsRepeat: false, Line: 5, Column: 1, Attr: &model.BasicFieldAttribute{Type: "i8"}},
+		{Name: "fu16", IsRepeat: false, Line: 6, Column: 1, Attr: &model.BasicFieldAttribute{Type: "u16"}},
+		{Name: "fi16", IsRepeat: false, Line: 7, Column: 1, Attr: &model.BasicFieldAttribute{Type: "i16"}},
+		{Name: "fu32", IsRepeat: false, Line: 8, Column: 1, Attr: &model.BasicFieldAttribute{Type: "u32"}},
+		{Name: "fi32", IsRepeat: false, Line: 9, Column: 1, Attr: &model.BasicFieldAttribute{Type: "i32"}},
+		{Name: "fu64", IsRepeat: false, Line: 10, Column: 1, Attr: &model.BasicFieldAttribute{Type: "u64"}},
+		{Name: "fi64", IsRepeat: false, Line: 11, Column: 1, Attr: &model.BasicFieldAttribute{Type: "i64"}},
+		{Name: "ff32", IsRepeat: false, Line: 12, Column: 1, Attr: &model.BasicFieldAttribute{Type: "f32"}},
+		{Name: "ff64", IsRepeat: false, Line: 13, Column: 1, Attr: &model.BasicFieldAttribute{Type: "f64"}},
+		{Name: "ffixedstr", IsRepeat: false, Line: 14, Column: 1, Attr: &model.FixedStringFieldAttribute{Length: 10}},
+		{Name: "fstr", IsRepeat: false, Line: 15, Column: 1, Attr: &model.DynamicStringFieldAttribute{}},
+	}
+	assert.Equal(t, 13, len(pkt.Fields))
+	assert.Equal(t, expectedFields, pkt.Fields)
+}
+
+func TestParseMatchField(t *testing.T) {
 	// DSL contains nested object and match field
 	dsl := `
 packet Parent {
 	u16 MsgType,
-	nestedChild {
-		childField,
-	},
-	match MsgType as body {
+	match MsgType as Body {
 		0:OptionA,
 		1:OptionB,
 	},
@@ -75,49 +116,85 @@ packet Parent {
 	defer os.Remove(path)
 
 	data, err := ParseFile(path)
+	assert.NoError(t, err)
+	packets := data.(*model.BinaryModel).PacketsMap
+	pkt := packets["Parent"]
+	assert.Equal(t, 2, len(pkt.Fields))
+
+	msgTypeField := &model.Field{
+		Name: "MsgType", IsRepeat: false, Line: 3, Column: 1, Attr: &model.BasicFieldAttribute{Type: "u16"},
+	}
+	expectedFields := []*model.Field{
+		msgTypeField,
+		{Name: "Body", IsRepeat: false, Line: 0, Column: 0, Attr: &model.MatchFieldAttribute{
+			MatchKeyField: msgTypeField,
+			MatchPairs: []model.MatchPair{
+				{Key: "0", Value: "OptionA", Line: 5, Column: 1},
+				{Key: "1", Value: "OptionB", Line: 6, Column: 1},
+			},
+		}},
+	}
+	assert.Equal(t, expectedFields, pkt.Fields)
+}
+
+func TestParseNested(t *testing.T) {
+	dsl := `
+packet Parent {
+	NestedChild {
+		i32 ChildField,
+	},
+}`
+	path := writeTempFile(t, dsl)
+	defer os.Remove(path)
+
+	data, err := ParseFile(path)
+	assert.NoError(t, err)
+	packets := data.(*model.BinaryModel).PacketsMap
+	pkt := packets["Parent"]
+	assert.Equal(t, 1, len(pkt.Fields))
+
+	nestedPacket := &model.Packet{
+		Name: "NestedChild",
+		Fields: []*model.Field{
+			{Name: "ChildField", IsRepeat: false, Line: 4, Column: 1, Attr: &model.BasicFieldAttribute{Type: "i32"}},
+		},
+		Line: 3, Column: 1,
+	}
+	expectedFields := []*model.Field{
+		{Name: "NestedChild", IsRepeat: false, Line: 3, Column: 1, Attr: &model.ObjectFieldAttribute{IsIner: true, PacketName: "NestedChild", RefPacket: nestedPacket}},
+	}
+	assert.Equal(t, expectedFields, pkt.Fields)
+}
+
+func TestLenghtFeildAttribute(t *testing.T) {
+	dsl := `packet Body {}
+root packet RootPacket {
+	u16 MsgType,
+	@lengthOf(Body)
+	u16 BodyLen,
+	Body,
+	@calculatedFrom("CRC32")
+	u32 Checksum,
+}`
+	path := writeTempFile(t, dsl)
+	defer os.Remove(path)
+
+	result, err := ParseFile(path)
 	if err != nil {
 		t.Fatalf("ParseFile returned error: %v", err)
 	}
-	packets := data.(*model.BinaryModel).PacketsMap
-	if len(packets) != 1 {
-		t.Fatalf("expected 1 packet, got %d", len(packets))
+	assert.NotNil(t, result)
+	binModel := result.(*model.BinaryModel)
+	body := &model.Packet{Name: "Body", Column: 1, Line: 1, FieldMap: make(map[string]*model.Field), MatchFields: make(map[string][]model.MatchPair)}
+	bodyField := &model.Field{Name: "Body", IsRepeat: false, Line: 6, Column: 1, Attr: &model.ObjectFieldAttribute{PacketName: "Body", RefPacket: body}}
+	bodyLen := &model.Field{Name: "BodyLen", IsRepeat: false, Line: 5, Column: 1, Attr: &model.LengthFieldAttribute{LengthType: "u16", TragetField: bodyField}}
+	bodyLen.LenAttr = &model.LengthOfAttribute{LengthField: bodyLen}
+	bodyField.LenAttr = bodyLen.Attr
+	expectedFields := []*model.Field{
+		{Name: "MsgType", IsRepeat: false, Line: 3, Column: 1, Attr: &model.BasicFieldAttribute{Type: "u16"}},
+		bodyLen,
+		bodyField,
+		{Name: "Checksum", IsRepeat: false, Line: 8, Column: 1, Attr: &model.CheckSumFieldAttribute{CheckSumType: "\"CRC32\"", Type: "u32"}},
 	}
-	pkt := packets["Parent"]
-	if pkt.Name != "Parent" {
-		t.Errorf("expected packet name 'Parent', got '%s'", pkt.Name)
-	}
-	// Should have two fields: nestedChild and matchType
-	if len(pkt.Fields) != 3 {
-		t.Fatalf("expected 2 fields, got %d", len(pkt.Fields))
-	}
-	// Verify nestedChild
-	nested := pkt.Fields[1]
-	if nested.Name != "nestedChild" {
-		t.Errorf("expected first field 'nestedChild', got '%s'", nested.Name)
-	}
-	if nested.Attr.GetType() != "object" {
-		t.Errorf("expected object Type=empty, got '%s'", nested.Attr.GetType())
-	}
-	of := nested.Attr.(*model.ObjectFieldAttribute)
-	if of.RefPacket.Name != "nestedChild" {
-		t.Errorf("expected nested InerObject.Name 'nestedChild', got '%s'", of.RefPacket.Name)
-		if len(of.RefPacket.Fields) != 1 || of.RefPacket.Fields[0].Name != "childField" {
-			t.Errorf("nested child fields incorrect: %+v", of.RefPacket.Fields)
-		}
-	}
-	// Verify matchType
-	matchField := pkt.Fields[2]
-	if matchField.Name != "body" {
-		t.Errorf("expected second field 'matchName', got '%s'", matchField.Name)
-	}
-	mf := matchField.Attr.(*model.MatchFieldAttribute)
-	if len(mf.MatchPairs) != 2 {
-		t.Errorf("expected 2 match pairs, got %d", len(mf.MatchPairs))
-	}
-	if mf.MatchPairs[0].Key != "0" || mf.MatchPairs[0].Value != "OptionA" {
-		t.Errorf("first match pair incorrect: %+v", mf.MatchPairs[0])
-	}
-	if mf.MatchPairs[1].Key != "1" || mf.MatchPairs[1].Value != "OptionB" {
-		t.Errorf("second match pair incorrect: %+v", mf.MatchPairs[1])
-	}
+	assert.Equal(t, expectedFields, binModel.PacketsMap["RootPacket"].Fields)
 }

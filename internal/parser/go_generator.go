@@ -31,14 +31,14 @@ var goBasicTypeMap = map[string]GoType{
 
 // GoGenerator a go code generator
 type GoGenerator struct {
-	config   *GeneratorConfig
+	config   *model.Configuration
 	binModel *model.BinaryModel
 }
 
 // NewGoGenerator new
-func NewGoGenerator(config *GeneratorConfig, binModel *model.BinaryModel) *GoGenerator {
+func NewGoGenerator(binModel *model.BinaryModel) *GoGenerator {
 	return &GoGenerator{
-		config:   config,
+		config:   binModel.Config,
 		binModel: binModel,
 	}
 }

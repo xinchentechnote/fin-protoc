@@ -85,10 +85,74 @@ var options = map[string][]string{
 type BinaryModel struct {
 	MetaDataMap  map[string]MetaData // Map of metadata definitions
 	Options      map[string]string   // Map of options
+	Config       *Configuration      // Config from options
 	PacketsMap   map[string]*Packet  // Map of packet definitions, keyed by packet name
 	Packets      []*Packet           // List of all packets
 	RootPacket   *Packet             // root packet
 	SyntaxErrors []*SyntaxError      // List of syntax errors encountered during parsing
+}
+
+// Configuration config
+type Configuration struct {
+	ListLenPrefixLenType   string   //default u16
+	StringLenPrefixLenType string   //default u16
+	JavaPackage            string   //default empty
+	GoPackage              string   //default empty
+	GoModule               string   //default empty
+	LittleEndian           bool     //default false
+	Padding                *Padding //default nil
+}
+
+// NewConfiguration new config
+func NewConfiguration(options map[string]string) *Configuration {
+	config := &Configuration{
+		// Set defaults first
+		ListLenPrefixLenType:   "u16",
+		StringLenPrefixLenType: "u16",
+		JavaPackage:            "",
+		GoPackage:              "",
+		GoModule:               "",
+		LittleEndian:           false,
+		Padding: &Padding{
+			PadLeft: false,
+			PadChar: "' '",
+		},
+	}
+
+	// Override with provided options
+	if val, ok := options[ArrayPrefixLenType]; ok {
+		config.ListLenPrefixLenType = val
+	}
+	if val, ok := options[StringPrefixLenType]; ok {
+		config.StringLenPrefixLenType = val
+	}
+	if val, ok := options[JavaPackage]; ok {
+		config.JavaPackage = val
+	}
+	if val, ok := options[GoPackage]; ok {
+		config.GoPackage = val
+	}
+	if val, ok := options[LittleEndian]; ok {
+		config.LittleEndian = strings.ToLower(val) == "true"
+	}
+	if val, ok := options[GoModule]; ok {
+		config.GoModule = val
+	}
+	fromLeft := false
+	padChar := " "
+	if val, ok := options[FixedStringPadFromLeft]; ok {
+		fromLeft = strings.ToLower(val) == "true"
+	}
+	if val, ok := options[FixedStringPadChar]; ok {
+		padChar = val
+	}
+	if fromLeft || padChar != " " {
+		config.Padding = &Padding{
+			PadLeft: fromLeft,
+			PadChar: padChar,
+		}
+	}
+	return config
 }
 
 // NewBinaryModel new BinaryModel
@@ -102,6 +166,7 @@ func NewBinaryModel() *BinaryModel {
 
 // ResolveDependencies after parse
 func (m *BinaryModel) ResolveDependencies() {
+	m.Config = NewConfiguration(m.Options)
 	for _, packet := range m.Packets {
 		for _, field := range packet.Fields {
 			if of, ok := field.Attr.(*ObjectFieldAttribute); ok {
@@ -293,8 +358,6 @@ func (f FixedStringFieldAttribute) GetType() string {
 
 // DynamicStringFieldAttribute dynamic string field attribute
 type DynamicStringFieldAttribute struct {
-	PrefixLenType string
-	Type          string
 }
 
 // GetType return field type

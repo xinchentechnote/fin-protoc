@@ -10,14 +10,14 @@ import (
 
 // RustGenerator a rust code generator
 type RustGenerator struct {
-	config   *GeneratorConfig
+	config   *model.Configuration
 	binModel *model.BinaryModel
 }
 
 // NewRustGenerator new
-func NewRustGenerator(config *GeneratorConfig, binModel *model.BinaryModel) *RustGenerator {
+func NewRustGenerator(binModel *model.BinaryModel) *RustGenerator {
 	return &RustGenerator{
-		config:   config,
+		config:   binModel.Config,
 		binModel: binModel,
 	}
 }

@@ -33,15 +33,15 @@ var cppBasicTypeMap = map[string]CppType{
 
 // CppGenerator a go code generator
 type CppGenerator struct {
-	config   *GeneratorConfig
+	config   *model.Configuration
 	binModel *model.BinaryModel
 	hasGen   map[string]*model.Packet
 }
 
 // NewCppGenerator new
-func NewCppGenerator(config *GeneratorConfig, binModel *model.BinaryModel) *CppGenerator {
+func NewCppGenerator(binModel *model.BinaryModel) *CppGenerator {
 	return &CppGenerator{
-		config:   config,
+		config:   binModel.Config,
 		binModel: binModel,
 		hasGen:   make(map[string]*model.Packet),
 	}

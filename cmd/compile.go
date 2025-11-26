@@ -31,7 +31,6 @@ func Compile(input string, outputs map[string]string) error {
 		}
 		return fmt.Errorf("found %d syntax errors", len(binModel.SyntaxErrors))
 	}
-	config := parser.NewGeneratorConfig(binModel.Options)
 
 	generators := []struct {
 		lang string
@@ -39,22 +38,22 @@ func Compile(input string, outputs map[string]string) error {
 		gen  func() (map[string][]byte, error)
 	}{
 		{"Lua", outputs["lua"], func() (map[string][]byte, error) {
-			return parser.NewLuaWspGenerator(config, binModel).Generate(binModel)
+			return parser.NewLuaWspGenerator(binModel).Generate(binModel)
 		}},
 		{"Rust", outputs["rust"], func() (map[string][]byte, error) {
-			return parser.NewRustGenerator(config, binModel).Generate(binModel)
+			return parser.NewRustGenerator(binModel).Generate(binModel)
 		}},
 		{"Go", outputs["go"], func() (map[string][]byte, error) {
-			return parser.NewGoGenerator(config, binModel).Generate(binModel)
+			return parser.NewGoGenerator(binModel).Generate(binModel)
 		}},
 		{"Java", outputs["java"], func() (map[string][]byte, error) {
-			return parser.NewJavaGenerator(config, binModel).Generate(binModel)
+			return parser.NewJavaGenerator(binModel).Generate(binModel)
 		}},
 		{"Python", outputs["python"], func() (map[string][]byte, error) {
-			return parser.NewPythonGenerator(config, binModel).Generate(binModel)
+			return parser.NewPythonGenerator(binModel).Generate(binModel)
 		}},
 		{"C++", outputs["cpp"], func() (map[string][]byte, error) {
-			return parser.NewCppGenerator(config, binModel).Generate(binModel)
+			return parser.NewCppGenerator(binModel).Generate(binModel)
 		}},
 	}
 

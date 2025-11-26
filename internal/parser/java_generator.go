@@ -117,14 +117,14 @@ var javaBasicTypeMap = map[string]JavaType{
 
 // JavaGenerator a java code generator
 type JavaGenerator struct {
-	config   *GeneratorConfig
+	config   *model.Configuration
 	binModel *model.BinaryModel
 }
 
 // NewJavaGenerator new
-func NewJavaGenerator(config *GeneratorConfig, binModel *model.BinaryModel) *JavaGenerator {
+func NewJavaGenerator(binModel *model.BinaryModel) *JavaGenerator {
 	return &JavaGenerator{
-		config:   config,
+		config:   binModel.Config,
 		binModel: binModel,
 	}
 }

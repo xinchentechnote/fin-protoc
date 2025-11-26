@@ -391,9 +391,7 @@ func (v *PacketDslFormattor) VisitMatchFieldDeclaration(ctx *gen.MatchFieldDecla
 		}
 
 		value := pairCtx.IDENTIFIER().GetText()
-		if pairCtx.COMMA() != nil {
-			value = strings.TrimSpace(value) + ","
-		}
+		value = strings.TrimSpace(value) + ","
 		formattedDsl.WriteString(AddIndent4ln(fmt.Sprintf("%s : %s", key, value)))
 		lineComment = strings.TrimRight(v.getHiddenRightAtSameLine(pairCtx.GetStop()), "\n")
 		if lineComment != "" {

@@ -8,26 +8,20 @@ import (
 )
 
 func TestNewLuaWspGenerator(t *testing.T) {
-	config := &GeneratorConfig{
-		ListLenPrefixLenType:   "u16",
-		StringLenPrefixLenType: "u8",
-	}
 	binModel := &model.BinaryModel{
-		PacketsMap: make(map[string]*model.Packet),
+		PacketsMap: make(map[string]*model.Packet), Config: &model.Configuration{
+			ListLenPrefixLenType:   "u16",
+			StringLenPrefixLenType: "u8",
+		},
 	}
 
-	generator := NewLuaWspGenerator(config, binModel)
+	generator := NewLuaWspGenerator(binModel)
 
 	assert.NotNil(t, generator)
-	assert.Equal(t, config, generator.config)
 	assert.Equal(t, binModel, generator.binModel)
 }
 
 func TestGenerateLua(t *testing.T) {
-	config := &GeneratorConfig{
-		ListLenPrefixLenType:   "u16",
-		StringLenPrefixLenType: "u8",
-	}
 	rootPacket := &model.Packet{
 		Name:   "TestProtocol",
 		IsRoot: true,
@@ -43,9 +37,13 @@ func TestGenerateLua(t *testing.T) {
 		PacketsMap: map[string]*model.Packet{
 			"TestProtocol": rootPacket,
 		},
+		Config: &model.Configuration{
+			ListLenPrefixLenType:   "u16",
+			StringLenPrefixLenType: "u8",
+		},
 	}
 
-	generator := NewLuaWspGenerator(config, binModel)
+	generator := NewLuaWspGenerator(binModel)
 	output, err := generator.Generate(binModel)
 
 	assert.NoError(t, err)
@@ -56,10 +54,6 @@ func TestGenerateLua(t *testing.T) {
 }
 
 func TestGenerateSubDissector(t *testing.T) {
-	config := &GeneratorConfig{
-		ListLenPrefixLenType:   "u16",
-		StringLenPrefixLenType: "u8",
-	}
 	packet := &model.Packet{
 		Name: "TestPacket",
 		Fields: []*model.Field{
@@ -73,9 +67,13 @@ func TestGenerateSubDissector(t *testing.T) {
 		PacketsMap: map[string]*model.Packet{
 			"TestPacket": packet,
 		},
+		Config: &model.Configuration{
+			ListLenPrefixLenType:   "u16",
+			StringLenPrefixLenType: "u8",
+		},
 	}
 
-	generator := NewLuaWspGenerator(config, binModel)
+	generator := NewLuaWspGenerator(binModel)
 	code := generator.generateSubDissector("Parent", packet)
 
 	assert.Contains(t, code, "local function dissect_test_packet")
@@ -84,10 +82,6 @@ func TestGenerateSubDissector(t *testing.T) {
 }
 
 func TestGenerateMainDissector(t *testing.T) {
-	config := &GeneratorConfig{
-		ListLenPrefixLenType:   "u16",
-		StringLenPrefixLenType: "u8",
-	}
 	rootPacket := &model.Packet{
 		Name:   "TestProtocol",
 		IsRoot: true,
@@ -103,9 +97,13 @@ func TestGenerateMainDissector(t *testing.T) {
 		PacketsMap: map[string]*model.Packet{
 			"TestProtocol": rootPacket,
 		},
+		Config: &model.Configuration{
+			ListLenPrefixLenType:   "u16",
+			StringLenPrefixLenType: "u8",
+		},
 	}
 
-	generator := NewLuaWspGenerator(config, binModel)
+	generator := NewLuaWspGenerator(binModel)
 	code := generator.generateMainDissector(rootPacket)
 
 	assert.Contains(t, code, "function test_protocol_proto.dissector")
@@ -114,10 +112,6 @@ func TestGenerateMainDissector(t *testing.T) {
 }
 
 func TestDecodeList(t *testing.T) {
-	config := &GeneratorConfig{
-		ListLenPrefixLenType:   "u16",
-		StringLenPrefixLenType: "u8",
-	}
 	packet := &model.Packet{
 		Name: "TestPacket",
 	}
@@ -130,9 +124,13 @@ func TestDecodeList(t *testing.T) {
 		PacketsMap: map[string]*model.Packet{
 			"TestPacket": packet,
 		},
+		Config: &model.Configuration{
+			ListLenPrefixLenType:   "u16",
+			StringLenPrefixLenType: "u8",
+		},
 	}
 
-	generator := NewLuaWspGenerator(config, binModel)
+	generator := NewLuaWspGenerator(binModel)
 	code := generator.decodeList("tree", packet, field)
 
 	assert.Contains(t, code, "local test_packet_test_list_size = buf(offset, 2):uint()")
@@ -142,12 +140,12 @@ func TestDecodeList(t *testing.T) {
 }
 
 func TestLuaDecodeField(t *testing.T) {
-	config := &GeneratorConfig{
-		ListLenPrefixLenType:   "u16",
-		StringLenPrefixLenType: "u8",
-	}
 	binModel := &model.BinaryModel{
 		PacketsMap: make(map[string]*model.Packet),
+		Config: &model.Configuration{
+			ListLenPrefixLenType:   "u16",
+			StringLenPrefixLenType: "u8",
+		},
 	}
 
 	tests := []struct {
@@ -207,7 +205,7 @@ offset = offset + 10`,
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			generator := NewLuaWspGenerator(config, binModel)
+			generator := NewLuaWspGenerator(binModel)
 			result := generator.decodeField("tree", &tt.packet, tt.field)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -215,10 +213,6 @@ offset = offset + 10`,
 }
 
 func TestDecodeListSize(t *testing.T) {
-	config := &GeneratorConfig{
-		ListLenPrefixLenType:   "u16",
-		StringLenPrefixLenType: "u8",
-	}
 	packet := &model.Packet{
 		Name: "TestPacket",
 	}
@@ -230,6 +224,10 @@ func TestDecodeListSize(t *testing.T) {
 	binModel := &model.BinaryModel{
 		PacketsMap: map[string]*model.Packet{
 			"TestPacket": packet,
+		},
+		Config: &model.Configuration{
+			ListLenPrefixLenType:   "u16",
+			StringLenPrefixLenType: "u8",
 		},
 	}
 
@@ -261,8 +259,8 @@ offset = offset + 4`,
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config.ListLenPrefixLenType = tt.prefix
-			generator := NewLuaWspGenerator(config, binModel)
+			binModel.Config.ListLenPrefixLenType = tt.prefix
+			generator := NewLuaWspGenerator(binModel)
 			result := generator.decodeListSize("tree", packet, field)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -270,20 +268,19 @@ offset = offset + 4`,
 }
 
 func TestDecodeStringLen(t *testing.T) {
-	config := &GeneratorConfig{
-		ListLenPrefixLenType:   "u16",
-		StringLenPrefixLenType: "u8",
-	}
 	packet := &model.Packet{
 		Name: "TestPacket",
 	}
 	field := &model.Field{
 		Name: "testString",
-		Attr: &model.DynamicStringFieldAttribute{Type: "string"},
+		Attr: &model.DynamicStringFieldAttribute{},
 	}
 	binModel := &model.BinaryModel{
 		PacketsMap: map[string]*model.Packet{
 			"TestPacket": packet,
+		}, Config: &model.Configuration{
+			ListLenPrefixLenType:   "u16",
+			StringLenPrefixLenType: "u8",
 		},
 	}
 
@@ -315,8 +312,8 @@ offset = offset + 2`,
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config.StringLenPrefixLenType = tt.prefix
-			generator := NewLuaWspGenerator(config, binModel)
+			binModel.Config.StringLenPrefixLenType = tt.prefix
+			generator := NewLuaWspGenerator(binModel)
 			result := generator.decodeStringLen("tree", packet, field)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -324,10 +321,6 @@ offset = offset + 2`,
 }
 
 func TestGenerateFieldDefinition(t *testing.T) {
-	config := &GeneratorConfig{
-		ListLenPrefixLenType:   "u16",
-		StringLenPrefixLenType: "u8",
-	}
 	packet := &model.Packet{
 		Name: "TestPacket",
 		Fields: []*model.Field{
@@ -337,14 +330,18 @@ func TestGenerateFieldDefinition(t *testing.T) {
 			},
 			{
 				Name: "testString",
-				Attr: &model.DynamicStringFieldAttribute{Type: "string"},
+				Attr: &model.DynamicStringFieldAttribute{},
 			},
 		},
 	}
 	binModel := model.NewBinaryModel()
 	binModel.AddPacket(packet)
+	binModel.Config = &model.Configuration{
+		ListLenPrefixLenType:   "u16",
+		StringLenPrefixLenType: "u8",
+	}
 
-	generator := NewLuaWspGenerator(config, binModel)
+	generator := NewLuaWspGenerator(binModel)
 	code := generator.generateFieldDefinition(binModel)
 
 	assert.Contains(t, code, "local fields = {")
@@ -354,10 +351,6 @@ func TestGenerateFieldDefinition(t *testing.T) {
 }
 
 func TestGenerateFieldDefinitionFromPacket(t *testing.T) {
-	config := &GeneratorConfig{
-		ListLenPrefixLenType:   "u16",
-		StringLenPrefixLenType: "u8",
-	}
 	packet := &model.Packet{
 		Name: "TestPacket",
 		Fields: []*model.Field{
@@ -367,7 +360,7 @@ func TestGenerateFieldDefinitionFromPacket(t *testing.T) {
 			},
 			{
 				Name: "testString",
-				Attr: &model.DynamicStringFieldAttribute{Type: "string"},
+				Attr: &model.DynamicStringFieldAttribute{},
 			},
 			{
 				Name: "testChar",
@@ -376,9 +369,13 @@ func TestGenerateFieldDefinitionFromPacket(t *testing.T) {
 		},
 	}
 	binModel := model.NewBinaryModel()
+	binModel.Config = &model.Configuration{
+		ListLenPrefixLenType:   "u16",
+		StringLenPrefixLenType: "u8",
+	}
 	binModel.AddPacket(packet)
 
-	generator := NewLuaWspGenerator(config, binModel)
+	generator := NewLuaWspGenerator(binModel)
 	code := generator.generateFieldDefinitionFromPacket(binModel, packet)
 
 	assert.Contains(t, code, "-- Field from TestPacket")

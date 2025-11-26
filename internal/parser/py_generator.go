@@ -34,15 +34,15 @@ var pyBasicTypeMap = map[string]PyType{
 
 // PythonGenerator a go code generator
 type PythonGenerator struct {
-	config   *GeneratorConfig
+	config   *model.Configuration
 	binModel *model.BinaryModel
 	hasGen   map[string]*model.Packet
 }
 
 // NewPythonGenerator new
-func NewPythonGenerator(config *GeneratorConfig, binModel *model.BinaryModel) *PythonGenerator {
+func NewPythonGenerator(binModel *model.BinaryModel) *PythonGenerator {
 	return &PythonGenerator{
-		config:   config,
+		config:   binModel.Config,
 		binModel: binModel,
 		hasGen:   make(map[string]*model.Packet),
 	}

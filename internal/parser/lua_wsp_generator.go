@@ -121,14 +121,14 @@ var luaBasicTypeMap = map[string]LuaType{
 
 // LuaWspGenerator implements Generator for lua bases wireshark plugin
 type LuaWspGenerator struct {
-	config   *GeneratorConfig
+	config   *model.Configuration
 	binModel *model.BinaryModel
 }
 
 // NewLuaWspGenerator new
-func NewLuaWspGenerator(config *GeneratorConfig, binModel *model.BinaryModel) *LuaWspGenerator {
+func NewLuaWspGenerator(binModel *model.BinaryModel) *LuaWspGenerator {
 	return &LuaWspGenerator{
-		config:   config,
+		config:   binModel.Config,
 		binModel: binModel,
 	}
 }
