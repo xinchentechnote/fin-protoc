@@ -318,9 +318,7 @@ func (l LengthFieldAttribute) GetType() string {
 // This attribute defines that `LengthField` stores the size of `TargetField`.
 // The final length is calculated as: len(TargetField) + Offset.
 type LengthOfAttribute struct {
-	// TargetField is the field whose serialized size will be measured.
-	TargetField *Field
-
+	Type string
 	// LengthField is the field that stores the computed length value.
 	LengthField *Field
 
@@ -331,7 +329,7 @@ type LengthOfAttribute struct {
 
 // GetType return field type
 func (l LengthOfAttribute) GetType() string {
-	return l.TargetField.Attr.GetType()
+	return getBasicType(l.Type)
 }
 
 // CheckSumFieldAttribute check sum field attribute
