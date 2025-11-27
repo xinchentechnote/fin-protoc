@@ -166,7 +166,7 @@ packet Parent {
 	assert.Equal(t, expectedFields, pkt.Fields)
 }
 
-func TestLenghtFeildAttribute(t *testing.T) {
+func TestLenghtAndChecksumAttribute(t *testing.T) {
 	dsl := `packet Body {}
 root packet RootPacket {
 	u16 MsgType,
@@ -187,14 +187,56 @@ root packet RootPacket {
 	binModel := result.(*model.BinaryModel)
 	body := &model.Packet{Name: "Body", Column: 1, Line: 1, FieldMap: make(map[string]*model.Field), MatchFields: make(map[string][]model.MatchPair)}
 	bodyField := &model.Field{Name: "Body", IsRepeat: false, Line: 6, Column: 1, Attr: &model.ObjectFieldAttribute{PacketName: "Body", RefPacket: body}}
-	bodyLen := &model.Field{Name: "BodyLen", IsRepeat: false, Line: 5, Column: 1, Attr: &model.LengthFieldAttribute{LengthType: "u16", TragetField: bodyField}}
-	bodyLen.LenAttr = &model.LengthOfAttribute{LengthField: bodyLen}
-	bodyField.LenAttr = bodyLen.Attr
+	bodyLenField := &model.Field{Name: "BodyLen", IsRepeat: false, Line: 5, Column: 1, Attr: &model.LengthFieldAttribute{LengthType: "u16", TragetField: bodyField}}
+	bodyLenField.LenAttr = &model.LengthOfAttribute{LengthField: bodyLenField}
+	bodyField.LenAttr = bodyLenField.Attr
 	expectedFields := []*model.Field{
 		{Name: "MsgType", IsRepeat: false, Line: 3, Column: 1, Attr: &model.BasicFieldAttribute{Type: "u16"}},
-		bodyLen,
+		bodyLenField,
 		bodyField,
 		{Name: "Checksum", IsRepeat: false, Line: 8, Column: 1, Attr: &model.CheckSumFieldAttribute{CheckSumType: "\"CRC32\"", Type: "u32"}},
 	}
 	assert.Equal(t, expectedFields, binModel.PacketsMap["RootPacket"].Fields)
+}
+
+func TestPaddingAttribute(t *testing.T) {
+	dsl := `packet RootPacket {
+	@leftPad('0')
+	char[10] FixedStr10,
+	@leftPad(' ')
+	char[9] FixedStr9,
+	@rightPad('0')
+	char[8] FixedStr8,
+	@rightPad(' ')
+	char[7] FixedStr7,
+	zchar[6] FixedStr6,
+	@rightPad('\x00')
+	char[5] FixedStr5,
+	char[4] FixedStr4,
+	@leftPad()
+	char[3] FixedStr3,
+	@rightPad()
+	char[2] FixedStr2,
+}`
+	path := writeTempFile(t, dsl)
+	defer os.Remove(path)
+
+	result, err := ParseFile(path)
+	if err != nil {
+		t.Fatalf("ParseFile returned error: %v", err)
+	}
+	assert.NotNil(t, result)
+	binModel := result.(*model.BinaryModel)
+	expectedFields := []*model.Field{
+		{Name: "FixedStr10", IsRepeat: false, Line: 3, Column: 1, Attr: &model.FixedStringFieldAttribute{Length: 10, Padding: &model.Padding{PadChar: "'0'", PadLeft: true}}},
+		{Name: "FixedStr9", IsRepeat: false, Line: 5, Column: 1, Attr: &model.FixedStringFieldAttribute{Length: 9, Padding: &model.Padding{PadChar: "' '", PadLeft: true}}},
+		{Name: "FixedStr8", IsRepeat: false, Line: 7, Column: 1, Attr: &model.FixedStringFieldAttribute{Length: 8, Padding: &model.Padding{PadChar: "'0'", PadLeft: false}}},
+		{Name: "FixedStr7", IsRepeat: false, Line: 9, Column: 1, Attr: &model.FixedStringFieldAttribute{Length: 7, Padding: &model.Padding{PadChar: "' '", PadLeft: false}}},
+		{Name: "FixedStr6", IsRepeat: false, Line: 10, Column: 1, Attr: &model.FixedStringFieldAttribute{Length: 6, Padding: &model.Padding{PadChar: "'\x00'", PadLeft: false}}},
+		{Name: "FixedStr5", IsRepeat: false, Line: 12, Column: 1, Attr: &model.FixedStringFieldAttribute{Length: 5, Padding: &model.Padding{PadChar: "'\x00'", PadLeft: false}}},
+		{Name: "FixedStr4", IsRepeat: false, Line: 13, Column: 1, Attr: &model.FixedStringFieldAttribute{Length: 4}},
+		{Name: "FixedStr3", IsRepeat: false, Line: 15, Column: 1, Attr: &model.FixedStringFieldAttribute{Length: 3, Padding: &model.Padding{PadChar: "' '", PadLeft: true}}},
+		{Name: "FixedStr2", IsRepeat: false, Line: 17, Column: 1, Attr: &model.FixedStringFieldAttribute{Length: 2, Padding: &model.Padding{PadChar: "' '", PadLeft: false}}},
+	}
+	assert.Equal(t, expectedFields, binModel.Packets[0].Fields)
 }

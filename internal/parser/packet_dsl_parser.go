@@ -218,8 +218,15 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinitionWithAttribute(ctx *gen.FieldD
 				LengthType:  f.GetType(),
 			}
 		case fieldAttr.PaddingAttribute() != nil:
+			padChar := "' '"
+			if fieldAttr.PaddingAttribute().PADDING_CHAR() != nil {
+				padChar = fieldAttr.PaddingAttribute().PADDING_CHAR().GetText()
+			}
+			if padChar == "'\\x00'" {
+				padChar = "'\x00'"
+			}
 			f.Attr.(*model.FixedStringFieldAttribute).Padding = &model.Padding{
-				PadChar: fieldAttr.PaddingAttribute().PADDING_CHAR().GetText(),
+				PadChar: padChar,
 				PadLeft: strings.Contains(fieldAttr.PaddingAttribute().PADDING_ATTR().GetText(), "left"),
 			}
 		case fieldAttr.TagAttribute() != nil:

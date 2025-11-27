@@ -48,7 +48,7 @@ calculatedFromAttribute: '@calculatedFrom(' from = STRING ')';
 
 lengthOfAttribute: '@lengthOf(' from = IDENTIFIER ')';
 
-paddingAttribute: PADDING_ATTR '(' padding = PADDING_CHAR ')';
+paddingAttribute: PADDING_ATTR '(' padding = PADDING_CHAR? ')';
 
 tagAttribute: '@tag(' DIGITS ')';
 
@@ -110,7 +110,7 @@ STRING: '"' ( ~["\\\r\n] | '\\' .)* '"';
 
 PADDING_ATTR: '@' ('left' | 'right') 'Pad';
 
-PADDING_CHAR: '\'' ('0' | ' ') '\'';
+PADDING_CHAR: '\'' ('0' | ' ' | '\\x00') '\'';
 
 // Root and Packet keywords
 ROOT: 'root';
