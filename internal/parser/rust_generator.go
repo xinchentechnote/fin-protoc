@@ -10,16 +10,19 @@ import (
 
 // RustGenerator a rust code generator
 type RustGenerator struct {
-	config   *model.Configuration
 	binModel *model.BinaryModel
 }
 
 // NewRustGenerator new
 func NewRustGenerator(binModel *model.BinaryModel) *RustGenerator {
 	return &RustGenerator{
-		config:   binModel.Config,
 		binModel: binModel,
 	}
+}
+
+// GetConfig get Configuration
+func (g RustGenerator) GetConfig() *model.Configuration {
+	return g.binModel.Config
 }
 
 // Generate rust code
@@ -149,7 +152,7 @@ func (g RustGenerator) generateStructCode(pkt *model.Packet) string {
 
 // GetPadding field.Padding or config.Padding
 func (g RustGenerator) GetPadding(f *model.Field) *model.Padding {
-	padding := g.config.Padding
+	padding := g.GetConfig().Padding
 	if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
 		if fs.Padding != nil {
 			padding = fs.Padding
@@ -188,7 +191,7 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 		// auto calculate length field
 		var b strings.Builder
 		b.WriteString(fmt.Sprintf("let %s_pos = buf.len();\n", strcase.ToSnake(f.Name)))
-		if g.config.LittleEndian {
+		if g.GetConfig().LittleEndian {
 			b.WriteString(fmt.Sprintf("buf.put_%s_le(0);\n", f.GetType()))
 		} else {
 			b.WriteString(fmt.Sprintf("buf.put_%s(0);\n", f.GetType()))
@@ -214,36 +217,36 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 		switch c := f.Attr.(type) {
 		case *model.FixedStringFieldAttribute:
 			size := c.Length
-			if g.config.LittleEndian {
+			if g.GetConfig().LittleEndian {
 				if !padding.IsDefault() {
-					return fmt.Sprintf("put_fixed_string_list_with_pad_char_le::<%s>(buf, &self.%s, %d, %s, %t);", g.config.ListLenPrefixLenType, name, size, padding.PadChar, padding.PadLeft)
+					return fmt.Sprintf("put_fixed_string_list_with_pad_char_le::<%s>(buf, &self.%s, %d, %s, %t);", g.GetConfig().ListLenPrefixLenType, name, size, padding.PadChar, padding.PadLeft)
 				}
-				return fmt.Sprintf("put_fixed_string_list_le::<%s>(buf, &self.%s, %d);", g.config.ListLenPrefixLenType, name, size)
+				return fmt.Sprintf("put_fixed_string_list_le::<%s>(buf, &self.%s, %d);", g.GetConfig().ListLenPrefixLenType, name, size)
 			}
 			if !padding.IsDefault() {
-				return fmt.Sprintf("put_fixed_string_list_with_pad_char::<%s>(buf, &self.%s, %d, %s, %t);", g.config.ListLenPrefixLenType, name, size, padding.PadChar, padding.PadLeft)
+				return fmt.Sprintf("put_fixed_string_list_with_pad_char::<%s>(buf, &self.%s, %d, %s, %t);", g.GetConfig().ListLenPrefixLenType, name, size, padding.PadChar, padding.PadLeft)
 			}
-			return fmt.Sprintf("put_fixed_string_list::<%s>(buf, &self.%s, %d);", g.config.ListLenPrefixLenType, name, size)
+			return fmt.Sprintf("put_fixed_string_list::<%s>(buf, &self.%s, %d);", g.GetConfig().ListLenPrefixLenType, name, size)
 		case *model.DynamicStringFieldAttribute:
-			if g.config.LittleEndian {
-				return fmt.Sprintf("put_string_list_le::<%s,%s>(buf, &self.%s);", g.config.ListLenPrefixLenType, g.config.StringLenPrefixLenType, name)
+			if g.GetConfig().LittleEndian {
+				return fmt.Sprintf("put_string_list_le::<%s,%s>(buf, &self.%s);", g.GetConfig().ListLenPrefixLenType, g.GetConfig().StringLenPrefixLenType, name)
 			}
-			return fmt.Sprintf("put_string_list::<%s,%s>(buf, &self.%s);", g.config.ListLenPrefixLenType, g.config.StringLenPrefixLenType, name)
+			return fmt.Sprintf("put_string_list::<%s,%s>(buf, &self.%s);", g.GetConfig().ListLenPrefixLenType, g.GetConfig().StringLenPrefixLenType, name)
 		case *model.ObjectFieldAttribute:
-			if g.config.LittleEndian {
-				return fmt.Sprintf("put_object_list_le::<%s,%s>(buf, &self.%s);", f.GetType(), g.config.ListLenPrefixLenType, name)
+			if g.GetConfig().LittleEndian {
+				return fmt.Sprintf("put_object_list_le::<%s,%s>(buf, &self.%s);", f.GetType(), g.GetConfig().ListLenPrefixLenType, name)
 			}
-			return fmt.Sprintf("put_object_list::<%s,%s>(buf, &self.%s);", f.GetType(), g.config.ListLenPrefixLenType, name)
+			return fmt.Sprintf("put_object_list::<%s,%s>(buf, &self.%s);", f.GetType(), g.GetConfig().ListLenPrefixLenType, name)
 
 		}
 
 		if f.GetType() == "char" {
-			return fmt.Sprintf("put_char_list::<%s>(buf, &self.%s);", g.config.ListLenPrefixLenType, name)
+			return fmt.Sprintf("put_char_list::<%s>(buf, &self.%s);", g.GetConfig().ListLenPrefixLenType, name)
 		}
-		if g.config.LittleEndian {
-			return fmt.Sprintf("put_list_le::<%s,%s>(buf, &self.%s);", f.GetType(), g.config.ListLenPrefixLenType, name)
+		if g.GetConfig().LittleEndian {
+			return fmt.Sprintf("put_list_le::<%s,%s>(buf, &self.%s);", f.GetType(), g.GetConfig().ListLenPrefixLenType, name)
 		}
-		return fmt.Sprintf("put_list::<%s,%s>(buf, &self.%s);", f.GetType(), g.config.ListLenPrefixLenType, name)
+		return fmt.Sprintf("put_list::<%s,%s>(buf, &self.%s);", f.GetType(), g.GetConfig().ListLenPrefixLenType, name)
 	}
 
 	if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
@@ -255,10 +258,10 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 
 	switch c := f.Attr.(type) {
 	case *model.DynamicStringFieldAttribute:
-		if g.config.LittleEndian {
-			return fmt.Sprintf("put_%s_le::<%s>(buf, &self.%s);", f.GetType(), g.config.StringLenPrefixLenType, name)
+		if g.GetConfig().LittleEndian {
+			return fmt.Sprintf("put_%s_le::<%s>(buf, &self.%s);", f.GetType(), g.GetConfig().StringLenPrefixLenType, name)
 		}
-		return fmt.Sprintf("put_%s::<%s>(buf, &self.%s);", f.GetType(), g.config.StringLenPrefixLenType, name)
+		return fmt.Sprintf("put_%s::<%s>(buf, &self.%s);", f.GetType(), g.GetConfig().StringLenPrefixLenType, name)
 
 	case *model.MatchFieldAttribute:
 		var b strings.Builder
@@ -270,7 +273,7 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 		if _, ok := f.LenAttr.(*model.LengthFieldAttribute); ok {
 			b.WriteString(fmt.Sprintf("let %s_end = buf.len();\n", strcase.ToSnake(f.Name)))
 			typ := cppBasicTypeMap[p.LengthField.GetType()]
-			if g.config.LittleEndian {
+			if g.GetConfig().LittleEndian {
 				b.WriteString(fmt.Sprintf("    LittleEndian::write_%s(&mut buf[%s_pos..%s_pos + %d], (%s_end - %s_start) as %s);\n",
 					p.LengthField.GetType(), strcase.ToSnake(p.LengthField.Name), strcase.ToSnake(p.LengthField.Name),
 					typ.Size, strcase.ToSnake(f.Name), strcase.ToSnake(f.Name), p.LengthField.GetType()))
@@ -292,7 +295,7 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 		case "u8", "i8":
 			return fmt.Sprintf("buf.put_%s(self.%s);", f.GetType(), name)
 		case "u16", "u32", "u64", "i16", "i32", "i64", "f32", "f64":
-			if g.config.LittleEndian {
+			if g.GetConfig().LittleEndian {
 				return fmt.Sprintf("buf.put_%s_le(self.%s);", f.GetType(), name)
 			}
 			return fmt.Sprintf("buf.put_%s(self.%s);", f.GetType(), name)
@@ -326,39 +329,39 @@ func (g RustGenerator) DecodeField(parentName string, f *model.Field) string {
 	if f.IsRepeat {
 		switch c := f.Attr.(type) {
 		case *model.FixedStringFieldAttribute:
-			if g.config.LittleEndian {
+			if g.GetConfig().LittleEndian {
 				if !padding.IsDefault() {
-					return fmt.Sprintf("let %s = get_fixed_string_list_trim_pad_char_le::<%s>(buf, %d, %s, %t)?;", name, g.config.ListLenPrefixLenType, c.Length, padding.PadChar, padding.PadLeft)
+					return fmt.Sprintf("let %s = get_fixed_string_list_trim_pad_char_le::<%s>(buf, %d, %s, %t)?;", name, g.GetConfig().ListLenPrefixLenType, c.Length, padding.PadChar, padding.PadLeft)
 				}
-				return fmt.Sprintf("let %s = get_fixed_string_list_le::<%s>(buf, %d)?;", name, g.config.ListLenPrefixLenType, c.Length)
+				return fmt.Sprintf("let %s = get_fixed_string_list_le::<%s>(buf, %d)?;", name, g.GetConfig().ListLenPrefixLenType, c.Length)
 			}
 			if !padding.IsDefault() {
-				return fmt.Sprintf("let %s = get_fixed_string_list_trim_pad_char::<%s>(buf, %d, %s, %t)?;", name, g.config.ListLenPrefixLenType, c.Length, padding.PadChar, padding.PadLeft)
+				return fmt.Sprintf("let %s = get_fixed_string_list_trim_pad_char::<%s>(buf, %d, %s, %t)?;", name, g.GetConfig().ListLenPrefixLenType, c.Length, padding.PadChar, padding.PadLeft)
 			}
-			return fmt.Sprintf("let %s = get_fixed_string_list::<%s>(buf, %d)?;", name, g.config.ListLenPrefixLenType, c.Length)
+			return fmt.Sprintf("let %s = get_fixed_string_list::<%s>(buf, %d)?;", name, g.GetConfig().ListLenPrefixLenType, c.Length)
 
 		case *model.DynamicStringFieldAttribute:
-			if g.config.LittleEndian {
-				return fmt.Sprintf("let %s = get_string_list_le::<%s,%s>(buf)?;", name, g.config.ListLenPrefixLenType, g.config.StringLenPrefixLenType)
+			if g.GetConfig().LittleEndian {
+				return fmt.Sprintf("let %s = get_string_list_le::<%s,%s>(buf)?;", name, g.GetConfig().ListLenPrefixLenType, g.GetConfig().StringLenPrefixLenType)
 			}
-			return fmt.Sprintf("let %s = get_string_list::<%s,%s>(buf)?;", name, g.config.ListLenPrefixLenType, g.config.StringLenPrefixLenType)
+			return fmt.Sprintf("let %s = get_string_list::<%s,%s>(buf)?;", name, g.GetConfig().ListLenPrefixLenType, g.GetConfig().StringLenPrefixLenType)
 
 		case *model.ObjectFieldAttribute:
-			if g.config.LittleEndian {
-				return fmt.Sprintf("let %s = get_object_list_le::<%s,%s>(buf)?;", name, f.GetType(), g.config.ListLenPrefixLenType)
+			if g.GetConfig().LittleEndian {
+				return fmt.Sprintf("let %s = get_object_list_le::<%s,%s>(buf)?;", name, f.GetType(), g.GetConfig().ListLenPrefixLenType)
 			}
-			return fmt.Sprintf("let %s = get_object_list::<%s,%s>(buf)?;", name, f.GetType(), g.config.ListLenPrefixLenType)
+			return fmt.Sprintf("let %s = get_object_list::<%s,%s>(buf)?;", name, f.GetType(), g.GetConfig().ListLenPrefixLenType)
 
 		}
 
 		if f.GetType() == "char" {
-			return fmt.Sprintf("let %s = get_char_list::<%s>(buf)?;", name, g.config.ListLenPrefixLenType)
+			return fmt.Sprintf("let %s = get_char_list::<%s>(buf)?;", name, g.GetConfig().ListLenPrefixLenType)
 		}
-		if g.config.LittleEndian {
-			return fmt.Sprintf("let %s = get_list_le::<%s,%s>(buf)?;", name, f.GetType(), g.config.ListLenPrefixLenType)
+		if g.GetConfig().LittleEndian {
+			return fmt.Sprintf("let %s = get_list_le::<%s,%s>(buf)?;", name, f.GetType(), g.GetConfig().ListLenPrefixLenType)
 		}
 
-		return fmt.Sprintf("let %s = get_list::<%s,%s>(buf)?;", name, f.GetType(), g.config.ListLenPrefixLenType)
+		return fmt.Sprintf("let %s = get_list::<%s,%s>(buf)?;", name, f.GetType(), g.GetConfig().ListLenPrefixLenType)
 	}
 
 	switch c := f.Attr.(type) {
@@ -368,10 +371,10 @@ func (g RustGenerator) DecodeField(parentName string, f *model.Field) string {
 		}
 		return fmt.Sprintf("let %s = get_char_array(buf, %d)?;", name, c.Length)
 	case *model.DynamicStringFieldAttribute:
-		if g.config.LittleEndian {
-			return fmt.Sprintf("let %s = get_%s_le::<%s>(buf)?;", name, f.GetType(), g.config.StringLenPrefixLenType)
+		if g.GetConfig().LittleEndian {
+			return fmt.Sprintf("let %s = get_%s_le::<%s>(buf)?;", name, f.GetType(), g.GetConfig().StringLenPrefixLenType)
 		}
-		return fmt.Sprintf("let %s = get_%s::<%s>(buf)?;", name, f.GetType(), g.config.StringLenPrefixLenType)
+		return fmt.Sprintf("let %s = get_%s::<%s>(buf)?;", name, f.GetType(), g.GetConfig().StringLenPrefixLenType)
 	case *model.MatchFieldAttribute:
 		return g.DecodeMatchField(parentName, f, c)
 	case *model.ObjectFieldAttribute:
@@ -384,7 +387,7 @@ func (g RustGenerator) DecodeField(parentName string, f *model.Field) string {
 	case "u8", "i8":
 		return fmt.Sprintf("let %s = buf.get_%s();", name, f.GetType())
 	case "u16", "u32", "u64", "i16", "i32", "i64", "f32", "f64":
-		if g.config.LittleEndian {
+		if g.GetConfig().LittleEndian {
 			return fmt.Sprintf("let %s = buf.get_%s_le();", name, f.GetType())
 		}
 		return fmt.Sprintf("let %s = buf.get_%s();", name, f.GetType())

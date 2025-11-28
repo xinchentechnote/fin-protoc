@@ -119,13 +119,8 @@ REPEAT: 'repeat';
 METADATA: 'MetaData';
 MATCH: 'match';
 
-// COLON定义，匹配英文
 COLON: ':';
-
-// COMMA匹配逗号
 COMMA: ',';
-
-//分号
 SEMICOLON: ';';
 
 // Identifier matching letters and numbers (for identifiers like field names, types, etc.)

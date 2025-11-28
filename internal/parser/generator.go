@@ -7,4 +7,5 @@ import (
 // Generator interface for extensibility
 type Generator interface {
 	Generate(binModel *model.BinaryModel) (map[string][]byte, error)
+	GetConfig() *model.Configuration
 }

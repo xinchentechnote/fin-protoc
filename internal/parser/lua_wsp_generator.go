@@ -121,16 +121,19 @@ var luaBasicTypeMap = map[string]LuaType{
 
 // LuaWspGenerator implements Generator for lua bases wireshark plugin
 type LuaWspGenerator struct {
-	config   *model.Configuration
 	binModel *model.BinaryModel
 }
 
 // NewLuaWspGenerator new
 func NewLuaWspGenerator(binModel *model.BinaryModel) *LuaWspGenerator {
 	return &LuaWspGenerator{
-		config:   binModel.Config,
 		binModel: binModel,
 	}
+}
+
+// GetConfig get Configuration
+func (g LuaWspGenerator) GetConfig() *model.Configuration {
+	return g.binModel.Config
 }
 
 // Generate code
@@ -252,7 +255,7 @@ const decodeFieldTmpl = `{{.TreeName}}:{{.Add}}(fields.{{.Name}}, buf(offset, {{
 offset = offset + {{.Type.Size}}`
 
 func (g LuaWspGenerator) decodeListSize(treeName string, p *model.Packet, f *model.Field) string {
-	var prefix = g.config.ListLenPrefixLenType
+	var prefix = g.GetConfig().ListLenPrefixLenType
 	switch prefix {
 	case "i8", "u8", "i16", "u16", "i32", "u32", "i64", "u64":
 		sizeName := fmt.Sprintf("%s_%s_%s", strcase.ToSnake(p.Name), strcase.ToSnake(f.Name), "size")
@@ -261,7 +264,7 @@ func (g LuaWspGenerator) decodeListSize(treeName string, p *model.Packet, f *mod
 			return "-- unsupported numeric type: " + prefix + "\n"
 		}
 		decodeName := luaType.Be
-		if g.config.LittleEndian {
+		if g.GetConfig().LittleEndian {
 			decodeName = luaType.Le
 		}
 		code := fmt.Sprintf("local %s = buf(offset, %d):%s()\n", sizeName, luaType.Size, decodeName)
@@ -274,7 +277,7 @@ func (g LuaWspGenerator) decodeListSize(treeName string, p *model.Packet, f *mod
 }
 
 func (g LuaWspGenerator) decodeStringLen(treeName string, p *model.Packet, f *model.Field) string {
-	var prefix = g.config.StringLenPrefixLenType
+	var prefix = g.GetConfig().StringLenPrefixLenType
 	switch prefix {
 	case "i8", "u8", "i16", "u16", "i32", "u32", "i64", "u64":
 		lenName := fmt.Sprintf("%s_%s_%s", strcase.ToSnake(p.Name), strcase.ToSnake(f.Name), "len")
@@ -283,7 +286,7 @@ func (g LuaWspGenerator) decodeStringLen(treeName string, p *model.Packet, f *mo
 			return "-- unsupported numeric type: " + prefix + "\n"
 		}
 		decodeName := luaType.Be
-		if g.config.LittleEndian {
+		if g.GetConfig().LittleEndian {
 			decodeName = luaType.Le
 		}
 		code := fmt.Sprintf("local %s = buf(offset, %d):%s()\n", lenName, luaType.Size, decodeName)
@@ -303,19 +306,19 @@ func (g LuaWspGenerator) decodeFieldForLocal(f *model.Field) string {
 			return "-- unsupported numeric type: " + f.GetType() + "\n"
 		}
 		decodeName := luaType.Be
-		if g.config.LittleEndian {
+		if g.GetConfig().LittleEndian {
 			decodeName = luaType.Le
 		}
 		return fmt.Sprintf("local %s = buf(offset, %d):%s()", strcase.ToSnake(f.Name), luaType.Size, decodeName)
 	case *model.FixedStringFieldAttribute:
 		return fmt.Sprintf("local %s = buf(offset, %d):string()", strcase.ToSnake(f.Name), c.Length)
 	case *model.DynamicStringFieldAttribute:
-		luaType, ok := luaBasicTypeMap[g.config.StringLenPrefixLenType]
+		luaType, ok := luaBasicTypeMap[g.GetConfig().StringLenPrefixLenType]
 		if !ok {
 			return "-- unsupported numeric type: " + f.GetType() + "\n"
 		}
 		decodeName := luaType.Be
-		if g.config.LittleEndian {
+		if g.GetConfig().LittleEndian {
 			decodeName = luaType.Le
 		}
 		var b strings.Builder
@@ -343,7 +346,7 @@ func (g LuaWspGenerator) decodeField(treeName string, p *model.Packet, f *model.
 			return "-- unsupported numeric type: " + f.GetType() + "\n"
 		}
 		addMethod := "add"
-		if g.config.LittleEndian {
+		if g.GetConfig().LittleEndian {
 			addMethod = "le_add"
 		}
 		data := map[string]interface{}{

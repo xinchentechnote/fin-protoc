@@ -34,7 +34,6 @@ var pyBasicTypeMap = map[string]PyType{
 
 // PythonGenerator a go code generator
 type PythonGenerator struct {
-	config   *model.Configuration
 	binModel *model.BinaryModel
 	hasGen   map[string]*model.Packet
 }
@@ -42,10 +41,14 @@ type PythonGenerator struct {
 // NewPythonGenerator new
 func NewPythonGenerator(binModel *model.BinaryModel) *PythonGenerator {
 	return &PythonGenerator{
-		config:   binModel.Config,
 		binModel: binModel,
 		hasGen:   make(map[string]*model.Packet),
 	}
+}
+
+// GetConfig get Configuration
+func (g PythonGenerator) GetConfig() *model.Configuration {
+	return g.binModel.Config
 }
 
 // Generate python code
@@ -168,10 +171,10 @@ func (g PythonGenerator) generateDecodeMethod(p *model.Packet) string {
 	}
 	for _, f := range p.Fields {
 		if f.IsRepeat {
-			if g.config.LittleEndian {
-				b.WriteString(fmt.Sprintf("    size = read_len_le(buffer, '%s')\n", g.config.ListLenPrefixLenType))
+			if g.GetConfig().LittleEndian {
+				b.WriteString(fmt.Sprintf("    size = read_len_le(buffer, '%s')\n", g.GetConfig().ListLenPrefixLenType))
 			} else {
-				b.WriteString(fmt.Sprintf("    size = read_len(buffer, '%s')\n", g.config.ListLenPrefixLenType))
+				b.WriteString(fmt.Sprintf("    size = read_len(buffer, '%s')\n", g.GetConfig().ListLenPrefixLenType))
 			}
 			b.WriteString("    for i in range(size):\n")
 			b.WriteString(AddIndent4ln(g.generateDecodeField(p, f)))
@@ -184,7 +187,7 @@ func (g PythonGenerator) generateDecodeMethod(p *model.Packet) string {
 
 // GetPadding field.Padding or config.Padding
 func (g PythonGenerator) GetPadding(f *model.Field) *model.Padding {
-	padding := g.config.Padding
+	padding := g.GetConfig().Padding
 	if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
 		if fs.Padding != nil {
 			padding = fs.Padding
@@ -209,7 +212,7 @@ func (g PythonGenerator) generateDecodeField(p *model.Packet, f *model.Field) st
 	case *model.BasicFieldAttribute, *model.LengthFieldAttribute, *model.CheckSumFieldAttribute:
 		if typ, ok := pyBasicTypeMap[f.GetType()]; ok {
 			read := typ.BasicType
-			if g.config.LittleEndian {
+			if g.GetConfig().LittleEndian {
 				read = typ.Le
 			}
 			if f.IsRepeat {
@@ -238,13 +241,13 @@ func (g PythonGenerator) generateDecodeField(p *model.Packet, f *model.Field) st
 		}
 	case *model.DynamicStringFieldAttribute:
 		var le string
-		if g.config.LittleEndian {
+		if g.GetConfig().LittleEndian {
 			le = "_le"
 		}
 		if f.IsRepeat {
-			b.WriteString(fmt.Sprintf("    self.%s.append(read_string%s(buffer,'%s'))\n", fieldName, le, g.config.StringLenPrefixLenType))
+			b.WriteString(fmt.Sprintf("    self.%s.append(read_string%s(buffer,'%s'))\n", fieldName, le, g.GetConfig().StringLenPrefixLenType))
 		} else {
-			b.WriteString(fmt.Sprintf("    self.%s = read_string%s(buffer,'%s')\n", fieldName, le, g.config.StringLenPrefixLenType))
+			b.WriteString(fmt.Sprintf("    self.%s = read_string%s(buffer,'%s')\n", fieldName, le, g.GetConfig().StringLenPrefixLenType))
 		}
 	case *model.ObjectFieldAttribute:
 		if f.IsRepeat {
@@ -281,7 +284,7 @@ func (g PythonGenerator) generateEncodeMethod(p *model.Packet) string {
 			LengthFieldName := strcase.ToSnake(p.LengthField.Name)
 			b.WriteString(fmt.Sprintf("    self.%s = %s_end - %s_start\n", LengthFieldName, fieldName, fieldName))
 			typ := pyBasicTypeMap[p.LengthField.GetType()]
-			if g.config.LittleEndian {
+			if g.GetConfig().LittleEndian {
 				b.WriteString(fmt.Sprintf("    buffer.write_%s_at(%s_pos, self.%s)\n", typ.Le, LengthFieldName, LengthFieldName))
 			} else {
 				b.WriteString(fmt.Sprintf("    buffer.write_%s_at(%s_pos, self.%s)\n", typ.BasicType, LengthFieldName, LengthFieldName))
@@ -292,7 +295,7 @@ func (g PythonGenerator) generateEncodeMethod(p *model.Packet) string {
 		case *model.LengthFieldAttribute:
 			typ := pyBasicTypeMap[f.GetType()]
 			b.WriteString(fmt.Sprintf("    %s_pos = buffer.write_index\n", fieldName))
-			if g.config.LittleEndian {
+			if g.GetConfig().LittleEndian {
 				b.WriteString(fmt.Sprintf("    buffer.write_%s(0)\n", typ.Le))
 			} else {
 				b.WriteString(fmt.Sprintf("    buffer.write_%s(0)\n", typ.BasicType))
@@ -302,7 +305,7 @@ func (g PythonGenerator) generateEncodeMethod(p *model.Packet) string {
 			b.WriteString("    if service :\n")
 			b.WriteString(fmt.Sprintf("        self.%s = service.calc(buffer)\n", fieldName))
 			if typ, ok := pyBasicTypeMap[f.GetType()]; ok {
-				if g.config.LittleEndian {
+				if g.GetConfig().LittleEndian {
 					b.WriteString(fmt.Sprintf("    buffer.write_%s(self.%s)\n", typ.Le, fieldName))
 				} else {
 					b.WriteString(fmt.Sprintf("    buffer.write_%s(self.%s)\n", typ.BasicType, fieldName))
@@ -310,9 +313,9 @@ func (g PythonGenerator) generateEncodeMethod(p *model.Packet) string {
 			}
 		default:
 			if f.IsRepeat {
-				typ := pyBasicTypeMap[g.config.ListLenPrefixLenType]
+				typ := pyBasicTypeMap[g.GetConfig().ListLenPrefixLenType]
 				b.WriteString(fmt.Sprintf("    size = len(self.%s)\n", fieldName))
-				if g.config.LittleEndian {
+				if g.GetConfig().LittleEndian {
 					b.WriteString(fmt.Sprintf("    buffer.write_%s(size)\n", typ.Le))
 				} else {
 					b.WriteString(fmt.Sprintf("    buffer.write_%s(size)\n", typ.BasicType))
@@ -338,7 +341,7 @@ func (g PythonGenerator) generateEncodeField(f *model.Field) string {
 	switch c := f.Attr.(type) {
 	case *model.BasicFieldAttribute, *model.CheckSumFieldAttribute:
 		if typ, ok := pyBasicTypeMap[f.GetType()]; ok {
-			if g.config.LittleEndian {
+			if g.GetConfig().LittleEndian {
 				b.WriteString(fmt.Sprintf("    buffer.write_%s(self.%s)\n", typ.Le, fieldName))
 			} else {
 				b.WriteString(fmt.Sprintf("    buffer.write_%s(self.%s)\n", typ.BasicType, fieldName))
@@ -355,10 +358,10 @@ func (g PythonGenerator) generateEncodeField(f *model.Field) string {
 			b.WriteString(fmt.Sprintf("    write_fixed_string(buffer, self.%s, %d, 'utf-8')\n", fieldName, c.Length))
 		}
 	case *model.DynamicStringFieldAttribute:
-		if g.config.LittleEndian {
-			b.WriteString(fmt.Sprintf("    write_string_le(buffer, self.%s, '%s')\n", fieldName, g.config.StringLenPrefixLenType))
+		if g.GetConfig().LittleEndian {
+			b.WriteString(fmt.Sprintf("    write_string_le(buffer, self.%s, '%s')\n", fieldName, g.GetConfig().StringLenPrefixLenType))
 		} else {
-			b.WriteString(fmt.Sprintf("    write_string(buffer, self.%s, '%s')\n", fieldName, g.config.StringLenPrefixLenType))
+			b.WriteString(fmt.Sprintf("    write_string(buffer, self.%s, '%s')\n", fieldName, g.GetConfig().StringLenPrefixLenType))
 		}
 	case *model.ObjectFieldAttribute:
 		b.WriteString(fmt.Sprintf("    self.%s.encode(buffer)\n", fieldName))
