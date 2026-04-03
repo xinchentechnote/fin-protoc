@@ -28,7 +28,11 @@ gen:
 build: gen dirs main-build shared-build
 
 main-build:
+ifeq ($(UNAME_S),Darwin)
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/$(TARGET) ./cmd/
+else 
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/$(TARGET) ./cmd/
+endif
 
 print-system:
 	@echo "Detected system: UNAME_S = $(UNAME_S)"
