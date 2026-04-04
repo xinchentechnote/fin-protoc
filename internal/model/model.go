@@ -81,6 +81,16 @@ var options = map[string][]string{
 	FixedStringPadChar:     {"'0'", "' '", "'\x00'"},
 }
 
+var optionKeys []string
+
+func init() {
+	optionKeys = make([]string, 0, len(options))
+	for key := range options {
+		optionKeys = append(optionKeys, key)
+	}
+	sort.Strings(optionKeys)
+}
+
 // BinaryModel contains metaData, options,and packets
 type BinaryModel struct {
 	MetaDataMap  map[string]MetaData // Map of metadata definitions
@@ -209,12 +219,7 @@ func (m *BinaryModel) AddOption(name, value string, line int, column int) {
 			m.AddSyntaxError(&SyntaxError{line, column, "Option " + name + " is not allowed to be " + value + ", Expected one of:" + strings.Join(values, ","), nil})
 		}
 	} else {
-		var keys []string
-		for key := range options {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-		m.AddSyntaxError(&SyntaxError{line, column, "Option " + name + " is not allowed in this context, Expected one of:" + strings.Join(keys, ","), nil})
+		m.AddSyntaxError(&SyntaxError{line, column, "Option " + name + " is not allowed in this context, Expected one of:" + strings.Join(optionKeys, ","), nil})
 		return
 	}
 

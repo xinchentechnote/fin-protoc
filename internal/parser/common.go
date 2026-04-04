@@ -62,11 +62,11 @@ func (s *SyntaxErrorListener) Error() string {
 		return ""
 	}
 
-	var errStr string
+	var builder strings.Builder
 	for _, err := range s.Errors {
-		errStr += fmt.Sprintf("line %d:%d %s\n", err.Line, err.Column, err.Msg)
+		builder.WriteString(fmt.Sprintf("line %d:%d %s\n", err.Line, err.Column, err.Msg))
 	}
-	return errStr
+	return builder.String()
 }
 
 // AddIndent4ln adds 4-space indent and a newline (similar to fmt.Println)
@@ -140,11 +140,23 @@ func WriteCodeToFile(path string, codeMap map[string][]byte) error {
 		if nil != err {
 			return fmt.Errorf("create file fail:%w", err)
 		}
-		defer f.Close()
+		defer func() {
+			if f != nil {
+				_ = f.Close()
+			}
+		}()
+
 		_, err = f.Write(datas)
 		if nil != err {
+			_ = f.Close()
+			_ = os.Remove(filepath)
 			return fmt.Errorf("write file fail:%w", err)
 		}
+
+		if err = f.Close(); nil != err {
+			return fmt.Errorf("close file fail:%w", err)
+		}
+		f = nil
 		fmt.Println("Generated code for packet:", filepath)
 	}
 	return nil
