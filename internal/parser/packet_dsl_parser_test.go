@@ -187,7 +187,7 @@ root packet RootPacket {
 	binModel := result.(*model.BinaryModel)
 	body := &model.Packet{Name: "Body", Column: 1, Line: 1, FieldMap: make(map[string]*model.Field), MatchFields: make(map[string][]model.MatchPair)}
 	bodyField := &model.Field{Name: "Body", IsRepeat: false, Line: 6, Column: 1, Attr: &model.ObjectFieldAttribute{PacketName: "Body", RefPacket: body}}
-	bodyLenField := &model.Field{Name: "BodyLen", IsRepeat: false, Line: 5, Column: 1, Attr: &model.LengthFieldAttribute{LengthType: "u16", TragetField: bodyField}}
+	bodyLenField := &model.Field{Name: "BodyLen", IsRepeat: false, Line: 5, Column: 1, Attr: &model.LengthFieldAttribute{LengthType: "u16", TargetField: bodyField}}
 	bodyLenField.LenAttr = &model.LengthOfAttribute{LengthField: bodyLenField}
 	bodyField.LenAttr = bodyLenField.Attr
 	expectedFields := []*model.Field{

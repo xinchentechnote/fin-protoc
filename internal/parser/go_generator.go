@@ -396,7 +396,7 @@ func (g GoGenerator) generateEncodingField(p *model.Packet, field *model.Field) 
 		}
 	case *model.LengthFieldAttribute:
 		typ := goBasicTypeMap[field.GetType()]
-		b.WriteString(fmt.Sprintf("    %sPos := buf.Len()\n", strcase.ToLowerCamel(c.TragetField.Name)))
+		b.WriteString(fmt.Sprintf("    %sPos := buf.Len()\n", strcase.ToLowerCamel(c.TargetField.Name)))
 		b.WriteString(fmt.Sprintf("    if err :=codec.WriteBasicType%s(buf, %s(0)); err != nil {\n", order, typ.BasicType))
 		b.WriteString("        return fmt.Errorf(\"failed to encode %s: %w\", \"" + field.Name + "\", err)\n")
 		b.WriteString("    }\n")

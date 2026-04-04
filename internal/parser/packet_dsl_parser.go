@@ -167,7 +167,7 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 	}
 
 	for _, f := range fields {
-		if lengthField != nil && f.Name == lengthField.Attr.(*model.LengthFieldAttribute).TragetField.Name {
+		if lengthField != nil && f.Name == lengthField.Attr.(*model.LengthFieldAttribute).TargetField.Name {
 			lengthField.LenAttr = &model.LengthOfAttribute{
 				LengthField: lengthField,
 			}
@@ -181,7 +181,7 @@ func (v *PacketDslVisitorImpl) VisitPacketDefinition(ctx *gen.PacketDefinitionCo
 		case *model.LengthFieldAttribute:
 			f.Attr = &model.LengthFieldAttribute{
 				LengthType:  f.GetType(),
-				TragetField: fieldMap[c.TragetField.Name],
+				TargetField: fieldMap[c.TargetField.Name],
 			}
 		case *model.MatchFieldAttribute:
 			c.MatchKeyField = fieldMap[c.MatchKeyField.Name]
@@ -214,7 +214,7 @@ func (v *PacketDslVisitorImpl) VisitFieldDefinitionWithAttribute(ctx *gen.FieldD
 			f.Attr = &model.CheckSumFieldAttribute{Type: f.GetType(), CheckSumType: fieldAttr.CalculatedFromAttribute().GetFrom().GetText()}
 		case fieldAttr.LengthOfAttribute() != nil:
 			f.Attr = &model.LengthFieldAttribute{
-				TragetField: &model.Field{Name: fieldAttr.LengthOfAttribute().GetFrom().GetText()},
+				TargetField: &model.Field{Name: fieldAttr.LengthOfAttribute().GetFrom().GetText()},
 				LengthType:  f.GetType(),
 			}
 		case fieldAttr.PaddingAttribute() != nil:
@@ -318,7 +318,7 @@ func (v *PacketDslVisitorImpl) VisitLengthFieldDeclaration(ctx *gen.LengthFieldD
 		Name:     name,
 		IsRepeat: false,
 		Attr: &model.LengthFieldAttribute{
-			TragetField: &model.Field{Name: ctx.LengthOfAttribute().GetFrom().GetText()},
+			TargetField: &model.Field{Name: ctx.LengthOfAttribute().GetFrom().GetText()},
 			LengthType:  typ,
 		},
 		Doc:    desc,

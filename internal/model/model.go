@@ -304,7 +304,7 @@ func (b BasicFieldAttribute) GetType() string {
 
 // LengthFieldAttribute length field attribute
 type LengthFieldAttribute struct {
-	TragetField *Field
+	TargetField *Field
 	LengthType  string
 }
 

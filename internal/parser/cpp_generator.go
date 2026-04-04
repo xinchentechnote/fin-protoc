@@ -219,7 +219,7 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 			b.WriteString(fmt.Sprintf("    %s->encode(buf);\n", fieldNameLowerCamel))
 			b.WriteString(fmt.Sprintf("    auto %sEnd = buf.writer_index();\n", fieldNameLowerCamel))
 			typ := cppBasicTypeMap[lf.GetType()]
-			bodyName := strcase.ToLowerCamel(lf.TragetField.Name)
+			bodyName := strcase.ToLowerCamel(lf.TargetField.Name)
 			lengthFieldName := strcase.ToLowerCamel(p.LengthField.Name)
 			b.WriteString(fmt.Sprintf("    auto %sLen_ = static_cast<%s>(%sEnd - %sStart);\n", bodyName, typ.BasicType, fieldNameLowerCamel, fieldNameLowerCamel))
 			if g.GetConfig().LittleEndian {
