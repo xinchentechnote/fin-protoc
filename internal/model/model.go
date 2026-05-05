@@ -430,18 +430,6 @@ type Field struct {
 	Column   int            // Column number where the field is defined
 }
 
-// ParseZCharArrayType parse char[\d]
-func ParseZCharArrayType(fieldType string) (size int, ok bool) {
-	pattern := `^zchar\[(\d+)\]$`
-	matches := regexp.MustCompile(pattern).FindStringSubmatch(fieldType)
-	if len(matches) == 2 {
-		//must is number
-		result, _ := strconv.Atoi(matches[1])
-		return result, true
-	}
-	return 0, false
-}
-
 // ParseCharArrayType parse char[\d]
 func ParseCharArrayType(fieldType string) (size int, ok bool) {
 	pattern := `^char\[(\d+)\]$`

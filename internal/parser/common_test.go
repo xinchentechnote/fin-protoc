@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"testing"
@@ -109,14 +110,23 @@ func TestAddIndent(t *testing.T) {
 
 func TestReadFileToString(t *testing.T) {
 	// Create a temporary file for testing
-	tempFile, err := os.CreateTemp("", "testfile")
+	tempFile, err := os.CreateTemp("", "test_file")
 	require.NoError(t, err)
-	defer os.Remove(tempFile.Name())
+	defer func(name string) {
+		err := os.Remove(name)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(tempFile.Name())
 
 	content := "test content"
 	_, err = tempFile.WriteString(content)
 	require.NoError(t, err)
-	tempFile.Close()
+	err = tempFile.Close()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 
 	tests := []struct {
 		name        string
@@ -153,14 +163,23 @@ func TestReadFileToString(t *testing.T) {
 
 func TestNewPacketDslParserByFile(t *testing.T) {
 	// Create a temporary file with valid DSL content
-	tempFile, err := os.CreateTemp("", "testdsl")
+	tempFile, err := os.CreateTemp("", "test_dsl")
 	require.NoError(t, err)
-	defer os.Remove(tempFile.Name())
+	defer func(name string) {
+		err := os.Remove(name)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(tempFile.Name())
 
 	content := "packet TestPacket { u32 field1; }"
 	_, err = tempFile.WriteString(content)
 	require.NoError(t, err)
-	tempFile.Close()
+	err = tempFile.Close()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 
 	tests := []struct {
 		name        string
@@ -319,9 +338,14 @@ func TestRenderToString(t *testing.T) {
 
 func TestWriteCodeToFile(t *testing.T) {
 	// Create a temporary directory for testing
-	tempDir, err := os.MkdirTemp("", "testoutput")
+	tempDir, err := os.MkdirTemp("", "test_output")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	defer func(path string) {
+		err := os.RemoveAll(path)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(tempDir)
 
 	codeMap := map[string][]byte{
 		"file1.txt": []byte("content1"),
@@ -332,8 +356,8 @@ func TestWriteCodeToFile(t *testing.T) {
 		_ = WriteCodeToFile(tempDir, codeMap)
 
 		for filename, content := range codeMap {
-			filepath := filepath.Join(tempDir, filename)
-			data, err := os.ReadFile(filepath)
+			filePath := filepath.Join(tempDir, filename)
+			data, err := os.ReadFile(filePath)
 			assert.NoError(t, err)
 			assert.Equal(t, content, data)
 		}
