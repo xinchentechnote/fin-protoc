@@ -3,10 +3,10 @@ package parser
 import (
 	"bytes"
 	"fmt"
-	"text/template"
 	"os"
 	filepathpkg "path/filepath"
 	"strings"
+	"text/template"
 
 	"github.com/antlr4-go/antlr/v4"
 	gen "github.com/xinchentechnote/fin-protoc/internal/grammar"

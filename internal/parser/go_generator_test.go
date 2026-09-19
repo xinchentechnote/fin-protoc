@@ -66,10 +66,10 @@ root packet RootPacket {
 // it must match the declared length field type size, not a hardcoded value.
 func TestGoGeneratorLengthFieldBackfill(t *testing.T) {
 	tests := []struct {
-		name          string
-		dsl           string
-		expectedLine  string
-		outdatedLine  string
+		name         string
+		dsl          string
+		expectedLine string
+		outdatedLine string
 	}{
 		{
 			name: "big endian u16 backfills 2 bytes",
