@@ -28,9 +28,13 @@ gen:
 build: gen dirs main-build shared-build
 
 main-build:
-ifeq ($(UNAME_S),Darwin)
+ifeq ($(OS),Windows_NT)
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/$(TARGET).exe ./cmd/
+else ifneq (,$(findstring MSYS_NT,$(UNAME_S)))
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/$(TARGET).exe ./cmd/
+else ifeq ($(UNAME_S),Darwin)
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/$(TARGET) ./cmd/
-else 
+else
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/$(TARGET) ./cmd/
 endif
 
@@ -75,7 +79,6 @@ else ifneq (,$(findstring MSYS_NT,$(UNAME_S)))
 	mkdir -p temp-pack/fin-protoc-$(VERSION)-windows-amd64/bin
 	mkdir -p temp-pack/fin-protoc-$(VERSION)-windows-amd64/lib
 	mkdir -p temp-pack/fin-protoc-$(VERSION)-windows-amd64/include
-	go build -ldflags "$# Windows
 	cp $(BIN_DIR)/fin-protoc.exe temp-pack/fin-protoc-$(VERSION)-windows-amd64/bin/fin-protoc.exe
 	cp $(LIB_DIR)/libpacketdsl.dll temp-pack/fin-protoc-$(VERSION)-windows-amd64/lib/
 	cp $(LIB_DIR)/libpacketdsl.h temp-pack/fin-protoc-$(VERSION)-windows-amd64/include/

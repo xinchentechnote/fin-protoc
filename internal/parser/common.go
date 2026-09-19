@@ -3,7 +3,7 @@ package parser
 import (
 	"bytes"
 	"fmt"
-	"html/template"
+	"text/template"
 	"os"
 	filepathpkg "path/filepath"
 	"strings"

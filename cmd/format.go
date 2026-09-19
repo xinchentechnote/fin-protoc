@@ -15,9 +15,8 @@ var formatCmd = &cobra.Command{
 	Use:   "format",
 	Short: "Format packet DSL string",
 	Args:  cobra.NoArgs, // No arguments expected in the command
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		var inputDsl string
-		var err error
 
 		// Check if dsl string is provided
 		if dsl != "" {
@@ -26,29 +25,26 @@ var formatCmd = &cobra.Command{
 			// If file path is provided, read from the file
 			data, err := os.ReadFile(file)
 			if err != nil {
-				fmt.Println("Error reading file:", err)
-				os.Exit(1)
+				return fmt.Errorf("read file: %w", err)
 			}
 			inputDsl = string(data)
 		} else {
-			fmt.Println("Please provide a DSL string or a file path")
-			os.Exit(1)
+			return fmt.Errorf("please provide a DSL string or a file path")
 		}
 
 		// Now format the DSL string
 		result, err := parser.FormatPacketDsl(inputDsl)
 		if err != nil {
-			fmt.Println("Error formatting DSL:", err)
-			os.Exit(1)
+			return fmt.Errorf("format DSL: %w", err)
 		}
 		if file != "" {
-			err := os.WriteFile(file, []byte(result), 0644)
-			if err != nil {
-				fmt.Println("Error Write formatted DSL:", err)
+			if err := os.WriteFile(file, []byte(result), 0644); err != nil {
+				return fmt.Errorf("write formatted DSL: %w", err)
 			}
 		} else {
 			fmt.Println(result)
 		}
+		return nil
 	},
 }
 

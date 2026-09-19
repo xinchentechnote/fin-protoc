@@ -381,9 +381,9 @@ func (g GoGenerator) generateEncodingField(p *model.Packet, field *model.Field) 
 		typ := goBasicTypeMap[p.LengthField.GetType()]
 		b.WriteString(fmt.Sprintf("p.%s = %s(%sEnd - %sStart)\n", strcase.ToCamel(p.LengthField.Name), typ.BasicType, fieldNameLowerCamel, fieldNameLowerCamel))
 		if g.GetConfig().LittleEndian {
-			b.WriteString(fmt.Sprintf("binary.LittleEndian.Put%s(buf.Bytes()[%sPos:%sPos + 4], p.%s)\n", strcase.ToCamel(typ.BasicType), fieldNameLowerCamel, fieldNameLowerCamel, strcase.ToCamel(p.LengthField.Name)))
+			b.WriteString(fmt.Sprintf("binary.LittleEndian.Put%s(buf.Bytes()[%sPos:%sPos + %d], p.%s)\n", strcase.ToCamel(typ.BasicType), fieldNameLowerCamel, fieldNameLowerCamel, typ.Size, strcase.ToCamel(p.LengthField.Name)))
 		} else {
-			b.WriteString(fmt.Sprintf("binary.BigEndian.Put%s(buf.Bytes()[%sPos:%sPos + 4], p.%s)\n", strcase.ToCamel(typ.BasicType), fieldNameLowerCamel, fieldNameLowerCamel, strcase.ToCamel(p.LengthField.Name)))
+			b.WriteString(fmt.Sprintf("binary.BigEndian.Put%s(buf.Bytes()[%sPos:%sPos + %d], p.%s)\n", strcase.ToCamel(typ.BasicType), fieldNameLowerCamel, fieldNameLowerCamel, typ.Size, strcase.ToCamel(p.LengthField.Name)))
 		}
 		return b.String()
 	}
