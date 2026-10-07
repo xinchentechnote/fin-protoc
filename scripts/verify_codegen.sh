@@ -17,22 +17,39 @@ BIN="${1:-$ROOT/bin/fin-protoc}"
 DSL="$ROOT/internal/parser/testdata/grammar_full.dsl"
 RUNTIME_DIR="${FIN_RUNTIME_DIR:-$ROOT/.verify-runtime}"
 RUNTIME_BASE="https://github.com/xinchentechnote"
+# STRICT=1 (set by CI) turns SKIP into failure so a missing toolchain or a
+# failed runtime clone can never silently green the pipeline.
+STRICT="${STRICT:-0}"
 
 FAILED=0
 declare -a RESULTS
 
+summary_file="${GITHUB_STEP_SUMMARY:-}"
+
 note() { printf '%s\n' "$*"; }
 ok() { RESULTS+=("PASS  $1"); printf '[PASS] %s\n' "$1"; }
 fail() { RESULTS+=("FAIL  $1"); printf '[FAIL] %s\n' "$1"; FAILED=$((FAILED + 1)); }
-skip() { RESULTS+=("SKIP  $1"); printf '[SKIP] %s\n' "$1"; }
+skip() {
+	RESULTS+=("SKIP  $1"); printf '[SKIP] %s\n' "$1"
+	if [ "$STRICT" = 1 ]; then FAILED=$((FAILED + 1)); fi
+}
 
 ensure_runtime() {
 	local repo="$1"
 	local dest="$RUNTIME_DIR/$repo"
 	[ -d "$dest/.git" ] && return 0
 	mkdir -p "$RUNTIME_DIR"
-	git clone -q --depth 1 --recurse-submodules --shallow-submodules \
-		"$RUNTIME_BASE/$repo.git" "$dest"
+	# submodules may point at SSH URLs a CI runner cannot reach; retry
+	# without them before giving up
+	if ! git clone -q --depth 1 --recurse-submodules --shallow-submodules \
+		"$RUNTIME_BASE/$repo.git" "$dest" 2>"$WORK/clone-$repo.log"; then
+		rm -rf "$dest"
+		if ! git clone -q --depth 1 "$RUNTIME_BASE/$repo.git" "$dest" \
+			2>>"$WORK/clone-$repo.log"; then
+			note "clone $repo failed:" && tail -3 "$WORK/clone-$repo.log"
+			return 1
+		fi
+	fi
 }
 
 WORK="$(mktemp -d)"
@@ -206,6 +223,19 @@ fi
 note ""
 note "== verification summary =="
 for r in "${RESULTS[@]}"; do note "  $r"; done
+
+# publish the summary on the GitHub run page (visible without log access)
+if [ -n "$summary_file" ]; then
+	{
+		echo "### Generated-code verification (grammar_full.dsl)"
+		echo ""
+		echo "| Result | Check |"
+		echo "|--------|-------|"
+		for r in "${RESULTS[@]}"; do
+			echo "| ${r%% *} | ${r#*  } |"
+		done
+	} >>"$summary_file"
+fi
 
 if [ "$FAILED" -gt 0 ]; then
 	note "$FAILED language(s) FAILED"

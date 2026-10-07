@@ -99,6 +99,9 @@ jobs:
         curl -o "$HOME/software/antlr-4.13.2-complete.jar" https://www.antlr.org/download/antlr-4.13.2-complete.jar
 
     - name: Verify generated code (build + run tests in all six languages)
+      env:
+        # a missing toolchain or failed runtime clone must fail CI, not skip
+        STRICT: '1'
       run: make verify-codegen
 
   release:
