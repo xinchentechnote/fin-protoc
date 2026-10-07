@@ -19,16 +19,24 @@ type CppType struct {
 }
 
 var cppBasicTypeMap = map[string]CppType{
-	"i8":  {"int8_t", "int", "i8", 1, "1"},
-	"i16": {"int16_t", "int", "i16_le", 2, "2"},
-	"i32": {"int32_t", "int", "i32_le", 4, "4"},
-	"i64": {"int64_t", "int", "i64_le", 8, "8"},
-	"u8":  {"uint8_t", "unsigned int", "u8", 1, "1"},
-	"u16": {"uint16_t", "unsigned int", "u16_le", 2, "2"},
-	"u32": {"uint32_t", "unsigned int", "u32_le", 4, "4"},
-	"u64": {"uint64_t", "unsigned int", "u64_le", 8, "8"},
-	"f32": {"float", "float", "f32_le", 4, "4"},
-	"f64": {"double", "double", "f64_le", 8, "8"},
+	"char": {"uint8_t", "unsigned int", "u8", 1, "1"},
+	"i8":   {"int8_t", "int", "i8", 1, "1"},
+	"i16":  {"int16_t", "int", "i16_le", 2, "2"},
+	"i32":  {"int32_t", "int", "i32_le", 4, "4"},
+	"i64":  {"int64_t", "int", "i64_le", 8, "8"},
+	"u8":   {"uint8_t", "unsigned int", "u8", 1, "1"},
+	"u16":  {"uint16_t", "unsigned int", "u16_le", 2, "2"},
+	"u32":  {"uint32_t", "unsigned int", "u32_le", 4, "4"},
+	"u64":  {"uint64_t", "unsigned int", "u64_le", 8, "8"},
+	"f32":  {"float", "float", "f32_le", 4, "4"},
+	"f64":  {"double", "double", "f64_le", 8, "8"},
+}
+
+// cppBeName returns the ByteBuf big-endian method suffix for a mapped type.
+// ByteBuf names them after the Le suffix minus "_le" (char -> u8, i16 -> i16);
+// the raw DSL type name cannot be used here because it need not match.
+func cppBeName(t CppType) string {
+	return strings.TrimSuffix(t.Le, "_le")
 }
 
 // CppGenerator a go code generator
@@ -222,7 +230,7 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 		padding := g.GetPadding(f)
 		if lf, ok := f.LenAttr.(*model.LengthFieldAttribute); ok {
 			b.WriteString(fmt.Sprintf("    auto %sStart = buf.writer_index();\n", fieldNameLowerCamel))
-			b.WriteString(fmt.Sprintf("    %s->encode(buf);\n", fieldNameLowerCamel))
+			b.WriteString(fmt.Sprintf("    %s.encode(buf);\n", fieldNameLowerCamel))
 			b.WriteString(fmt.Sprintf("    auto %sEnd = buf.writer_index();\n", fieldNameLowerCamel))
 			typ := cppBasicTypeMap[lf.GetType()]
 			bodyName := strcase.ToLowerCamel(lf.TargetField.Name)
@@ -269,7 +277,7 @@ func (g CppGenerator) generateEncode(p *model.Packet) string {
 				if g.GetConfig().LittleEndian {
 					b.WriteString(fmt.Sprintf("    buf.write_%s(%s);\n", typ.Le, fieldNameLowerCamel))
 				} else {
-					b.WriteString(fmt.Sprintf("    buf.write_%s(%s);\n", f.GetType(), fieldNameLowerCamel))
+					b.WriteString(fmt.Sprintf("    buf.write_%s(%s);\n", cppBeName(typ), fieldNameLowerCamel))
 				}
 			}
 		case *model.FixedStringFieldAttribute:
@@ -352,7 +360,7 @@ func (g CppGenerator) generateDecode(p *model.Packet) string {
 					if g.GetConfig().LittleEndian {
 						b.WriteString(fmt.Sprintf("    %s = buf.read_%s();\n", fieldNameLowerCamel, typ.Le))
 					} else {
-						b.WriteString(fmt.Sprintf("    %s = buf.read_%s();\n", fieldNameLowerCamel, f.GetType()))
+						b.WriteString(fmt.Sprintf("    %s = buf.read_%s();\n", fieldNameLowerCamel, cppBeName(typ)))
 					}
 				}
 
