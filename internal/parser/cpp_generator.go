@@ -118,10 +118,12 @@ func (g CppGenerator) generateCodeForPacket(p *model.Packet) string {
 	//factory
 	for key, pairs := range p.MatchFields {
 		f := p.FieldMap[key]
-		b.WriteString(fmt.Sprintf("struct %sTag{};\n", strcase.ToCamel(p.Name)))
-		b.WriteString(fmt.Sprintf("using %sMessageFactory = MessageFactory<%s, codec::BinaryCodec, %sTag>;\n", strcase.ToCamel(p.Name), g.getFieldType(f), strcase.ToCamel(p.Name)))
+		// include the match key field name so multiple match fields in one
+		// packet get distinct tag/factory types
+		b.WriteString(fmt.Sprintf("struct %s%sTag{};\n", strcase.ToCamel(p.Name), strcase.ToCamel(key)))
+		b.WriteString(fmt.Sprintf("using %s%sMessageFactory = MessageFactory<%s, codec::BinaryCodec, %s%sTag>;\n", strcase.ToCamel(p.Name), strcase.ToCamel(key), g.getFieldType(f), strcase.ToCamel(p.Name), strcase.ToCamel(key)))
 		for _, pair := range pairs {
-			b.WriteString(fmt.Sprintf("REGISTER_MESSAGE(%sMessageFactory, %s, %s);\n", strcase.ToCamel(p.Name), pair.Key, pair.Value))
+			b.WriteString(fmt.Sprintf("REGISTER_MESSAGE(%s%sMessageFactory, %s, %s);\n", strcase.ToCamel(p.Name), strcase.ToCamel(key), pair.Key, pair.Value))
 		}
 		b.WriteString("\n")
 		b.WriteString("\n")
@@ -200,10 +202,14 @@ func (g CppGenerator) GetPadding(f *model.Field) *model.Padding {
 	if padding == nil {
 		return nil
 	}
-	if padding.PadChar == "'\\x00'" || padding.PadChar == "'\\u0000'" {
-		padding.PadChar = "'\\0'"
+	padChar := padding.PadChar
+	// PadChar may hold an actual NUL wrapped in quotes or an escaped form;
+	// emit C++'s '\0' from a copy — never rewrite the shared model state
+	switch padChar {
+	case "'\x00'", "'\\x00'", "'\\u0000'":
+		padChar = "'\\0'"
 	}
-	return padding
+	return &model.Padding{PadChar: padChar, PadLeft: padding.PadLeft}
 }
 
 func (g CppGenerator) generateEncode(p *model.Packet) string {
@@ -399,7 +405,7 @@ func (g CppGenerator) generateDecode(p *model.Packet) string {
 			}
 		case *model.MatchFieldAttribute:
 			matchKeyLowerCamel := strcase.ToLowerCamel(c.MatchKeyField.Name)
-			b.WriteString(fmt.Sprintf("    %s = %sMessageFactory::getInstance().create(%s);\n", fieldNameLowerCamel, strcase.ToCamel(p.Name), matchKeyLowerCamel))
+			b.WriteString(fmt.Sprintf("    %s = %s%sMessageFactory::getInstance().create(%s);\n", fieldNameLowerCamel, strcase.ToCamel(p.Name), strcase.ToCamel(c.MatchKeyField.Name), matchKeyLowerCamel))
 			b.WriteString(fmt.Sprintf("    %s->decode(buf);\n", fieldNameLowerCamel))
 		default:
 			b.WriteString("-- unsupport type:" + f.GetType() + "\n")

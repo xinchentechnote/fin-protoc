@@ -411,6 +411,11 @@ func (g LuaWspGenerator) generateFieldDefinitionFromPacket(mdl *model.BinaryMode
 	var b strings.Builder
 	b.WriteString(AddIndent4ln(fmt.Sprintf("-- Field from %s", pkt.Name)))
 	for _, f := range pkt.Fields {
+		// match fields carry no wire data of their own (they only branch to
+		// sub-dissectors), so they get no ProtoField
+		if _, ok := f.Attr.(*model.MatchFieldAttribute); ok {
+			continue
+		}
 		packageName := strcase.ToSnake(pkt.Name)
 		fieldName := packageName + "_" + strcase.ToSnake(f.Name)
 		filterName := packageName + "." + strcase.ToSnake(f.Name)

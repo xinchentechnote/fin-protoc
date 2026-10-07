@@ -7,3 +7,5 @@ lib/libpacketdsl.so
 lib/libpacketdsl.dll
 lib/libpacketdsl.dylib
 .idea
+.verify-runtime/
+.verify-venv/

@@ -20,16 +20,17 @@ type PyType struct {
 
 // pyBasicTypeMap maps field types to their Python representations.
 var pyBasicTypeMap = map[string]PyType{
-	"i8":  {"i8", "i8", "1", "0", "i8", 1},
-	"i16": {"i16", "i16", "2", "0", "i16_le", 2},
-	"i32": {"i32", "i32", "4", "0", "i32_le", 4},
-	"i64": {"i64", "i64", "8", "0", "i64_le", 8},
-	"u8":  {"u8", "u8", "1", "0", "u8", 1},
-	"u16": {"u16", "u16", "2", "0", "u16_le", 2},
-	"u32": {"u32", "u32", "4", "0", "u32_le", 4},
-	"u64": {"u64", "u64", "8", "0", "u64_le", 8},
-	"f32": {"f32", "f32", "4", "0", "f32_le", 4},
-	"f64": {"f64", "f64", "8", "0", "f64_le", 8},
+	"i8":   {"i8", "i8", "1", "0", "i8", 1},
+	"i16":  {"i16", "i16", "2", "0", "i16_le", 2},
+	"i32":  {"i32", "i32", "4", "0", "i32_le", 4},
+	"i64":  {"i64", "i64", "8", "0", "i64_le", 8},
+	"u8":   {"u8", "u8", "1", "0", "u8", 1},
+	"u16":  {"u16", "u16", "2", "0", "u16_le", 2},
+	"u32":  {"u32", "u32", "4", "0", "u32_le", 4},
+	"u64":  {"u64", "u64", "8", "0", "u64_le", 8},
+	"f32":  {"f32", "f32", "4", "0", "f32_le", 4},
+	"f64":  {"f64", "f64", "8", "0", "f64_le", 8},
+	"char": {"char", "u8", "1", "0", "u8", 1},
 }
 
 // PythonGenerator a go code generator
@@ -116,10 +117,13 @@ func (g PythonGenerator) generateCodeForPacket(p *model.Packet) string {
 		if ok {
 			pyt = "int"
 		}
-		b.WriteString(fmt.Sprintf("class %sMessageFactory(MessageFactory[%s, BinaryCodec]): ...\n", strcase.ToCamel(p.Name), pyt))
-		b.WriteString(fmt.Sprintf("%sMessageFactory = %sMessageFactory()\n", strcase.ToLowerCamel(p.Name), strcase.ToCamel(p.Name)))
+		// include the match key field name so multiple match fields in one
+		// packet get distinct factory variables
+		factoryVar := strcase.ToLowerCamel(p.Name) + strcase.ToCamel(key) + "MessageFactory"
+		b.WriteString(fmt.Sprintf("class %s%sMessageFactory(MessageFactory[%s, BinaryCodec]): ...\n", strcase.ToCamel(p.Name), strcase.ToCamel(key), pyt))
+		b.WriteString(fmt.Sprintf("%s = %s%sMessageFactory()\n", factoryVar, strcase.ToCamel(p.Name), strcase.ToCamel(key)))
 		for _, pair := range pairs {
-			b.WriteString(fmt.Sprintf("%sMessageFactory.register(%s, %s)\n", strcase.ToLowerCamel(p.Name), pair.Key, pair.Value))
+			b.WriteString(fmt.Sprintf("%s.register(%s, %s)\n", factoryVar, pair.Key, pair.Value))
 		}
 		b.WriteString("\n")
 		b.WriteString("\n")
@@ -259,7 +263,7 @@ func (g PythonGenerator) generateDecodeField(p *model.Packet, f *model.Field) st
 			b.WriteString(fmt.Sprintf("    self.%s.decode(buffer)\n", fieldName))
 		}
 	case *model.MatchFieldAttribute:
-		b.WriteString(fmt.Sprintf("    self.%s = %sMessageFactory.create(self.%s)\n", fieldName, strcase.ToLowerCamel(p.Name), strcase.ToSnake(c.MatchKeyField.Name)))
+		b.WriteString(fmt.Sprintf("    self.%s = %s%sMessageFactory.create(self.%s)\n", fieldName, strcase.ToLowerCamel(p.Name), strcase.ToCamel(c.MatchKeyField.Name), strcase.ToSnake(c.MatchKeyField.Name)))
 		b.WriteString(fmt.Sprintf("    self.%s.decode(buffer)\n", fieldName))
 	default:
 		b.WriteString("-- unsupported type: " + f.GetType() + "\n")

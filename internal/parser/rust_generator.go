@@ -150,7 +150,10 @@ func (g RustGenerator) generateStructCode(pkt *model.Packet) string {
 	return b.String()
 }
 
-// GetPadding field.Padding or config.Padding
+// GetPadding field.Padding or config.Padding.
+// Returns a normalized copy — the parsed model may hold the NUL pad char as
+// an actual NUL wrapped in quotes, and rewriting the shared Padding in place
+// would leak one generator's literal style into the others.
 func (g RustGenerator) GetPadding(f *model.Field) *model.Padding {
 	padding := g.GetConfig().Padding
 	if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
@@ -161,10 +164,12 @@ func (g RustGenerator) GetPadding(f *model.Field) *model.Padding {
 	if padding == nil {
 		return nil
 	}
-	if padding.PadChar == "'\\x00'" || padding.PadChar == "'\\u0000'" {
-		padding.PadChar = "'\\0'"
+	padChar := padding.PadChar
+	switch padChar {
+	case "'\x00'", "'\\x00'", "'\\u0000'":
+		padChar = "'\\0'"
 	}
-	return padding
+	return &model.Padding{PadChar: padChar, PadLeft: padding.PadLeft}
 }
 
 // GetFieldType convert field type for rust

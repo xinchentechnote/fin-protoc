@@ -24,7 +24,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.21'
+        go-version: '1.24'
 
     - name: Set up Java 11
       uses: actions/setup-java@v3
@@ -62,6 +62,45 @@ jobs:
     - name: Run tests
       run: make test
 
+  # Generate code in all six languages from the full-grammar fixture, then
+  # compile it against the fin-proto-* runtimes and run the generated tests.
+  codegen-verify:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.24'
+        cache: true
+
+    - name: Set up Java 11
+      uses: actions/setup-java@v3
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+
+    - name: Set up Rust
+      run: |
+        rustup update stable
+        rustc --version
+        cargo --version
+
+    - name: Install native toolchains
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y lua5.4 libgtest-dev zlib1g-dev g++
+
+    - name: Download ANTLR
+      run: |
+        mkdir -p ~/software
+        curl -o "$HOME/software/antlr-4.13.2-complete.jar" https://www.antlr.org/download/antlr-4.13.2-complete.jar
+
+    - name: Verify generated code (build + run tests in all six languages)
+      run: make verify-codegen
+
   release:
     needs: build
     if: github.ref_type == 'tag'
@@ -76,7 +115,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.21'
+        go-version: '1.24'
 
     - name: Set up Java 11
       uses: actions/setup-java@v3

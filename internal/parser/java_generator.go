@@ -283,9 +283,12 @@ func (g JavaGenerator) GetFieldName(f *model.Field) string {
 	return strcase.ToCamel(f.Name)
 }
 
-// GetFieldNameLower get lower CamelName
+// GetFieldNameLower get lower CamelName.
+// Apply ToLowerCamel to the raw DSL name in one step — converting through
+// ToCamel first collapses names like "A_f32" to "af32", which then no longer
+// matches the ToLowerCamel("A_f32") = "aF32" used by equals/hashCode/encode.
 func (g JavaGenerator) GetFieldNameLower(f *model.Field) string {
-	return strcase.ToLowerCamel(g.GetFieldName(f))
+	return strcase.ToLowerCamel(f.Name)
 }
 
 // GetPadding field.Padding or config.Padding
@@ -299,11 +302,14 @@ func (g JavaGenerator) GetPadding(f *model.Field) *model.Padding {
 	if padding == nil {
 		return nil
 	}
-	// if PadChar is '\x00' or '\u0000' or "\0"，convert in Java '\0'
-	if padding.PadChar == "'\x00'" || padding.PadChar == "'\u0000'" || padding.PadChar == "'\\x00'" {
-		padding.PadChar = "'\\0'"
+	// PadChar may hold an actual NUL wrapped in quotes or an escaped form;
+	// emit Java's '\0' from a copy — never rewrite the shared model state
+	padChar := padding.PadChar
+	switch padChar {
+	case "'\x00'", "'\\x00'", "'\\u0000'":
+		padChar = "'\\0'"
 	}
-	return padding
+	return &model.Padding{PadChar: padChar, PadLeft: padding.PadLeft}
 }
 
 // GetFieldType get java type
@@ -492,7 +498,7 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 				b.WriteString(fmt.Sprintf("this.%s.add(%s_);", fieldName, fieldName))
 			} else {
 				b.WriteString(fmt.Sprintf("if (null == this.%s) {\n", fieldName))
-				b.WriteString(AddIndent4ln(fmt.Sprintf("this.%s = new %s();", fieldName, f.Name)))
+				b.WriteString(AddIndent4ln(fmt.Sprintf("this.%s = new %s();", fieldName, f.GetType())))
 				b.WriteString("}\n")
 				b.WriteString(fmt.Sprintf("this.%s.decode(byteBuf);", fieldName))
 			}
@@ -507,7 +513,7 @@ func (g JavaGenerator) GenerateDecodeField(f *model.Field) string {
 			b.WriteString(fmt.Sprintf("this.%s.add(%s_);", fieldNameLowerCamel, fieldNameLowerCamel))
 		} else {
 			b.WriteString(fmt.Sprintf("if (null == this.%s) {\n", fieldNameLowerCamel))
-			b.WriteString(AddIndent4ln(fmt.Sprintf("this.%s = new %s();", fieldNameLowerCamel, f.Name)))
+			b.WriteString(AddIndent4ln(fmt.Sprintf("this.%s = new %s();", fieldNameLowerCamel, f.GetType())))
 			b.WriteString("}\n")
 			b.WriteString(fmt.Sprintf("this.%s.decode(byteBuf);", fieldNameLowerCamel))
 		}

@@ -127,10 +127,16 @@ test:
 	go test -v -race -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
 
+# Generate code in all six target languages from the full-grammar fixture,
+# compile it against the fin-proto-* runtimes and run the generated tests.
+# Toolchains that are missing locally are skipped; CI installs all of them.
+verify-codegen: gen dirs main-build
+	./scripts/verify_codegen.sh $(BIN_DIR)/$(TARGET)
+
 clean:
 	rm -rf $(BIN_DIR) $(LIB_DIR) coverage.*
 
 setup:
 	sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64
 
-.PHONY: all build main-build shared-build cross-build dirs run test clean setup
+.PHONY: all build main-build shared-build cross-build dirs run test verify-codegen clean setup
