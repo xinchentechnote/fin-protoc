@@ -152,6 +152,7 @@ func TestGrammarFullGenerators(t *testing.T) {
 		{"Lua", NewLuaWspGenerator(m).Generate},
 		{"Python", NewPythonGenerator(m).Generate},
 		{"C++", NewCppGenerator(m).Generate},
+		{"Zig", NewZigGenerator(m).Generate},
 	}
 
 	// fallback markers emitted by the generators for unsupported constructs;

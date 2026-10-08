@@ -62,7 +62,7 @@ jobs:
     - name: Run tests
       run: make test
 
-  # Generate code in all six languages from the full-grammar fixture, then
+  # Generate code in all target languages from the full-grammar fixture, then
   # compile it against the fin-proto-* runtimes and run the generated tests.
   codegen-verify:
     runs-on: ubuntu-latest
@@ -88,6 +88,11 @@ jobs:
         rustc --version
         cargo --version
 
+    - name: Set up Zig
+      uses: mlugg/setup-zig@v2
+      with:
+        version: 0.17.0
+
     - name: Install native toolchains
       run: |
         sudo apt-get update
@@ -98,7 +103,7 @@ jobs:
         mkdir -p ~/software
         curl -o "$HOME/software/antlr-4.13.2-complete.jar" https://www.antlr.org/download/antlr-4.13.2-complete.jar
 
-    - name: Verify generated code (build + run tests in all six languages)
+    - name: Verify generated code (build + run tests in all languages)
       env:
         # a missing toolchain or failed runtime clone must fail CI, not skip
         STRICT: '1'

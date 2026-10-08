@@ -2,7 +2,7 @@
 
 [English](readme-en.md) | 简体中文
 
-fin-protoc 是一个强大的多语言协议编译器，可将 PacketDSL 协议定义转换为可执行的二进制报文序列化/反序列化代码，支持 **Java**、**Rust**、**Lua（Wireshark）**、**Go**、**Python** 和 **C++** 六种编程语言。
+fin-protoc 是一个强大的多语言协议编译器，可将 PacketDSL 协议定义转换为可执行的二进制报文序列化/反序列化代码，支持 **Java**、**Rust**、**Lua（Wireshark）**、**Go**、**Python**、**C++** 和 **Zig** 七种编程语言。
 
 开发者只需定义一次二进制通信协议，即可在多个平台上获得一致且类型安全的实现，从而免去为每种目标语言手工编写协议编解码代码这一繁琐且易出错的过程。
 
@@ -102,7 +102,7 @@ classDiagram
 
 ### 多语言代码生成
 
-代码生成系统通过统一的 `Generator` 接口支持六种目标语言。每个生成器产出对应语言的序列化代码：
+代码生成系统通过统一的 `Generator` 接口支持七种目标语言。每个生成器产出对应语言的序列化代码：
 
 | 语言    | 输出                  | 关键特性                                  |
 | ------- | --------------------- | ----------------------------------------- |
@@ -112,6 +112,7 @@ classDiagram
 | Go      | 带方法的结构体        | 原生 Go 序列化                            |
 | Python  | 带方法的类            | Python 序列化                             |
 | C++     | 带方法的类            | C++ 序列化支持                            |
+| Zig     | 带 tag 联合的结构体   | 解码零拷贝、`binary_codec` Zig 模块       |
 
 ## 字段类型系统
 
@@ -167,6 +168,8 @@ fin-protoc -f input.dsl -g ./src
 fin-protoc -f input.dsl -p ./src
 # 生成 c++ 代码
 fin-protoc -f input.dsl -c ./src
+# 生成 zig 代码
+fin-protoc -f input.dsl -z ./src
 ```
 
 编译流程：
@@ -218,6 +221,18 @@ fin-protoc 编译器已在多个语言实现中落地应用，以确保二进制
   - 面向金融协议的 Python 实现
   - 支持上交所（SSE）、深交所（SZSE）及风控协议
   - 提供易用的解析与序列化 API
+
+- [`fin-proto-runtime-bin-zig`](https://github.com/xinchentechnote/fin-proto-runtime-bin-zig)
+
+  - 二进制协议 Zig 运行时（`binary_codec` 模块），对齐 fin-proto-runtime-bin-rs 语义
+  - 解码零拷贝：字符串直接借用输入缓冲区
+  - 内置 CRC16/CRC32/SSE_BIN/SZSE_BIN 校验和服务
+
+- [`fin-proto-sse-bin-zig`](https://github.com/xinchentechnote/fin-proto-sse-bin-zig)
+
+  - 上交所 step 二进制行情协议 v0.57 的 Zig 实现，src/ 由 fin-protoc `-z` 生成
+  - 与 fin-proto-sse-bin-rs 逐字节兼容（相同输入编码出相同报文）
+  - 生成代码自带 round-trip 测试，`zig build test` 即可验证
 
 - [`fin-proto-vscdoe`](https://github.com/xinchentechnote/fin-proto-vscdoe)
 

@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 # Cross-language verification of fin-protoc generated code.
 #
-# Generates code in all six target languages from the full-grammar fixture
+# Generates code in all seven target languages from the full-grammar fixture
 # (internal/parser/testdata/grammar_full.dsl), then compiles it against the
 # matching fin-proto-* runtime and runs the generated round-trip tests.
 #
 # Each language is verified when its toolchain is available and skipped with
 # a notice otherwise, so the script is usable on developer machines; CI
-# installs every toolchain and therefore enforces all six.
+# installs every toolchain and therefore enforces all languages. The Zig
+# check additionally needs the fin-proto-runtime-bin-zig repository: it is
+# cloned like the other runtimes, or taken from $FIN_PROTO_ZIG_RUNTIME (a
+# local checkout) when set; until that repository is published the Zig check
+# reports PENDING, which never fails the run — unlike SKIP under STRICT=1.
 #
 # Usage: scripts/verify_codegen.sh [path-to-fin-protoc-binary]
 set -uo pipefail
@@ -29,6 +33,7 @@ summary_file="${GITHUB_STEP_SUMMARY:-}"
 note() { printf '%s\n' "$*"; }
 ok() { RESULTS+=("PASS  $1"); printf '[PASS] %s\n' "$1"; }
 fail() { RESULTS+=("FAIL  $1"); printf '[FAIL] %s\n' "$1"; FAILED=$((FAILED + 1)); }
+pending() { RESULTS+=("PEND  $1"); printf '[PEND] %s\n' "$1"; }
 skip() {
 	RESULTS+=("SKIP  $1"); printf '[SKIP] %s\n' "$1"
 	if [ "$STRICT" = 1 ]; then FAILED=$((FAILED + 1)); fi
@@ -64,7 +69,7 @@ fi
 note "== generating all targets from $DSL =="
 "$BIN" compile -f "$DSL" \
 	-g "$WORK/go" -r "$WORK/rust" -j "$WORK/java" \
-	-p "$WORK/python" -c "$WORK/cpp" -l "$WORK/lua" || {
+	-p "$WORK/python" -c "$WORK/cpp" -l "$WORK/lua" -z "$WORK/zig" || {
 	fail "code generation"
 	exit 1
 }
@@ -218,6 +223,69 @@ if [ -n "$LUAC_BIN" ]; then
 	fi
 else
 	skip "Lua: luac not found"
+fi
+
+# --- Zig: scaffold a package around the generated sources and run tests -----
+# The generated code imports the `binary_codec` module provided by
+# fin-proto-runtime-bin-zig, wired in through a path dependency. Use a local
+# checkout via FIN_PROTO_ZIG_RUNTIME, or clone the published repository;
+# until it is published this check stays PENDING instead of failing.
+if command -v zig >/dev/null 2>&1; then
+	ZIG_RUNTIME="${FIN_PROTO_ZIG_RUNTIME:-}"
+	if [ -n "$ZIG_RUNTIME" ] && [ -d "$ZIG_RUNTIME/src" ]; then
+		note "using local zig runtime: $ZIG_RUNTIME"
+	elif ensure_runtime fin-proto-runtime-bin-zig; then
+		ZIG_RUNTIME="$RUNTIME_DIR/fin-proto-runtime-bin-zig"
+	else
+		ZIG_RUNTIME=""
+	fi
+	if [ -z "$ZIG_RUNTIME" ]; then
+		pending "Zig: fin-proto-runtime-bin-zig not published yet (set FIN_PROTO_ZIG_RUNTIME for a local checkout)"
+	else
+		mkdir -p "$WORK/zigpkg/src"
+		cp "$WORK/zig/"*.zig "$WORK/zigpkg/src/"
+		# build.zig.zon path dependencies must be relative; link the runtime in
+		ln -sfn "$(cd "$ZIG_RUNTIME" && pwd)" "$WORK/zigpkg/binary_codec"
+		cat > "$WORK/zigpkg/build.zig" <<'EOF'
+const std = @import("std");
+
+pub fn build(b: *std.Build) void {
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+    const codec_dep = b.dependency("binary_codec", .{ .target = target, .optimize = optimize });
+    const codec_mod = codec_dep.module("binary_codec");
+    const mod = b.addModule("fin_protoc_codegen_verify", .{
+        .root_source_file = b.path("src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    mod.addImport("binary_codec", codec_mod);
+    const mod_tests = b.addTest(.{ .root_module = mod });
+    const test_step = b.step("test", "Run tests");
+    test_step.dependOn(&b.addRunArtifact(mod_tests).step);
+}
+EOF
+		cat > "$WORK/zigpkg/build.zig.zon" <<EOF
+.{
+    .name = .fin_protoc_codegen_verify,
+    .version = "0.0.0",
+    .fingerprint = 0x199b6ee547ac9ae3, // derived from the package name
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .binary_codec = .{ .path = "binary_codec" },
+    },
+    .paths = .{""},
+}
+EOF
+		if (cd "$WORK/zigpkg" && zig build test >"$WORK/zig-verify.log" 2>&1); then
+			ok "Zig: zig build test generated code"
+		else
+			tail -15 "$WORK/zig-verify.log"
+			fail "Zig: zig build test generated code"
+		fi
+	fi
+else
+	skip "Zig: toolchain not found"
 fi
 
 note ""

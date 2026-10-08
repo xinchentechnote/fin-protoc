@@ -15,6 +15,7 @@ var (
 	javaOutput string
 	pyOutput   string
 	cppOutput  string
+	zigOutput  string
 )
 
 // Compile DSL to code in various target languages
@@ -55,6 +56,9 @@ func Compile(input string, outputs map[string]string) error {
 		{"C++", outputs["cpp"], func() (map[string][]byte, error) {
 			return parser.NewCppGenerator(binModel).Generate(binModel)
 		}},
+		{"Zig", outputs["zig"], func() (map[string][]byte, error) {
+			return parser.NewZigGenerator(binModel).Generate(binModel)
+		}},
 	}
 
 	for _, g := range generators {
@@ -83,6 +87,7 @@ var compileCmd = &cobra.Command{
 			"java":   javaOutput,
 			"python": pyOutput,
 			"cpp":    cppOutput,
+			"zig":    zigOutput,
 		}
 		return Compile(file, outputs)
 	},
@@ -96,5 +101,6 @@ func init() {
 	compileCmd.Flags().StringVarP(&goOutput, "go_output", "g", "", "Go output path")
 	compileCmd.Flags().StringVarP(&cppOutput, "cpp_output", "c", "", "C++ output path")
 	compileCmd.Flags().StringVarP(&pyOutput, "py_output", "p", "", "Python output path")
+	compileCmd.Flags().StringVarP(&zigOutput, "zig_output", "z", "", "Zig output path")
 	rootCmd.AddCommand(compileCmd)
 }
