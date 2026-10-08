@@ -436,8 +436,8 @@ func (g ZigGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 			b.WriteString(fmt.Sprintf("const %s_start = buf.len;\n", strcase.ToSnake(f.Name)))
 		}
 		b.WriteString(g.encodeMatchField(strcase.ToCamel(p.Name), f, c))
-		b.WriteString("\n")
 		if hasLength {
+			b.WriteString("\n")
 			b.WriteString(fmt.Sprintf("try buf.patch(%s, %s_pos, @intCast(buf.len - %s_start));",
 				p.LengthField.GetType(), strcase.ToSnake(p.LengthField.Name), strcase.ToSnake(f.Name)))
 		}
@@ -754,7 +754,10 @@ func (g ZigGenerator) testValueSingle(parentName string, f *model.Field) string 
 		for _, subField := range c.RefPacket.Fields {
 			fieldValues = append(fieldValues, fmt.Sprintf(".%s = %s", g.GetFieldName(subField), g.testValue(c.RefPacket.Name, subField)))
 		}
-		return fmt.Sprintf(".{\n %s \n}", strings.Join(fieldValues, ",\n "))
+		if len(fieldValues) == 0 {
+			return ".{}"
+		}
+		return fmt.Sprintf(".{ %s }", strings.Join(fieldValues, ", "))
 	default:
 		// handle primitive
 		if val, ok := g.primitiveSingleValues()[f.GetType()]; ok {
@@ -816,7 +819,7 @@ func (g ZigGenerator) testMatchValue(parentName string, f *model.Field, mf *mode
 	if len(innerFields) == 0 {
 		return fmt.Sprintf(".{ .%s = .{} }", strcase.ToSnake(matchName))
 	}
-	return fmt.Sprintf(".{ .%s = .{\n %s \n} }",
+	return fmt.Sprintf(".{ .%s = .{ %s } }",
 		strcase.ToSnake(matchName),
-		strings.Join(innerFields, ", \n "))
+		strings.Join(innerFields, ", "))
 }

@@ -235,6 +235,16 @@ The fin-protoc compiler has been applied across multiple language implementation
   - Byte-for-byte compatible with fin-proto-sse-bin-rs (identical packets for identical input)
   - Generated code ships round-trip tests, verified with `zig build test`
 
+- [`fin-proto-szse-bin-zig`](https://github.com/xinchentechnote/fin-proto-szse-bin-zig)
+
+  - Zig implementation of the SZSE binary trading interface (Ver1.29): u32 length prefixes + SZSE_BIN checksum
+  - Byte-for-byte compatible with fin-proto-szse-bin-rs (Logon and NewOrder verified)
+
+- [`fin-proto-risk-bin-zig`](https://github.com/xinchentechnote/fin-proto-risk-bin-zig)
+
+  - Zig implementation of the RBP risk binary protocol v0.2.0
+  - Golden-frame interop tests in `tests/golden`: decode → field assertions → byte-identical re-encode
+
 - [`fin-proto-vscdoe`](https://github.com/xinchentechnote/fin-proto-vscdoe)
 
   - Visual Studio Code extension for protocol development

@@ -234,6 +234,16 @@ fin-protoc 编译器已在多个语言实现中落地应用，以确保二进制
   - 与 fin-proto-sse-bin-rs 逐字节兼容（相同输入编码出相同报文）
   - 生成代码自带 round-trip 测试，`zig build test` 即可验证
 
+- [`fin-proto-szse-bin-zig`](https://github.com/xinchentechnote/fin-proto-szse-bin-zig)
+
+  - 深交所 Binary 交易数据接口规范（Ver1.29）的 Zig 实现，u32 长度前缀 + SZSE_BIN 校验和
+  - 与 fin-proto-szse-bin-rs 逐字节兼容（Logon、NewOrder 已做字节级对比）
+
+- [`fin-proto-risk-bin-zig`](https://github.com/xinchentechnote/fin-proto-risk-bin-zig)
+
+  - RBP 风控二进制协议 v0.2.0 的 Zig 实现
+  - `tests/golden` 引擎侧 golden 帧互通测试：解码 → 逐字段断言 → 重编码字节级一致
+
 - [`fin-proto-vscdoe`](https://github.com/xinchentechnote/fin-proto-vscdoe)
 
   - 面向协议开发的 Visual Studio Code 扩展
