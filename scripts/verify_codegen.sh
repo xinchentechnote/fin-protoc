@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 # Cross-language verification of fin-protoc generated code.
 #
-# Generates code in all seven target languages from the full-grammar fixture
+# Generates code in all eight target languages from the full-grammar fixture
 # (internal/parser/testdata/grammar_full.dsl), then compiles it against the
 # matching fin-proto-* runtime and runs the generated round-trip tests.
 #
 # Each language is verified when its toolchain is available and skipped with
 # a notice otherwise, so the script is usable on developer machines; CI
-# installs every toolchain and therefore enforces all languages. The Zig
-# check additionally needs the fin-proto-runtime-bin-zig repository: it is
-# cloned like the other runtimes, or taken from $FIN_PROTO_ZIG_RUNTIME (a
-# local checkout) when set; until that repository is published the Zig check
-# reports PENDING, which never fails the run — unlike SKIP under STRICT=1.
+# installs every toolchain and therefore enforces all languages. The Zig and
+# C checks additionally need their runtime repositories: they are cloned like
+# the other runtimes, or taken from $FIN_PROTO_ZIG_RUNTIME /
+# $FIN_PROTO_C_RUNTIME (local checkouts) when set; until those repositories
+# are published the check reports PENDING, which never fails the run —
+# unlike SKIP under STRICT=1.
 #
 # Usage: scripts/verify_codegen.sh [path-to-fin-protoc-binary]
 set -uo pipefail
@@ -69,7 +70,7 @@ fi
 note "== generating all targets from $DSL =="
 "$BIN" compile -f "$DSL" \
 	-g "$WORK/go" -r "$WORK/rust" -j "$WORK/java" \
-	-p "$WORK/python" -c "$WORK/cpp" -l "$WORK/lua" -z "$WORK/zig" || {
+	-p "$WORK/python" -c "$WORK/cpp" -l "$WORK/lua" -z "$WORK/zig" -C "$WORK/c" || {
 	fail "code generation"
 	exit 1
 }
@@ -286,6 +287,35 @@ EOF
 	fi
 else
 	skip "Zig: toolchain not found"
+fi
+
+# --- C: compile generated sources against fin-proto-runtime-bin-c -----------
+# The generated tests.c provides main(); one cc invocation builds and the
+# binary runs every per-packet round-trip test.
+if command -v cc >/dev/null 2>&1; then
+	C_RUNTIME="${FIN_PROTO_C_RUNTIME:-}"
+	if [ -n "$C_RUNTIME" ] && [ -d "$C_RUNTIME/include" ]; then
+		note "using local c runtime: $C_RUNTIME"
+	elif ensure_runtime fin-proto-runtime-bin-c; then
+		C_RUNTIME="$RUNTIME_DIR/fin-proto-runtime-bin-c"
+	else
+		C_RUNTIME=""
+	fi
+	if [ -z "$C_RUNTIME" ]; then
+		pending "C: fin-proto-runtime-bin-c not published yet (set FIN_PROTO_C_RUNTIME for a local checkout)"
+	else
+		if (cd "$WORK/c" \
+			&& cc -std=c11 -Wall -Wextra -O2 -I"$C_RUNTIME/include" -I. \
+				*.c "$C_RUNTIME"/src/*.c -o "$WORK/c_test" 2>"$WORK/c-build.log" \
+			&& "$WORK/c_test" >"$WORK/c-verify.log" 2>&1); then
+			ok "C: cc build + generated tests"
+		else
+			tail -15 "$WORK/c-build.log" "$WORK/c-verify.log"
+			fail "C: compile/run generated code"
+		fi
+	fi
+else
+	skip "C: toolchain not found"
 fi
 
 note ""

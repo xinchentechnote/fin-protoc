@@ -2,7 +2,7 @@
 
 [English](readme-en.md) | 简体中文
 
-fin-protoc 是一个强大的多语言协议编译器，可将 PacketDSL 协议定义转换为可执行的二进制报文序列化/反序列化代码，支持 **Java**、**Rust**、**Lua（Wireshark）**、**Go**、**Python**、**C++** 和 **Zig** 七种编程语言。
+fin-protoc 是一个强大的多语言协议编译器，可将 PacketDSL 协议定义转换为可执行的二进制报文序列化/反序列化代码，支持 **Java**、**Rust**、**Lua（Wireshark）**、**Go**、**Python**、**C++**、**Zig** 和 **C** 八种编程语言。
 
 开发者只需定义一次二进制通信协议，即可在多个平台上获得一致且类型安全的实现，从而免去为每种目标语言手工编写协议编解码代码这一繁琐且易出错的过程。
 
@@ -102,7 +102,7 @@ classDiagram
 
 ### 多语言代码生成
 
-代码生成系统通过统一的 `Generator` 接口支持七种目标语言。每个生成器产出对应语言的序列化代码：
+代码生成系统通过统一的 `Generator` 接口支持八种目标语言。每个生成器产出对应语言的序列化代码：
 
 | 语言    | 输出                  | 关键特性                                  |
 | ------- | --------------------- | ----------------------------------------- |
@@ -113,6 +113,7 @@ classDiagram
 | Python  | 带方法的类            | Python 序列化                             |
 | C++     | 带方法的类            | C++ 序列化支持                            |
 | Zig     | 带 tag 联合的结构体   | 解码零拷贝、`binary_codec` Zig 模块       |
+| C       | 结构体 + kind 枚举/union | C11、解码零拷贝、无第三方依赖            |
 
 ## 字段类型系统
 
@@ -170,6 +171,8 @@ fin-protoc -f input.dsl -p ./src
 fin-protoc -f input.dsl -c ./src
 # 生成 zig 代码
 fin-protoc -f input.dsl -z ./src
+# 生成 c 代码
+fin-protoc -f input.dsl -C ./src
 ```
 
 编译流程：
@@ -243,6 +246,25 @@ fin-protoc 编译器已在多个语言实现中落地应用，以确保二进制
 
   - RBP 风控二进制协议 v0.2.0 的 Zig 实现
   - `tests/golden` 引擎侧 golden 帧互通测试：解码 → 逐字段断言 → 重编码字节级一致
+
+- [`fin-proto-runtime-bin-c`](https://github.com/xinchentechnote/fin-proto-runtime-bin-c)
+
+  - 二进制协议 C11 运行时库，与 Rust/Zig 运行时语义对齐
+  - 解码零拷贝：字符串以指针+长度借用输入缓冲；无第三方依赖
+  - 内置 CRC16/CRC32/SSE_BIN/SZSE_BIN 校验和服务
+
+- [`fin-proto-sse-bin-c`](https://github.com/xinchentechnote/fin-proto-sse-bin-c)
+
+  - 上交所 step 二进制行情协议 v0.57 的 C 实现，src/ 由 fin-protoc `-C` 生成
+  - 与 fin-proto-sse-bin-rs 逐字节兼容
+
+- [`fin-proto-szse-bin-c`](https://github.com/xinchentechnote/fin-proto-szse-bin-c)
+
+  - 深交所 Binary 交易数据接口规范（Ver1.29）的 C 实现，u32 长度前缀 + SZSE_BIN 校验和
+
+- [`fin-proto-risk-bin-c`](https://github.com/xinchentechnote/fin-proto-risk-bin-c)
+
+  - RBP 风控二进制协议 v0.2.0 的 C 实现，生成代码自带 round-trip 测试
 
 - [`fin-proto-vscdoe`](https://github.com/xinchentechnote/fin-proto-vscdoe)
 

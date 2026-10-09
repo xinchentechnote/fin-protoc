@@ -153,6 +153,7 @@ func TestGrammarFullGenerators(t *testing.T) {
 		{"Python", NewPythonGenerator(m).Generate},
 		{"C++", NewCppGenerator(m).Generate},
 		{"Zig", NewZigGenerator(m).Generate},
+		{"C", NewCGenerator(m).Generate},
 	}
 
 	// fallback markers emitted by the generators for unsupported constructs;
