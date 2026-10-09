@@ -9,3 +9,4 @@ lib/libpacketdsl.dylib
 .idea
 .verify-runtime/
 .verify-venv/
+bench-results/

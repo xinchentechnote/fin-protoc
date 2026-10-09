@@ -1,0 +1,41 @@
+name: Benchmark comparison
+
+# Compares serialization/deserialization performance of the Rust
+# (fin-proto-*-bin-rs) and Zig (fin-proto-*-bin-zig) codec libraries.
+# Scheduled weekly plus on-demand: benchmark numbers from shared CI runners
+# are only meaningful as a trend, not per-commit gates.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1' # every Monday 03:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Rust
+      run: |
+        rustup update stable
+        rustc --version
+        cargo --version
+
+    - name: Set up Zig
+      uses: mlugg/setup-zig@v2
+      with:
+        version: 0.17.0
+
+    - name: Run benchmark comparison
+      run: ./scripts/bench_compare.sh
+
+    - name: Upload raw benchmark results
+      uses: actions/upload-artifact@v4
+      with:
+        name: bench-results
+        path: bench-results/*.tsv
