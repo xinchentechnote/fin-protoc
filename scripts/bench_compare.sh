@@ -5,8 +5,12 @@
 # 10 batches of 100k operations, fastest batch reported — so ns/op numbers are
 # directly comparable.
 #
-# Toolchains: cargo, zig and a C compiler (cc) must be installed. Repositories
-# are cloned shallow from xinchentechnote unless local checkouts are provided:
+# Toolchains: cargo, zig, go and a C compiler (cc) must be installed. The C
+# side compiles its sources through `make bench`, whose Makefiles take the
+# compiler location as FIN_PROTOC — built here from this checkout, so the
+# $(HOME)/workspace default in those Makefiles is never relied upon.
+# Repositories are cloned shallow from xinchentechnote unless local checkouts
+# are provided:
 #   BENCH_RS_ROOT  dir containing fin-proto-{sse,szse,risk}-bin-rs
 #   BENCH_ZIG_ROOT dir containing fin-proto-{sse,szse,risk}-bin-zig and
 #                  fin-proto-runtime-bin-zig (the path dependency)
@@ -48,6 +52,11 @@ C_ROOT="${BENCH_C_ROOT:-$WORK/c}"
 command -v cargo >/dev/null 2>&1 || die "cargo not found (install the rust toolchain)"
 command -v zig >/dev/null 2>&1 || die "zig not found (install zig 0.17+)"
 command -v cc >/dev/null 2>&1 || die "cc not found (install a C toolchain)"
+command -v go >/dev/null 2>&1 || die "go not found (install the go toolchain)"
+
+note "== building fin-protoc =="
+(cd "$ROOT" && CGO_ENABLED=0 go build -o "$WORK/fin-protoc" ./cmd/) ||
+	die "go build fin-protoc failed"
 
 mkdir -p "$RESULTS"
 
@@ -74,7 +83,7 @@ for lib in "${LIBS[@]}"; do
 
 	# make -s regenerates src/ from the DSL, compiles with -O2 and runs the
 	# bench binary, whose stdout carries only the two TSV lines
-	(cd "$C_ROOT/fin-proto-$lib-bin-c" && make -s bench) \
+	(cd "$C_ROOT/fin-proto-$lib-bin-c" && make -s bench FIN_PROTOC="$WORK/fin-protoc") \
 		>"$RESULTS/$lib.c.tsv" || die "c bench failed for $lib"
 done
 
