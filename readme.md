@@ -233,7 +233,7 @@ fin-protoc 编译器已在多个语言实现中落地应用，以确保二进制
 
 - [`fin-proto-sse-bin-zig`](https://github.com/xinchentechnote/fin-proto-sse-bin-zig)
 
-  - 上交所 step 二进制行情协议 v0.57 的 Zig 实现，src/ 由 fin-protoc `-z` 生成
+  - 上交所流式二进制协议 v0.57 的 Zig 实现，src/ 由 fin-protoc `-z` 生成
   - 与 fin-proto-sse-bin-rs 逐字节兼容（相同输入编码出相同报文）
   - 生成代码自带 round-trip 测试，`zig build test` 即可验证
 
@@ -255,7 +255,7 @@ fin-protoc 编译器已在多个语言实现中落地应用，以确保二进制
 
 - [`fin-proto-sse-bin-c`](https://github.com/xinchentechnote/fin-proto-sse-bin-c)
 
-  - 上交所 step 二进制行情协议 v0.57 的 C 实现，src/ 由 fin-protoc `-C` 生成
+  - 上交所流式二进制协议 v0.57 的 C 实现，src/ 由 fin-protoc `-C` 生成
   - 与 fin-proto-sse-bin-rs 逐字节兼容
 
 - [`fin-proto-szse-bin-c`](https://github.com/xinchentechnote/fin-proto-szse-bin-c)
