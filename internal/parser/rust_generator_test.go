@@ -78,6 +78,32 @@ func TestGenerateRustFileForPacket(t *testing.T) {
 	assert.Contains(t, code, "mod test_packet_tests")
 }
 
+func TestGenerateRustFixedStringFastPath(t *testing.T) {
+	field := &model.Field{
+		Name: "Code",
+		Attr: &model.FixedStringFieldAttribute{Length: 10},
+	}
+	packet := &model.Packet{Name: "TestPacket", Fields: []*model.Field{field}}
+	binModel := &model.BinaryModel{
+		PacketsMap: map[string]*model.Packet{"TestPacket": packet},
+		Config: &model.Configuration{
+			ListLenPrefixLenType:   "u16",
+			StringLenPrefixLenType: "u8",
+			Padding:                &model.Padding{PadChar: "' '", PadLeft: false},
+		},
+	}
+
+	generator := NewRustGenerator(binModel)
+	code := generator.generateRustFileForPacket(packet)
+
+	assert.Contains(t, code, "fn put_fixed_string_field(")
+	assert.Contains(t, code, "fn get_fixed_string_field(")
+	assert.Contains(t, code, "String::from_utf8(bytes.slice(start..end).to_vec()).ok()")
+	assert.Contains(t, code, "put_fixed_string_field(buf, &self.code, 10, b' ', false);")
+	assert.Contains(t, code, "let code = get_fixed_string_field(buf, 10, b' ', false)?;")
+	assert.NotContains(t, code, "fn put_fixed_string_list_field")
+}
+
 func TestGenerateLibCode(t *testing.T) {
 	packet := &model.Packet{
 		Name: "TestPacket",
@@ -163,6 +189,8 @@ func TestGenerateStructCode(t *testing.T) {
 	assert.Contains(t, code, "pub struct TestPacket {")
 	assert.Contains(t, code, "pub test_field: u32,")
 	assert.Contains(t, code, "impl BinaryCodec for TestPacket")
+	assert.Contains(t, code, "#[inline]\n    fn encode")
+	assert.Contains(t, code, "#[inline]\n    fn decode")
 	assert.Contains(t, code, "mod test_packet_tests")
 }
 
@@ -414,7 +442,7 @@ func TestTestValue(t *testing.T) {
 				Attr: &model.FixedStringFieldAttribute{Length: 10,
 					Padding: &model.Padding{PadChar: "' '", PadLeft: false},
 				}},
-			expected: "vec!['a'; 10].into_iter().collect::<String>()",
+			expected: "\"a\".repeat(10)",
 		},
 	}
 

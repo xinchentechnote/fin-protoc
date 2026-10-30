@@ -47,11 +47,132 @@ func (g RustGenerator) generateRustFileForPacket(pkt *model.Packet) string {
 	//
 	b.WriteString(g.generateUseCode(pkt))
 	b.WriteString("\n")
+	if g.hasFixedString(pkt) {
+		b.WriteString(g.generateFixedStringHelpersCode(pkt))
+		b.WriteString("\n")
+	}
 	b.WriteString(g.generateMatchFieldEnumCode(pkt))
 	b.WriteString("\n")
 	b.WriteString(g.generateStructCode(pkt))
 
 	return b.String()
+}
+
+func (g RustGenerator) hasFixedString(pkt *model.Packet) bool {
+	for _, f := range pkt.Fields {
+		if _, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
+			return true
+		}
+		if object, ok := f.Attr.(*model.ObjectFieldAttribute); ok && object.IsIner {
+			if g.hasFixedString(object.RefPacket) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (g RustGenerator) hasRepeatedFixedString(pkt *model.Packet) bool {
+	for _, f := range pkt.Fields {
+		if _, ok := f.Attr.(*model.FixedStringFieldAttribute); ok && f.IsRepeat {
+			return true
+		}
+		if object, ok := f.Attr.(*model.ObjectFieldAttribute); ok && object.IsIner {
+			if g.hasRepeatedFixedString(object.RefPacket) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (g RustGenerator) generateFixedStringHelpersCode(pkt *model.Packet) string {
+	code := `#[inline]
+fn put_fixed_string_field(
+    buf: &mut BytesMut,
+    value: &str,
+    fixed_length: usize,
+    pad_byte: u8,
+    pad_left: bool,
+) {
+    let bytes = value.as_bytes();
+    let len = bytes.len().min(fixed_length);
+    let padding_len = fixed_length - len;
+    if pad_left {
+        buf.put_bytes(pad_byte, padding_len);
+    }
+    buf.extend_from_slice(&bytes[..len]);
+    if !pad_left {
+        buf.put_bytes(pad_byte, padding_len);
+    }
+}
+
+#[inline]
+fn get_fixed_string_field(
+    buf: &mut Bytes,
+    fixed_length: usize,
+    pad_byte: u8,
+    pad_left: bool,
+) -> Option<String> {
+    if buf.remaining() < fixed_length {
+        return None;
+    }
+    let bytes = buf.copy_to_bytes(fixed_length);
+    let (start, end) = if pad_left {
+        let start = bytes
+            .iter()
+            .position(|&byte| byte != pad_byte)
+            .unwrap_or(fixed_length);
+        (start, fixed_length)
+    } else {
+        let end = bytes
+            .iter()
+            .rposition(|&byte| byte != pad_byte)
+            .map_or(0, |index| index + 1);
+        (0, end)
+    };
+    String::from_utf8(bytes.slice(start..end).to_vec()).ok()
+}
+`
+	if !g.hasRepeatedFixedString(pkt) {
+		return code
+	}
+
+	return code + `
+fn put_fixed_string_list_field<L: LengthPrefix>(
+    buf: &mut BytesMut,
+    items: &[String],
+    fixed_length: usize,
+    pad_byte: u8,
+    pad_left: bool,
+    little_endian: bool,
+) {
+    L::write(items.len(), buf, little_endian);
+    for item in items {
+        put_fixed_string_field(buf, item, fixed_length, pad_byte, pad_left);
+    }
+}
+
+fn get_fixed_string_list_field<L: LengthPrefix>(
+    buf: &mut Bytes,
+    fixed_length: usize,
+    pad_byte: u8,
+    pad_left: bool,
+    little_endian: bool,
+) -> Option<Vec<String>> {
+    let len = L::read(buf, little_endian)?;
+    let mut result = Vec::with_capacity(len);
+    for _ in 0..len {
+        result.push(get_fixed_string_field(
+            buf,
+            fixed_length,
+            pad_byte,
+            pad_left,
+        )?);
+    }
+    Some(result)
+}
+`
 }
 
 func (g RustGenerator) generateLibCode() string {
@@ -118,6 +239,7 @@ func (g RustGenerator) generateStructCode(pkt *model.Packet) string {
 	b.WriteString(fmt.Sprintf("impl BinaryCodec for %s {\n", structName))
 	b.WriteString("\n")
 	// encode()
+	b.WriteString(AddIndent4ln("#[inline]"))
 	if len(pkt.Fields) == 0 {
 		b.WriteString(AddIndent4ln("fn encode(&self, _buf: &mut BytesMut) {"))
 	} else {
@@ -129,6 +251,7 @@ func (g RustGenerator) generateStructCode(pkt *model.Packet) string {
 	b.WriteString(AddIndent4ln("}"))
 	b.WriteString("\n")
 	// decode()
+	b.WriteString(AddIndent4ln("#[inline]"))
 	if len(pkt.Fields) == 0 {
 		b.WriteString(AddIndent4ln(fmt.Sprintf("fn decode(_buf: &mut Bytes) -> Option<%s> {", structName)))
 	} else {
@@ -222,16 +345,7 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 		switch c := f.Attr.(type) {
 		case *model.FixedStringFieldAttribute:
 			size := c.Length
-			if g.GetConfig().LittleEndian {
-				if !padding.IsDefault() {
-					return fmt.Sprintf("put_fixed_string_list_with_pad_char_le::<%s>(buf, &self.%s, %d, %s, %t);", g.GetConfig().ListLenPrefixLenType, name, size, padding.PadChar, padding.PadLeft)
-				}
-				return fmt.Sprintf("put_fixed_string_list_le::<%s>(buf, &self.%s, %d);", g.GetConfig().ListLenPrefixLenType, name, size)
-			}
-			if !padding.IsDefault() {
-				return fmt.Sprintf("put_fixed_string_list_with_pad_char::<%s>(buf, &self.%s, %d, %s, %t);", g.GetConfig().ListLenPrefixLenType, name, size, padding.PadChar, padding.PadLeft)
-			}
-			return fmt.Sprintf("put_fixed_string_list::<%s>(buf, &self.%s, %d);", g.GetConfig().ListLenPrefixLenType, name, size)
+			return fmt.Sprintf("put_fixed_string_list_field::<%s>(buf, &self.%s, %d, b%s, %t, %t);", g.GetConfig().ListLenPrefixLenType, name, size, padding.PadChar, padding.PadLeft, g.GetConfig().LittleEndian)
 		case *model.DynamicStringFieldAttribute:
 			if g.GetConfig().LittleEndian {
 				return fmt.Sprintf("put_string_list_le::<%s,%s>(buf, &self.%s);", g.GetConfig().ListLenPrefixLenType, g.GetConfig().StringLenPrefixLenType, name)
@@ -254,11 +368,8 @@ func (g RustGenerator) EncodeField(p *model.Packet, f *model.Field) string {
 		return fmt.Sprintf("put_list::<%s,%s>(buf, &self.%s);", f.GetType(), g.GetConfig().ListLenPrefixLenType, name)
 	}
 
-	if fs, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
-		if !padding.IsDefault() {
-			return fmt.Sprintf("put_char_array_with_pad_char(buf, &self.%s, %d, %s, %t);", name, fs.Length, padding.PadChar, padding.PadLeft)
-		}
-		return fmt.Sprintf("put_char_array(buf, &self.%s, %d);", name, fs.Length)
+	if fixed, ok := f.Attr.(*model.FixedStringFieldAttribute); ok {
+		return fmt.Sprintf("put_fixed_string_field(buf, &self.%s, %d, b%s, %t);", name, fixed.Length, padding.PadChar, padding.PadLeft)
 	}
 
 	switch c := f.Attr.(type) {
@@ -334,16 +445,7 @@ func (g RustGenerator) DecodeField(parentName string, f *model.Field) string {
 	if f.IsRepeat {
 		switch c := f.Attr.(type) {
 		case *model.FixedStringFieldAttribute:
-			if g.GetConfig().LittleEndian {
-				if !padding.IsDefault() {
-					return fmt.Sprintf("let %s = get_fixed_string_list_trim_pad_char_le::<%s>(buf, %d, %s, %t)?;", name, g.GetConfig().ListLenPrefixLenType, c.Length, padding.PadChar, padding.PadLeft)
-				}
-				return fmt.Sprintf("let %s = get_fixed_string_list_le::<%s>(buf, %d)?;", name, g.GetConfig().ListLenPrefixLenType, c.Length)
-			}
-			if !padding.IsDefault() {
-				return fmt.Sprintf("let %s = get_fixed_string_list_trim_pad_char::<%s>(buf, %d, %s, %t)?;", name, g.GetConfig().ListLenPrefixLenType, c.Length, padding.PadChar, padding.PadLeft)
-			}
-			return fmt.Sprintf("let %s = get_fixed_string_list::<%s>(buf, %d)?;", name, g.GetConfig().ListLenPrefixLenType, c.Length)
+			return fmt.Sprintf("let %s = get_fixed_string_list_field::<%s>(buf, %d, b%s, %t, %t)?;", name, g.GetConfig().ListLenPrefixLenType, c.Length, padding.PadChar, padding.PadLeft, g.GetConfig().LittleEndian)
 
 		case *model.DynamicStringFieldAttribute:
 			if g.GetConfig().LittleEndian {
@@ -371,10 +473,7 @@ func (g RustGenerator) DecodeField(parentName string, f *model.Field) string {
 
 	switch c := f.Attr.(type) {
 	case *model.FixedStringFieldAttribute:
-		if !padding.IsDefault() {
-			return fmt.Sprintf("let %s = get_char_array_trim_pad_char(buf, %d, %s, %t)?;", name, c.Length, padding.PadChar, padding.PadLeft)
-		}
-		return fmt.Sprintf("let %s = get_char_array(buf, %d)?;", name, c.Length)
+		return fmt.Sprintf("let %s = get_fixed_string_field(buf, %d, b%s, %t)?;", name, c.Length, padding.PadChar, padding.PadLeft)
 	case *model.DynamicStringFieldAttribute:
 		if g.GetConfig().LittleEndian {
 			return fmt.Sprintf("let %s = get_%s_le::<%s>(buf)?;", name, f.GetType(), g.GetConfig().StringLenPrefixLenType)
@@ -536,7 +635,10 @@ func (g RustGenerator) testValueSingle(parentName string, f *model.Field) string
 	case *model.MatchFieldAttribute:
 		return g.testMatchValue(parentName, f, c)
 	case *model.FixedStringFieldAttribute:
-		return fmt.Sprintf("vec!['a'; %d].into_iter().collect::<String>()", c.Length)
+		if c.Length == 1 {
+			return "\"a\".to_string()"
+		}
+		return fmt.Sprintf("\"a\".repeat(%d)", c.Length)
 	case *model.ObjectFieldAttribute:
 		// If it's a nested object, we need to create a default instance
 		var fieldValues []string
