@@ -32,6 +32,7 @@ func (g RustGenerator) Generate(binModel *model.BinaryModel) (map[string][]byte,
 		code := g.generateRustFileForPacket(pkt)
 		output[strcase.ToSnake(pkt.Name)+".rs"] = []byte(code)
 	}
+	output["borrowed_reader.rs"] = []byte(g.generateBorrowedReaderCode())
 	output["lib.rs"] = []byte(g.generateLibCode())
 	return output, nil
 }
@@ -44,6 +45,9 @@ func (g RustGenerator) generateRustFileForPacket(pkt *model.Packet) string {
 	b.WriteString("use binary_codec::*;\n")
 	b.WriteString("use byteorder::*;\n")
 	b.WriteString("use bytes::{Buf, BufMut, Bytes, BytesMut};\n\n")
+	if g.hasBorrowedCode(pkt) {
+		b.WriteString("use crate::borrowed_reader::BorrowedReader;\n")
+	}
 	//
 	b.WriteString(g.generateUseCode(pkt))
 	b.WriteString("\n")
@@ -51,9 +55,15 @@ func (g RustGenerator) generateRustFileForPacket(pkt *model.Packet) string {
 		b.WriteString(g.generateFixedStringHelpersCode(pkt))
 		b.WriteString("\n")
 	}
+	if g.hasReusableDynamicString(pkt) {
+		b.WriteString(g.generateDynamicStringIntoHelperCode())
+		b.WriteString("\n")
+	}
 	b.WriteString(g.generateMatchFieldEnumCode(pkt))
 	b.WriteString("\n")
 	b.WriteString(g.generateStructCode(pkt))
+	b.WriteString("\n")
+	b.WriteString(g.generateBorrowedCode(pkt))
 
 	return b.String()
 }
@@ -134,6 +144,40 @@ fn get_fixed_string_field(
     String::from_utf8(bytes.slice(start..end).to_vec()).ok()
 }
 `
+	if g.hasReusableFixedString(pkt) {
+		code += `
+#[inline]
+fn get_fixed_string_field_into(
+    buf: &mut Bytes,
+    value: &mut String,
+    fixed_length: usize,
+    pad_byte: u8,
+    pad_left: bool,
+) -> Option<()> {
+    if buf.remaining() < fixed_length {
+        return None;
+    }
+    let bytes = buf.copy_to_bytes(fixed_length);
+    let (start, end) = if pad_left {
+        let start = bytes
+            .iter()
+            .position(|&byte| byte != pad_byte)
+            .unwrap_or(fixed_length);
+        (start, fixed_length)
+    } else {
+        let end = bytes
+            .iter()
+            .rposition(|&byte| byte != pad_byte)
+            .map_or(0, |index| index + 1);
+        (0, end)
+    };
+    let text = std::str::from_utf8(&bytes[start..end]).ok()?;
+    value.clear();
+    value.push_str(text);
+    Some(())
+}
+`
+	}
 	if !g.hasRepeatedFixedString(pkt) {
 		return code
 	}
@@ -177,6 +221,7 @@ fn get_fixed_string_list_field<L: LengthPrefix>(
 
 func (g RustGenerator) generateLibCode() string {
 	var b strings.Builder
+	b.WriteString("pub mod borrowed_reader;\n")
 	for _, pkt := range g.binModel.PacketsMap {
 		b.WriteString(fmt.Sprintf("pub mod %s;\n", strcase.ToSnake(pkt.Name)))
 	}
@@ -267,6 +312,8 @@ func (g RustGenerator) generateStructCode(pkt *model.Packet) string {
 	b.WriteString(AddIndent4ln(AddIndent4("})")))
 	b.WriteString(AddIndent4ln("}"))
 	b.WriteString("}\n")
+	b.WriteString("\n")
+	b.WriteString(g.generateDecodeIntoCode(pkt))
 	b.WriteString("\n")
 
 	b.WriteString(g.generateUnitTestCode(pkt))
@@ -588,7 +635,16 @@ func (g RustGenerator) generateUnitTestCode(pkt *model.Packet) string {
 	// encoding
 	b.WriteString(AddIndent4ln(AddIndent4("let mut buf = BytesMut::new();")))
 	b.WriteString(AddIndent4ln(AddIndent4("original.encode(&mut buf);")))
-	b.WriteString(AddIndent4ln(AddIndent4("let mut bytes = buf.freeze();\n")))
+	if g.canGenerateBorrowed(pkt) {
+		b.WriteString(AddIndent4ln(AddIndent4("let bytes = buf.freeze();")))
+		b.WriteString(AddIndent4ln(AddIndent4(fmt.Sprintf("assert!(%sRef::from_slice(&bytes).is_some());", strcase.ToCamel(pkt.Name)))))
+		b.WriteString(AddIndent4ln(AddIndent4("let mut reuse_bytes = bytes.clone();")))
+		b.WriteString(AddIndent4ln(AddIndent4("let mut reused = original.clone();")))
+		b.WriteString(AddIndent4ln(AddIndent4(fmt.Sprintf("%s::decode_into(&mut reuse_bytes, &mut reused).unwrap();", strcase.ToCamel(pkt.Name)))))
+		b.WriteString(AddIndent4ln(AddIndent4("let mut bytes = bytes;\n")))
+	} else {
+		b.WriteString(AddIndent4ln(AddIndent4("let mut bytes = buf.freeze();\n")))
+	}
 
 	// decoding
 	b.WriteString(AddIndent4ln(AddIndent4(fmt.Sprintf("let decoded = %s::decode(&mut bytes).unwrap();", strcase.ToCamel(pkt.Name)))))
@@ -600,6 +656,9 @@ func (g RustGenerator) generateUnitTestCode(pkt *model.Packet) string {
 	}
 	// assertion
 	b.WriteString(AddIndent4ln(AddIndent4("assert_eq!(original, decoded);")))
+	if g.canGenerateBorrowed(pkt) {
+		b.WriteString(AddIndent4ln(AddIndent4("assert_eq!(original, reused);")))
+	}
 	b.WriteString(AddIndent4ln("}"))
 	b.WriteString("}\n")
 

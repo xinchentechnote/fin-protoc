@@ -48,7 +48,9 @@ func TestGenerateRust(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, output)
 	assert.Contains(t, output, "test_packet.rs")
+	assert.Contains(t, output, "borrowed_reader.rs")
 	assert.Contains(t, output, "lib.rs")
+	assert.Contains(t, string(output["borrowed_reader.rs"]), "pub struct BorrowedReader<'a>")
 }
 
 func TestGenerateRustFileForPacket(t *testing.T) {
@@ -120,7 +122,152 @@ func TestGenerateLibCode(t *testing.T) {
 	generator := NewRustGenerator(binModel)
 	code := generator.generateLibCode()
 
-	assert.Equal(t, "pub mod test_packet;\n", code)
+	assert.Equal(t, "pub mod borrowed_reader;\npub mod test_packet;\n", code)
+}
+
+func TestGenerateRustBorrowedFixedAndDynamicStrings(t *testing.T) {
+	packet := &model.Packet{
+		Name: "TestPacket",
+		Fields: []*model.Field{
+			{Name: "Code", Attr: &model.FixedStringFieldAttribute{Length: 10}},
+			{Name: "Text", Attr: &model.DynamicStringFieldAttribute{}},
+			{Name: "Number", Attr: &model.BasicFieldAttribute{Type: "u32"}},
+		},
+	}
+	binModel := &model.BinaryModel{
+		PacketsMap: map[string]*model.Packet{"TestPacket": packet},
+		Config: &model.Configuration{
+			StringLenPrefixLenType: "u16",
+			ListLenPrefixLenType:   "u16",
+			LittleEndian:           true,
+			Padding:                &model.Padding{PadChar: "' '", PadLeft: false},
+		},
+	}
+
+	code := NewRustGenerator(binModel).generateRustFileForPacket(packet)
+
+	assert.Contains(t, code, "pub struct TestPacketRef<'a>")
+	assert.Contains(t, code, "pub code: &'a str,")
+	assert.Contains(t, code, "pub text: &'a str,")
+	assert.Contains(t, code, "pub fn from_slice(input: &'a [u8]) -> Option<Self>")
+	assert.Contains(t, code, "assert!(TestPacketRef::from_slice(&bytes).is_some());")
+	assert.Contains(t, code, "pub fn decode_into(buf: &mut Bytes, out: &mut Self) -> Option<()>")
+	assert.Contains(t, code, "If decoding fails, `out` may have been partially updated.")
+	assert.Contains(t, code, "get_fixed_string_field_into(buf, &mut out.code, 10, b' ', false)?;")
+	assert.Contains(t, code, "get_string_field_into::<u16>(buf, &mut out.text, true)?;")
+	assert.Contains(t, code, "TestPacket::decode_into(&mut reuse_bytes, &mut reused).unwrap();")
+	assert.Contains(t, code, "assert_eq!(original, reused);")
+	assert.Contains(t, code, "let code = reader.get_fixed_str(10, b' ', false)?;")
+	assert.Contains(t, code, "let text_wire_len = reader.get_u16_le()? as usize;")
+	assert.Contains(t, code, "let text = reader.get_str(text_wire_len)?;")
+	assert.Contains(t, code, "let number = reader.get_u32_le()?;")
+}
+
+func TestGenerateRustBorrowedDynamicStringDoesNotShadowLengthField(t *testing.T) {
+	packet := &model.Packet{
+		Name: "TestPacket",
+		Fields: []*model.Field{
+			{Name: "TextLen", Attr: &model.LengthFieldAttribute{LengthType: "u32"}},
+			{Name: "Text", Attr: &model.DynamicStringFieldAttribute{}},
+		},
+	}
+	binModel := &model.BinaryModel{
+		PacketsMap: map[string]*model.Packet{"TestPacket": packet},
+		Config: &model.Configuration{
+			StringLenPrefixLenType: "u32",
+			ListLenPrefixLenType:   "u32",
+		},
+	}
+
+	code := NewRustGenerator(binModel).generateRustFileForPacket(packet)
+
+	assert.Contains(t, code, "let text_len = reader.get_u32()?;")
+	assert.Contains(t, code, "let text_wire_len = reader.get_u32()? as usize;")
+	assert.Contains(t, code, "let text = reader.get_str(text_wire_len)?;")
+	assert.Contains(t, code, "text_len,\n            text,")
+}
+
+func TestGenerateRustBorrowedMatch(t *testing.T) {
+	matchKey := &model.Field{Name: "Kind", Attr: &model.FixedStringFieldAttribute{Length: 3}}
+	first := &model.Packet{Name: "FirstValue", Fields: []*model.Field{
+		{Name: "Value", Attr: &model.BasicFieldAttribute{Type: "u32"}},
+	}}
+	second := &model.Packet{Name: "SecondValue"}
+	body := &model.Field{
+		Name: "Body",
+		Attr: &model.MatchFieldAttribute{
+			MatchKeyField: matchKey,
+			MatchPairs: []model.MatchPair{
+				{Key: "\"001\"", Value: "FirstValue"},
+				{Key: "\"002\"", Value: "SecondValue"},
+			},
+		},
+	}
+	packet := &model.Packet{Name: "Envelope", Fields: []*model.Field{matchKey, body}}
+	binModel := &model.BinaryModel{
+		PacketsMap: map[string]*model.Packet{
+			"Envelope":    packet,
+			"FirstValue":  first,
+			"SecondValue": second,
+		},
+		Config: &model.Configuration{
+			StringLenPrefixLenType: "u16",
+			ListLenPrefixLenType:   "u16",
+			Padding:                &model.Padding{PadChar: "' '", PadLeft: false},
+		},
+	}
+
+	code := NewRustGenerator(binModel).generateRustFileForPacket(packet)
+
+	assert.Contains(t, code, "pub enum EnvelopeBodyRefEnum<'a>")
+	assert.Contains(t, code, "FirstValue(FirstValueRef<'a>),")
+	assert.Contains(t, code, "let body = match kind {")
+	assert.Contains(t, code, "\"001\" => EnvelopeBodyRefEnum::FirstValue(FirstValueRef::decode_ref(reader)?),")
+}
+
+func TestGenerateRustBorrowedSkipsRepeatPackets(t *testing.T) {
+	packet := &model.Packet{Name: "RepeatedPacket", Fields: []*model.Field{
+		{Name: "Values", Attr: &model.BasicFieldAttribute{Type: "u32"}, IsRepeat: true},
+	}}
+	binModel := &model.BinaryModel{
+		PacketsMap: map[string]*model.Packet{"RepeatedPacket": packet},
+		Config: &model.Configuration{
+			StringLenPrefixLenType: "u16",
+			ListLenPrefixLenType:   "u16",
+		},
+	}
+
+	code := NewRustGenerator(binModel).generateRustFileForPacket(packet)
+
+	assert.NotContains(t, code, "pub struct RepeatedPacketRef<'a>")
+	assert.NotContains(t, code, "RepeatedPacketRef::from_slice")
+	assert.NotContains(t, code, "pub fn decode_into")
+}
+
+func TestGenerateRustBorrowedSupportsInlineChildOfRepeatPacket(t *testing.T) {
+	child := &model.Packet{Name: "InlineItem", Fields: []*model.Field{
+		{Name: "Code", Attr: &model.FixedStringFieldAttribute{Length: 4}},
+	}}
+	packet := &model.Packet{Name: "RepeatedPacket", Fields: []*model.Field{
+		{Name: "Items", Attr: &model.ObjectFieldAttribute{IsIner: true, RefPacket: child}, IsRepeat: true},
+	}}
+	binModel := &model.BinaryModel{
+		PacketsMap: map[string]*model.Packet{"RepeatedPacket": packet},
+		Config: &model.Configuration{
+			StringLenPrefixLenType: "u16",
+			ListLenPrefixLenType:   "u16",
+			Padding:                &model.Padding{PadChar: "' '", PadLeft: false},
+		},
+	}
+
+	code := NewRustGenerator(binModel).generateRustFileForPacket(packet)
+
+	assert.Contains(t, code, "use crate::borrowed_reader::BorrowedReader;")
+	assert.Contains(t, code, "pub struct InlineItemRef<'a>")
+	assert.Contains(t, code, "InlineItemRef::from_slice")
+	assert.Contains(t, code, "impl InlineItem {")
+	assert.Contains(t, code, "pub fn decode_into")
+	assert.NotContains(t, code, "pub struct RepeatedPacketRef<'a>")
 }
 
 func TestGenerateUseCode(t *testing.T) {

@@ -101,23 +101,32 @@ emit_table() {
 	awk -F'\t' '
 		{
 			lib = $1; lang = $2; op = $3; ns = $4 + 0; bytes = $5 + 0;
+			# Rust exposes both the backwards-compatible owned decoder and the
+			# zero-copy borrowed decoder. Zig and C decode are zero-copy, so
+			# group them with Rust decode_borrowed for a like-for-like row.
+			if (op == "decode" && lang == "rust") op = "decode_owned";
+			else if (op == "decode") op = "decode_borrowed";
 			k = lib SUBSEP op;
-			if (!(k in idx)) { idx[k] = ++n; ordlib[n] = lib; ordop[n] = op }
 			val[k, lang] = ns; byt[k] = bytes;
 		}
 		function fmt(v) { return v > 0 ? sprintf("%.1f", v) : "—" }
 		function ratio(a, b) { return (a > 0 && b > 0) ? sprintf("%.2fx", a / b) : "—" }
 		END {
-			for (i = 1; i <= n; i++) {
-				lib = ordlib[i]; op = ordop[i]; k = lib SUBSEP op;
+			libs[1] = "sse"; libs[2] = "szse"; libs[3] = "risk";
+			ops[1] = "encode"; ops[2] = "decode_owned"; ops[3] = "decode_reuse"; ops[4] = "decode_borrowed";
+			for (l = 1; l <= 3; l++) {
+				for (o = 1; o <= 4; o++) {
+					lib = libs[l]; op = ops[o]; k = lib SUBSEP op;
+					if (!(k in byt)) continue;
 				printf "| %s | %s | %d | %s | %s | %s | %s | %s |\n",
 					lib, op, byt[k],
 					fmt(val[k, "rust"]), fmt(val[k, "zig"]), fmt(val[k, "c"]),
 					ratio(val[k, "rust"], val[k, "zig"]), ratio(val[k, "rust"], val[k, "c"]);
+				}
 			}
 		}' "$RESULTS"/*.tsv
 	echo ""
-	echo "Zig and C decode are zero-copy (strings borrow from the input buffer); the Rust runtime materializes owned \`String\`s, which dominates its decode cost."
+	echo "\`decode_owned\` preserves the existing Rust API and allocates owned \`String\`s. \`decode_reuse\` keeps the owned model but reuses existing string capacity. \`decode_borrowed\`, Zig decode, and C decode borrow strings from the input buffer without allocating."
 }
 
 echo ""
