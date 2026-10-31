@@ -539,7 +539,9 @@ func TestGenerateUnitTestCode(t *testing.T) {
 
 	assert.Contains(t, code, "mod test_packet_tests")
 	assert.Contains(t, code, "fn test_test_packet_codec()")
-	assert.Contains(t, code, "let mut original = TestPacket")
+	// No length/checksum fields to fix up, so `original` needs no `mut`.
+	assert.Contains(t, code, "let original = TestPacket")
+	assert.NotContains(t, code, "let mut original")
 	assert.Contains(t, code, "assert_eq!(original, decoded)")
 }
 
